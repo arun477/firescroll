@@ -4170,62 +4170,38 @@ a { color: var(--blue); text-decoration: none; }
   right: 2%;
 }
 
-/* Generate flow — line from config → button → video */
-.ln-gen-flow {
+/* Flow SVG — covers the full studio viz */
+.ln-flow-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Generate button — centered between phone and config */
+.ln-gen-btn {
   position: absolute;
   z-index: 3;
-  top: 50%;
-  right: 210px;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-/* Incoming line from config */
-.ln-gen-line-in {
-  width: 32px;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(59,130,246,0.4), rgba(59,130,246,0.6));
-}
-
-/* Generate button */
-.ln-gen-btn {
+  top: 48%;
+  left: 58%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   gap: 7px;
   font-size: 12px;
   font-weight: 700;
   color: #fafafa;
-  background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(139,92,246,0.35));
-  border: 1px solid rgba(59,130,246,0.3);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 12px;
   padding: 10px 20px;
-  box-shadow: 0 4px 24px rgba(59,130,246,0.2), 0 0 40px rgba(139,92,246,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 30px rgba(255,255,255,0.04);
   white-space: nowrap;
-  flex-shrink: 0;
+  backdrop-filter: blur(12px);
 }
-.ln-gen-btn svg { color: #fafafa; }
-
-/* Outgoing line to video with arrow */
-.ln-gen-line-out {
-  width: 40px;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(139,92,246,0.6), rgba(34,197,94,0.5));
-  position: relative;
-}
-
-.ln-gen-arrow {
-  position: absolute;
-  right: -1px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 7px solid rgba(34,197,94,0.6);
-}
+.ln-gen-btn svg { color: rgba(255,255,255,0.7); }
 
 .ln-ft-ctrl-label {
   font-size: 9px;

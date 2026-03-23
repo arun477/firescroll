@@ -276,17 +276,15 @@ function FeaturesSection() {
             <div className="ln-grp ln-grp-voice">
               <div className="ln-grp-label">Voice</div>
               <div className="ln-grp-row">
-                <div className="ln-pill ln-pill-on">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-                  ElevenLabs
-                </div>
+                <div className="ln-pill">Aria</div>
+                <div className="ln-pill ln-pill-sel">Laura</div>
+                <div className="ln-pill">Roger</div>
               </div>
               <div className="ln-grp-label">Style</div>
               <div className="ln-grp-row">
                 <div className="ln-pill">Natural</div>
                 <div className="ln-pill ln-pill-sel">Dramatic</div>
                 <div className="ln-pill">Calm</div>
-                <div className="ln-pill">Energetic</div>
               </div>
             </div>
 
@@ -321,16 +319,38 @@ function FeaturesSection() {
               </div>
             </div>
 
-            {/* Generate flow — config → generate → video */}
-            <div className="ln-gen-flow">
-              <div className="ln-gen-line ln-gen-line-in" />
-              <div className="ln-gen-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Generate
-              </div>
-              <div className="ln-gen-line ln-gen-line-out">
-                <div className="ln-gen-arrow" />
-              </div>
+            {/* Flow: 3 config boxes → converge → Generate → arrow → video */}
+            <svg className="ln-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+              {/* Voice (left-center of voice box) → Generate */}
+              <path d="M79,16 C68,16 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              {/* Visual (left-center of visual box) → Generate */}
+              <path d="M79,48 C72,48 64,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              {/* Audio (left-center of audio box) → Generate */}
+              <path d="M79,80 C68,80 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              {/* Generate → Video phone */}
+              <path d="M52,48 L38,48" stroke="rgba(255,255,255,0.16)" strokeWidth="0.25" fill="none"/>
+              {/* Arrow tip */}
+              <polygon points="38,48 39.5,47 39.5,49" fill="rgba(255,255,255,0.35)"/>
+              {/* Pulse: Voice → Generate */}
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" path="M79,16 C68,16 62,48 58,48"/>
+              </circle>
+              {/* Pulse: Visual → Generate */}
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M79,48 C72,48 64,48 58,48"/>
+              </circle>
+              {/* Pulse: Audio → Generate */}
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.4s" path="M79,80 C68,80 62,48 58,48"/>
+              </circle>
+              {/* Pulse: Generate → Video */}
+              <circle r="0.7" fill="rgba(255,255,255,0.8)">
+                <animateMotion dur="1.2s" repeatCount="indefinite" path="M58,48 L38,48"/>
+              </circle>
+            </svg>
+            <div className="ln-gen-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Generate
             </div>
           </div>
 
