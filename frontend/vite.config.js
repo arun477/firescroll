@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8500',
       '/static': 'http://localhost:8500',
+      '/media': 'http://localhost:8500',
     },
   },
 })
