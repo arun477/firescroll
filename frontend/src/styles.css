@@ -3564,7 +3564,7 @@ a { color: var(--blue); text-decoration: none; }
   gap: 8px;
 }
 
-.ln-nav-flame { flex-shrink: 0; }
+.ln-nav-flame { flex-shrink: 0; display: block; }
 
 .ln-nav-name {
   font-size: 15px;
