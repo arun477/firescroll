@@ -104,6 +104,7 @@ export default function ResearchPanel({
         />
         <ResearchTaskManager
           tasks={research || []}
+          fcJobs={fcJobs || []}
           topicId={topicId}
           onRefresh={onRefresh}
         />

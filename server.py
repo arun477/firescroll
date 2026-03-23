@@ -367,6 +367,39 @@ def edit_segment_ep(topic_id: str, segment_id: str,  # noqa: ARG001
 def delete_segment_ep(topic_id: str, segment_id: str):  # noqa: ARG001
     from db import delete_segment
     delete_segment(segment_id)
+
+
+class AddSegmentRequest(BaseModel):
+    title: str
+
+
+@app.post("/api/topics/{topic_id}/segments")
+def add_segment_ep(topic_id: str, req: AddSegmentRequest):
+    from db import create_segment
+    segments = get_segments_for_topic(topic_id)
+    next_num = max((s["segment_num"] for s in segments), default=0) + 1
+    seg_id = create_segment(topic_id, next_num, title=req.title)
+    topic = get_topic(topic_id)
+    if topic:
+        update_topic(topic_id, total_segments=next_num)
+    return {"status": "created", "id": seg_id, "segment_num": next_num}
+
+
+@app.get("/api/topics/{topic_id}/segments")
+def list_segments_ep(topic_id: str, q: str = "", page: int = 1,
+                     per_page: int = 20):
+    segments = get_segments_for_topic(topic_id)
+    if q:
+        q_lower = q.lower()
+        segments = [s for s in segments
+                    if q_lower in (s.get("title") or "").lower()
+                    or q_lower in (s.get("hook") or "").lower()
+                    or q_lower in (s.get("script") or "").lower()]
+    total = len(segments)
+    start = (page - 1) * per_page
+    paged = segments[start:start + per_page]
+    return {"segments": paged, "total": total, "page": page,
+            "pages": (total + per_page - 1) // per_page}
     return {"status": "deleted"}
 
 
