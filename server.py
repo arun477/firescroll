@@ -608,35 +608,42 @@ def _process_uploaded_video(media_id, file_path):
             "ffprobe", "-v", "quiet", "-print_format", "json",
             "-show_format", "-show_streams", file_path,
         ], capture_output=True, text=True, check=False)
-        info = _json.loads(probe.stdout) if probe.returncode == 0 else {}
+
+        if probe.returncode != 0:
+            update_media(media_id, status="failed",
+                         meta=_json.dumps({"error": "Not a valid video file"}))
+            print(f"[Media] Invalid file: {media_id}")
+            return
+
+        info = _json.loads(probe.stdout)
         duration = float(info.get("format", {}).get("duration", 0))
         width, height = 0, 0
+        has_video_stream = False
         for s in info.get("streams", []):
             if s.get("codec_type") == "video":
                 width = int(s.get("width", 0))
                 height = int(s.get("height", 0))
+                has_video_stream = True
                 break
 
-        # Strip audio → create silent version
+        if not has_video_stream:
+            update_media(media_id, status="failed",
+                         meta=_json.dumps({"error": "No video stream found"}))
+            print(f"[Media] No video stream: {media_id}")
+            return
+
+        # Strip audio + generate thumbnail in one ffmpeg call
         base, ext = os.path.splitext(file_path)
         silent_path = base + "_silent" + ext
-        subprocess.run([
+        thumb_path = base + "_thumb.jpg"
+        result = subprocess.run([
             "ffmpeg", "-y", "-i", file_path,
             "-an", "-c:v", "copy", silent_path,
+            "-ss", "1", "-vframes", "1", "-vf", "scale=320:-1", thumb_path,
         ], capture_output=True, check=False)
 
-        # If strip succeeded, replace original
         if os.path.exists(silent_path):
             os.replace(silent_path, file_path)
-
-        # Generate thumbnail
-        thumb_path = base + "_thumb.jpg"
-        subprocess.run([
-            "ffmpeg", "-y", "-i", file_path,
-            "-ss", "1", "-vframes", "1",
-            "-vf", "scale=320:-1",
-            thumb_path,
-        ], capture_output=True, check=False)
 
         file_size = os.path.getsize(file_path)
 

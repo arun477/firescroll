@@ -575,21 +575,40 @@ def get_media(media_id):
 
 
 def delete_media(media_id):
+    import os as _os
     conn = get_conn()
     row = conn.execute(
         "SELECT file_path, thumb_path FROM media_library WHERE id = ?",
         (media_id,),
     ).fetchone()
-    conn.close()
-    if row:
-        import os as _os
-        for p in [row["file_path"], row["thumb_path"]]:
-            if p and _os.path.exists(p):
-                _os.remove(p)
-    conn = get_conn()
+    # Clear any segment configs referencing this media
+    configs = conn.execute(
+        "SELECT segment_id, config FROM segment_config WHERE config LIKE ?",
+        (f'%{media_id}%',),
+    ).fetchall()
+    for cfg in configs:
+        import json as _json
+        try:
+            data = _json.loads(cfg["config"])
+            if data.get("bg_video_id") == media_id:
+                data["bg_video_id"] = ""
+                conn.execute(
+                    "UPDATE segment_config SET config = ?, updated_at = ? WHERE segment_id = ?",
+                    (_json.dumps(data), _now(), cfg["segment_id"]),
+                )
+        except Exception:
+            pass
     conn.execute("DELETE FROM media_library WHERE id = ?", (media_id,))
     conn.commit()
     conn.close()
+    # Remove files after DB commit
+    if row:
+        for p in [row["file_path"], row["thumb_path"]]:
+            if p and _os.path.exists(p):
+                try:
+                    _os.remove(p)
+                except OSError:
+                    pass
 
 
 def save_segment_config(segment_id, topic_id, config):
