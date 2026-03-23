@@ -49,6 +49,10 @@ class GenerateRequest(BaseModel):
     voice_provider: Optional[str] = None
     voice_id: Optional[str] = None
     music_track: Optional[str] = None
+    music_source: Optional[str] = None
+    music_prompt: Optional[str] = None
+    voice_style: Optional[str] = None
+    voice_settings: Optional[dict] = None
     segment_ids: Optional[list] = None
 
 
@@ -56,6 +60,10 @@ class GenerateAllRequest(BaseModel):
     voice_provider: Optional[str] = None
     voice_id: Optional[str] = None
     music_track: Optional[str] = None
+    music_source: Optional[str] = None
+    music_prompt: Optional[str] = None
+    voice_style: Optional[str] = None
+    voice_settings: Optional[dict] = None
 
 
 @app.get("/api/topics")
@@ -198,7 +206,11 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                 _generate_single(seg, req.mode, req.caption, OUTPUT_DIR, job_id,
                                  voice_provider=req.voice_provider,
                                  voice_id=req.voice_id,
-                                 music_track=req.music_track)
+                                 music_track=req.music_track,
+                                 music_source=req.music_source,
+                                 music_prompt=req.music_prompt,
+                                 voice_style=req.voice_style,
+                                 voice_settings=req.voice_settings)
             if not req.segment_ids:
                 break
 
@@ -240,7 +252,11 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
                 pool.submit(_generate_single, seg, mode, caption, OUTPUT_DIR,
                             job_id, voice_provider=req.voice_provider,
                             voice_id=req.voice_id,
-                            music_track=req.music_track)
+                            music_track=req.music_track,
+                            music_source=req.music_source,
+                            music_prompt=req.music_prompt,
+                            voice_style=req.voice_style,
+                            voice_settings=req.voice_settings)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
@@ -474,6 +490,12 @@ def cancel_job(job_id: str):
         update_job(job_id, status=STATUS_FAILED, error="Cancelled by user")
         return {"status": "cancelled"}
     return {"status": "not_active"}
+
+
+@app.get("/api/voice-presets")
+def list_voice_presets():
+    from voice import VOICE_PRESETS
+    return {"presets": VOICE_PRESETS}
 
 
 @app.get("/api/voice-providers")

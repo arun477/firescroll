@@ -114,6 +114,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
   const [voiceProviders, setVoiceProviders] = useState([])
   const [voices, setVoices] = useState([])
   const [voicesLoading, setVoicesLoading] = useState(false)
+  const [voicePresets, setVoicePresets] = useState({})
   const [musicTracks, setMusicTracks] = useState([])
   const [voiceSearch, setVoiceSearch] = useState('')
   const [provider, setProvider] = useState('')
@@ -138,6 +139,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
       if (def) setProvider(def.id)
     })
     fetch('/api/music').then(r => r.json()).then(d => setMusicTracks(d.tracks || []))
+    fetch('/api/voice-presets').then(r => r.json()).then(d => setVoicePresets(d.presets || {}))
   }, [])
 
   useEffect(() => {
@@ -164,6 +166,10 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
         voice_provider: s.voice_provider || provider || null,
         voice_id: s.voice_id || voiceId || null,
         music_track: s.music_track || music || null,
+        music_source: s.music_source || null,
+        music_prompt: s.music_prompt || null,
+        voice_style: s.voice_style || null,
+        voice_settings: s.voice_settings || null,
         segment_ids: [seg.segment_num],
       }),
     })
@@ -347,17 +353,79 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
                 <div className="ve-voices-load"><Loader2 size={14} className="spin" /> Loading...</div>
               ) : (<>
                 <button className={`ve-vc ${!localVoice ? 've-vc-on' : ''}`}
-                  onClick={() => { setSetting(selectedSeg.id, 'voice_id', '') }}>
+                  onClick={() => setSetting(selectedSeg.id, 'voice_id', '')}>
                   <span className="ve-vc-name">Default</span>
                 </button>
                 {voices.filter(v => !voiceSearch || v.name.toLowerCase().includes(voiceSearch.toLowerCase())).map(v => (
                   <button key={v.id} className={`ve-vc ${localVoice === v.id ? 've-vc-on' : ''}`}
-                    onClick={() => { setSetting(selectedSeg.id, 'voice_id', v.id) }}>
+                    onClick={() => setSetting(selectedSeg.id, 'voice_id', v.id)}>
                     <span className="ve-vc-name">{v.name}</span>
                   </button>
                 ))}
               </>)}
             </div>
+
+            {/* Voice Style Presets (ElevenLabs only) */}
+            {(settings.voice_provider || provider) === 'elevenlabs' && Object.keys(voicePresets).length > 0 && (
+              <div className="ve-presets">
+                <div className="ve-presets-label">Style</div>
+                <div className="ve-presets-row">
+                  <button
+                    className={`ve-preset ${!settings.voice_style ? 've-preset-on' : ''}`}
+                    onClick={() => { setSetting(selectedSeg.id, 'voice_style', ''); setSetting(selectedSeg.id, 'voice_settings', null) }}>
+                    None
+                  </button>
+                  {Object.keys(voicePresets).map(name => (
+                    <button key={name}
+                      className={`ve-preset ${settings.voice_style === name ? 've-preset-on' : ''}`}
+                      onClick={() => { setSetting(selectedSeg.id, 'voice_style', name); setSetting(selectedSeg.id, 'voice_settings', null) }}>
+                      {name}
+                    </button>
+                  ))}
+                  <button
+                    className={`ve-preset ${settings.voice_style === 'custom' ? 've-preset-on' : ''}`}
+                    onClick={() => setSetting(selectedSeg.id, 'voice_style', 'custom')}>
+                    Custom
+                  </button>
+                </div>
+
+                {/* Custom sliders */}
+                {settings.voice_style === 'custom' && (
+                  <div className="ve-sliders">
+                    {[
+                      { key: 'stability', label: 'Stability', min: 0, max: 1, step: 0.05, def: 0.5 },
+                      { key: 'similarity_boost', label: 'Clarity', min: 0, max: 1, step: 0.05, def: 0.75 },
+                      { key: 'style', label: 'Style', min: 0, max: 1, step: 0.05, def: 0 },
+                      { key: 'speed', label: 'Speed', min: 0.7, max: 1.3, step: 0.05, def: 1.0 },
+                    ].map(s => {
+                      const vs = settings.voice_settings || {}
+                      const val = vs[s.key] ?? s.def
+                      return (
+                        <div key={s.key} className="ve-slider-row">
+                          <label className="ve-slider-label">{s.label}</label>
+                          <input type="range" className="ve-slider"
+                            min={s.min} max={s.max} step={s.step} value={val}
+                            onChange={e => {
+                              const newVs = { ...(settings.voice_settings || {}), [s.key]: parseFloat(e.target.value) }
+                              setSetting(selectedSeg.id, 'voice_settings', newVs)
+                            }} />
+                          <span className="ve-slider-val">{val.toFixed(2)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Show preset values */}
+                {settings.voice_style && settings.voice_style !== 'custom' && voicePresets[settings.voice_style] && (
+                  <div className="ve-preset-info">
+                    {Object.entries(voicePresets[settings.voice_style]).map(([k, v]) => (
+                      <span key={k}>{k.replace('similarity_boost', 'clarity').replace('_', ' ')}: {v}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </Section>
 
           {/* ── Visual Mode ── */}
@@ -393,19 +461,47 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
 
           {/* ── Music ── */}
           <Section icon={Music} title="Music"
-            value={localMusic ? fmtTrack(localMusic) : 'Random'}>
-            <div className="ve-music">
-              <button className={`ve-mu ${!localMusic ? 've-mu-on' : ''}`}
-                onClick={() => setSetting(selectedSeg.id, 'music_track', '')}>
-                <Shuffle size={12} /> Random
+            value={settings.music_source === 'elevenlabs' ? 'AI Generated' : localMusic ? fmtTrack(localMusic) : 'Random'}>
+
+            {/* Music source tabs */}
+            <div className="ve-toggles" style={{ marginBottom: 10 }}>
+              <button className={`ve-tog ${(settings.music_source || '') !== 'elevenlabs' ? 've-tog-on' : ''}`}
+                onClick={() => setSetting(selectedSeg.id, 'music_source', '')}>
+                Library
               </button>
-              {musicTracks.map(t => (
-                <button key={t} className={`ve-mu ${localMusic === t ? 've-mu-on' : ''}`}
-                  onClick={() => setSetting(selectedSeg.id, 'music_track', t)}>
-                  <Music size={12} /> {fmtTrack(t)}
-                </button>
-              ))}
+              <button className={`ve-tog ${settings.music_source === 'elevenlabs' ? 've-tog-on' : ''}`}
+                onClick={() => setSetting(selectedSeg.id, 'music_source', 'elevenlabs')}>
+                <Zap size={11} /> AI Generate
+              </button>
             </div>
+
+            {(settings.music_source || '') !== 'elevenlabs' ? (
+              <div className="ve-music">
+                <button className={`ve-mu ${!localMusic ? 've-mu-on' : ''}`}
+                  onClick={() => setSetting(selectedSeg.id, 'music_track', '')}>
+                  <Shuffle size={12} /> Random
+                </button>
+                {musicTracks.map(t => (
+                  <button key={t} className={`ve-mu ${localMusic === t ? 've-mu-on' : ''}`}
+                    onClick={() => setSetting(selectedSeg.id, 'music_track', t)}>
+                    <Music size={12} /> {fmtTrack(t)}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="ve-ai-music">
+                <textarea
+                  className="ve-ai-music-input"
+                  placeholder={`e.g. Calm ambient instrumental for educational video about ${topic?.title || 'science'}...`}
+                  value={settings.music_prompt || ''}
+                  onChange={e => setSetting(selectedSeg.id, 'music_prompt', e.target.value)}
+                  rows={3}
+                />
+                <div className="ve-ai-music-hint">
+                  Leave empty for auto-generated prompt based on topic
+                </div>
+              </div>
+            )}
           </Section>
 
           {/* ── Generate ── */}

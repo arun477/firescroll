@@ -41,6 +41,15 @@ class OpenAIVoice(VoiceProvider):
         return [{"id": v, "name": v.capitalize()} for v in self.VOICES]
 
 
+VOICE_PRESETS = {
+    "natural":     {"stability": 0.5, "similarity_boost": 0.75, "style": 0.0, "speed": 1.0},
+    "dramatic":    {"stability": 0.3, "similarity_boost": 0.8, "style": 0.7, "speed": 0.9},
+    "energetic":   {"stability": 0.4, "similarity_boost": 0.7, "style": 0.5, "speed": 1.15},
+    "calm":        {"stability": 0.8, "similarity_boost": 0.6, "style": 0.1, "speed": 0.9},
+    "storyteller": {"stability": 0.6, "similarity_boost": 0.85, "style": 0.4, "speed": 0.95},
+}
+
+
 class ElevenLabsVoice(VoiceProvider):
     DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
 
@@ -56,12 +65,23 @@ class ElevenLabsVoice(VoiceProvider):
 
     def generate(self, text: str, output_path: str, **kwargs) -> str:
         voice_id = kwargs.get("voice", self.voice)
-        audio = self.client.text_to_speech.convert(
-            text=text,
-            voice_id=voice_id,
-            model_id=self.model,
-            output_format="mp3_44100_128",
-        )
+        call_kwargs = {
+            "text": text,
+            "voice_id": voice_id,
+            "model_id": self.model,
+            "output_format": "mp3_44100_128",
+        }
+        # Apply voice settings if provided
+        stability = kwargs.get("stability")
+        if stability is not None:
+            from elevenlabs import VoiceSettings
+            call_kwargs["voice_settings"] = VoiceSettings(
+                stability=float(kwargs.get("stability", 0.5)),
+                similarity_boost=float(kwargs.get("similarity_boost", 0.75)),
+                style=float(kwargs.get("style", 0.0)),
+                speed=float(kwargs.get("speed", 1.0)),
+            )
+        audio = self.client.text_to_speech.convert(**call_kwargs)
         with open(output_path, "wb") as f:
             for chunk in audio:
                 f.write(chunk)

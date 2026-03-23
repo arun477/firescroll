@@ -59,7 +59,8 @@ def _run_ffmpeg(cmd):
 
 
 def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
-                  music_track=None):
+                  music_track=None, music_source=None, music_prompt=None,
+                  voice_style=None, voice_settings=None):
     tts = get_voice_provider(voice_provider)
     sid = segment["id"]
     hook_path = os.path.join(output_dir, f"seg{sid}_hook.mp3")
@@ -67,7 +68,18 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
     voice_path = os.path.join(output_dir, f"seg{sid}_voice.mp3")
     final_path = os.path.join(output_dir, f"seg{sid}_final.mp3")
 
-    voice_kwargs = {"voice": voice_id} if voice_id else {}
+    # Build voice kwargs
+    voice_kwargs = {}
+    if voice_id:
+        voice_kwargs["voice"] = voice_id
+    # Apply voice preset or custom settings (ElevenLabs only)
+    if voice_style and voice_style != "custom":
+        from voice import VOICE_PRESETS
+        preset = VOICE_PRESETS.get(voice_style, {})
+        voice_kwargs.update(preset)
+    elif voice_settings and isinstance(voice_settings, dict):
+        voice_kwargs.update(voice_settings)
+
     tts.generate(segment["hook"], hook_path, **voice_kwargs)
     hook_dur = probe_duration(hook_path)
 
@@ -77,9 +89,22 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
     stitch_audio([hook_path, script_path], voice_path)
     total_dur = probe_duration(voice_path)
 
-    music_src = pick_music(music_track)
+    # Music: ElevenLabs AI or local library
     music_path = os.path.join(output_dir, f"seg{sid}_music.mp3")
-    prepare_music(music_src, total_dur, music_path)
+    music_label = ""
+    if music_source == "elevenlabs":
+        from audio_utils import generate_music_elevenlabs
+        prompt = music_prompt or (
+            f"Calm ambient instrumental background music for an educational video about "
+            f"{segment.get('series_title', 'science')}: {segment.get('title', '')}"
+        )
+        generate_music_elevenlabs(prompt, total_dur + 2, music_path)
+        music_label = "ai_generated"
+    else:
+        music_src = pick_music(music_track)
+        prepare_music(music_src, total_dur, music_path)
+        music_label = os.path.basename(music_src)
+
     mix_voice_and_music(voice_path, music_path, final_path)
 
     timing = {
@@ -91,7 +116,7 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
         "audio_path": final_path,
         "voice_path": voice_path,
         "timing": timing,
-        "music": os.path.basename(music_src),
+        "music": music_label,
     }
 
 
@@ -170,7 +195,9 @@ def _safe_vid(vid_dir, frame_num):
 
 
 def _generate_single(segment, mode, caption, output_dir, job_id,
-                     voice_provider=None, voice_id=None, music_track=None):
+                     voice_provider=None, voice_id=None, music_track=None,
+                     music_source=None, music_prompt=None,
+                     voice_style=None, voice_settings=None):
     try:
         sid = segment["id"]
         topic = segment.get("series_title", "topic").lower().replace(" ", "_")
@@ -188,7 +215,11 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         audio_result = _phase_audio(segment, seg_dir,
                                     voice_provider=voice_provider,
                                     voice_id=voice_id,
-                                    music_track=music_track)
+                                    music_track=music_track,
+                                    music_source=music_source,
+                                    music_prompt=music_prompt,
+                                    voice_style=voice_style,
+                                    voice_settings=voice_settings)
         timing = audio_result["timing"]
         update_job(job_id, audio_path=audio_result["audio_path"],
                    duration_seconds=timing["total_duration"], progress=15)

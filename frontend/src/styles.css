@@ -2999,3 +2999,147 @@ a { color: var(--blue); text-decoration: none; }
   background: rgba(255,255,255,0.08);
   border-radius: 2px;
 }
+
+/* ─── Voice Presets ─── */
+
+.ve-presets {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ve-presets-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.ve-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ve-preset {
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
+  text-transform: capitalize;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.ve-preset:hover { background: rgba(255,255,255,0.06); }
+
+.ve-preset-on {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  color: var(--text) !important;
+}
+
+.ve-preset-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.ve-preset-info span {
+  background: rgba(255,255,255,0.03);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* ─── Voice Custom Sliders ─── */
+
+.ve-sliders {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ve-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ve-slider-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 52px;
+}
+
+.ve-slider {
+  flex: 1;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  outline: none;
+}
+
+.ve-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+  border: none;
+}
+
+.ve-slider-val {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* ─── AI Music ─── */
+
+.ve-ai-music {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ve-ai-music-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.ve-ai-music-input:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.15);
+}
+
+.ve-ai-music-input::placeholder { color: var(--text-muted); }
+
+.ve-ai-music-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
