@@ -1,10 +1,10 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, ScrollText } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, ScrollText, Key } from 'lucide-react'
 import Feed from './pages/Feed'
 import Dashboard from './pages/Dashboard'
 import TopicDetail from './pages/TopicDetail'
 import CreateTopic from './pages/CreateTopic'
-import SidebarKeys from './components/SidebarKeys'
+import Settings from './pages/Settings'
 
 function Logo() {
   return (
@@ -44,8 +44,8 @@ export default function App() {
           <NavLink to="/" end><ScrollText size={18} />Feed</NavLink>
           <NavLink to="/dashboard"><LayoutDashboard size={18} />Dashboard</NavLink>
           <NavLink to="/create"><PlusCircle size={18} />Create</NavLink>
+          <NavLink to="/settings"><Key size={18} />API Keys</NavLink>
         </div>
-        <SidebarKeys />
       </nav>
       <div className="main-content">
         <Routes>
@@ -53,6 +53,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/topic/:topicId" element={<TopicDetail />} />
           <Route path="/create" element={<CreateTopic />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </div>
     </div>

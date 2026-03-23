@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from dotenv import load_dotenv
 
@@ -160,10 +161,12 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
     try:
         update_segment(segment_id, status="researching")
         update_research_task(task_id, status="searching")
+        print(f"[FC] Searching: {topic_title} - {segment_title}")
         fc = _get_firecrawl()
         query = f"{topic_title} {segment_title} educational facts"
         results = fc.search(query, limit=5,
                             scrape_options={"formats": ["markdown"]})
+        src_count = 0
         if results and hasattr(results, "data"):
             for item in results.data:
                 url = getattr(item, "url", "")
@@ -172,11 +175,17 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
                 if markdown:
                     add_research_source(topic_id, url, title,
                                         markdown[:5000], "search")
+                    src_count += 1
+        print(f"[FC] Found {src_count} sources for: {segment_title}")
 
         update_research_task(task_id, status="processing")
+        print(f"[FC] Synthesizing segment: {segment_title}")
         _synthesize_segment(topic_id, segment_id, "firecrawl")
         update_research_task(task_id, status="done")
+        print(f"[FC] Done: {segment_title}")
     except Exception as exc:  # pylint: disable=broad-exception-caught
+        print(f"[FC] ERROR: {segment_title}: {exc}")
+        traceback.print_exc()
         update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
         raise
