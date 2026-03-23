@@ -410,6 +410,7 @@ def edit_segment_ep(topic_id: str, segment_id: str,  # noqa: ARG001
 def delete_segment_ep(topic_id: str, segment_id: str):  # noqa: ARG001
     from db import delete_segment
     delete_segment(segment_id)
+    return {"status": "deleted"}
 
 
 class AddSegmentRequest(BaseModel):
@@ -464,7 +465,6 @@ def list_segments_ep(topic_id: str, q: str = "", page: int = 1,
     paged = segments[start:start + per_page]
     return {"segments": paged, "total": total, "page": page,
             "pages": (total + per_page - 1) // per_page}
-    return {"status": "deleted"}
 
 
 @app.delete("/api/topics/{topic_id}/research/{task_id}")
@@ -523,10 +523,10 @@ def list_voices_ep(provider: str):
 
 @app.get("/api/music")
 def list_music():
-    music_dir = os.path.join(os.path.dirname(__file__), "assets", "music")
-    if not os.path.isdir(music_dir):
+    from audio_utils import MUSIC_DIR
+    if not os.path.isdir(MUSIC_DIR):
         return {"tracks": []}
-    tracks = sorted(f for f in os.listdir(music_dir) if f.endswith(".mp3"))
+    tracks = sorted(f for f in os.listdir(MUSIC_DIR) if f.endswith(".mp3"))
     return {"tracks": tracks}
 
 

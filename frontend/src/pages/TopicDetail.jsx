@@ -97,7 +97,8 @@ export default function TopicDetail() {
       )}
       {tab === 'generate' && (
         <VideoStudio topicId={topicId} topic={topic}
-          segments={segments || []} jobs={jobs || []} onRefresh={load} />
+          segments={segments || []} jobs={jobs || []} onRefresh={load}
+          searchParams={searchParams} setSearchParams={setSearchParams} />
       )}
     </div>
   )
@@ -109,8 +110,13 @@ export default function TopicDetail() {
    Left: collapsible segments | Center: preview | Right: controls
    ══════════════════════════════════════════════════════════════ */
 
-function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
-  const [selectedSegId, setSelectedSegId] = useState(null)
+function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, setSearchParams }) {
+  const selectedSegId = searchParams.get('seg') || null
+  const setSelectedSegId = (id) => {
+    const p = Object.fromEntries(searchParams.entries())
+    if (id) p.seg = id; else delete p.seg
+    setSearchParams(p)
+  }
   const [voiceProviders, setVoiceProviders] = useState([])
   const [voices, setVoices] = useState([])
   const [voicesLoading, setVoicesLoading] = useState(false)
@@ -329,7 +335,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
         <div className="ve-right">
 
           {/* ── Voice ── */}
-          <Section icon={Volume2} title="Voice"
+          <Section icon={Volume2} title="Voice" defaultOpen
             value={voices.find(v => v.id === localVoice)?.name || 'Default'}>
             <div className="ve-toggles">
               {voiceProviders.map(p => (
@@ -542,8 +548,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
 
 
 /* ── Reusable accordion section ── */
-function Section({ icon: Icon, title, value, children }) {
-  const [open, setOpen] = useState(false)
+function Section({ icon: Icon, title, value, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="ve-sec">
       <button className="ve-sec-head" onClick={() => setOpen(!open)}>

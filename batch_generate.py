@@ -194,6 +194,12 @@ def _safe_vid(vid_dir, frame_num):
     return path
 
 
+def _is_cancelled(job_id):
+    from db import get_job, STATUS_FAILED
+    job = get_job(job_id)
+    return job and job["status"] == STATUS_FAILED
+
+
 def _generate_single(segment, mode, caption, output_dir, job_id,
                      voice_provider=None, voice_id=None, music_track=None,
                      music_source=None, music_prompt=None,
@@ -209,6 +215,9 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             suffix += "_karaoke"
         video_path = os.path.join(seg_dir, f"part{sid}{suffix}.mp4")
         thumb_path = os.path.join(seg_dir, f"part{sid}{suffix}_thumb.png")
+
+        if _is_cancelled(job_id):
+            return job_id, None
 
         update_job(job_id, status=STATUS_AUDIO, progress=5)
         print(f"  [Seg {sid}] Audio...")
@@ -234,6 +243,9 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         total_frames = math.ceil(timing["total_duration"] * FPS)
         extra = {"word_ts": word_ts}
 
+        if _is_cancelled(job_id):
+            return job_id, None
+
         needs_bg = mode in ("full", "split")
         needs_vid = mode in ("video", "split")
 
@@ -253,6 +265,9 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                            target_h=target_h, total_frames=total_frames)
             extra["vid_dir"] = vid_dir
 
+        if _is_cancelled(job_id):
+            return job_id, None
+
         update_job(job_id, status=STATUS_RENDERING, progress=45)
         print(f"  [Seg {sid}] Rendering {total_frames} frames...")
 
@@ -269,7 +284,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                 done = 0
                 for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
                     done += 1
-                    if done % FPS == 0 or done == total_frames:
+                    if done % (FPS * 3) == 0 or done == total_frames:
                         pct = 45 + int(done / total_frames * 45)
                         update_job(job_id, progress=pct)
 

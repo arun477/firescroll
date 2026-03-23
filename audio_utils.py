@@ -97,10 +97,21 @@ def prepare_music(music_path, target_duration, output_path, *, volume=0.15):
     return output_path
 
 
-def generate_music_elevenlabs(prompt, duration_seconds, output_path):
+def _get_elevenlabs_client():
     from elevenlabs.client import ElevenLabs
     from keystore import get_key
-    client = ElevenLabs(api_key=get_key("elevenlabs"))
+    return ElevenLabs(api_key=get_key("elevenlabs"))
+
+
+def _write_audio_stream(audio_iter, output_path):
+    with open(output_path, "wb") as f:
+        for chunk in audio_iter:
+            f.write(chunk)
+    return output_path
+
+
+def generate_music_elevenlabs(prompt, duration_seconds, output_path):
+    client = _get_elevenlabs_client()
     length_ms = max(3000, min(600000, int(duration_seconds * 1000)))
     print(f"[ElevenLabs Music] Generating {length_ms}ms: {prompt[:60]}...")
     track = client.music.compose(
@@ -109,17 +120,13 @@ def generate_music_elevenlabs(prompt, duration_seconds, output_path):
         output_format="mp3_44100_128",
         force_instrumental=True,
     )
-    with open(output_path, "wb") as f:
-        for chunk in track:
-            f.write(chunk)
+    _write_audio_stream(track, output_path)
     print(f"[ElevenLabs Music] Saved: {output_path}")
     return output_path
 
 
 def generate_sfx_elevenlabs(prompt, duration_seconds, output_path):
-    from elevenlabs.client import ElevenLabs
-    from keystore import get_key
-    client = ElevenLabs(api_key=get_key("elevenlabs"))
+    client = _get_elevenlabs_client()
     duration = max(0.5, min(30.0, duration_seconds))
     print(f"[ElevenLabs SFX] Generating {duration}s: {prompt[:60]}...")
     audio = client.text_to_sound_effects.convert(
@@ -127,9 +134,7 @@ def generate_sfx_elevenlabs(prompt, duration_seconds, output_path):
         duration_seconds=duration,
         prompt_influence=0.5,
     )
-    with open(output_path, "wb") as f:
-        for chunk in audio:
-            f.write(chunk)
+    _write_audio_stream(audio, output_path)
     print(f"[ElevenLabs SFX] Saved: {output_path}")
     return output_path
 
