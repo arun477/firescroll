@@ -55,7 +55,8 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
     })
     setSelected(new Set())
     setGenerating(false)
-    setTimeout(onRefresh, 2000)
+    onRefresh()
+    setTimeout(onRefresh, 3000)
   }
 
   const types = ['all', 'search', 'scrape', 'crawl', 'agent', 'extract']
