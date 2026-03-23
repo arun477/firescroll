@@ -385,6 +385,27 @@ def add_segment_ep(topic_id: str, req: AddSegmentRequest):
     return {"status": "created", "id": seg_id, "segment_num": next_num}
 
 
+class GenerateFromSourcesRequest(BaseModel):
+    source_ids: list
+    num_segments: int = 0
+
+
+@app.post("/api/topics/{topic_id}/generate-from-sources")
+def generate_from_sources_ep(topic_id: str, req: GenerateFromSourcesRequest):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "not found"}
+
+    def run():
+        from research import generate_segments_from_sources
+        generate_segments_from_sources(
+            topic_id, topic["title"], req.source_ids, req.num_segments
+        )
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
 @app.get("/api/topics/{topic_id}/segments")
 def list_segments_ep(topic_id: str, q: str = "", page: int = 1,
                      per_page: int = 20):

@@ -252,6 +252,97 @@ def research_all_firecrawl(topic_id, topic_title, num_segments=6):
     print(f"[FC] All done for: {topic_title}")
 
 
+def generate_segments_from_sources(topic_id, topic_title, source_ids,
+                                    num_segments=0):
+    from db import get_conn
+    task_id = create_research_task(topic_id, "source_to_segments",
+                                   f"{len(source_ids)} sources")
+    try:
+        update_research_task(task_id, status="running")
+        conn = get_conn()
+        content_parts = []
+        for sid in source_ids:
+            row = conn.execute(
+                "SELECT url, title, content FROM research_sources WHERE id = ?",
+                (sid,),
+            ).fetchone()
+            if row:
+                text = (row["content"] or "")[:1500]
+                content_parts.append(
+                    f"--- {row['title']} ({row['url']}) ---\n{text}"
+                )
+        conn.close()
+
+        if not content_parts:
+            update_research_task(task_id, status="failed",
+                                 error="No source content found")
+            return
+
+        combined = "\n\n".join(content_parts)[:8000]
+
+        existing = get_segments_for_topic(topic_id)
+        existing_titles = [s["title"].lower() for s in existing if s.get("title")]
+
+        auto_count = ""
+        if num_segments > 0:
+            auto_count = f"Create exactly {num_segments} segments."
+        else:
+            auto_count = "Create an appropriate number of segments (3-8)."
+
+        client = _get_openai()
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": (
+                f'Using these research sources, create video segments for '
+                f'a series about "{topic_title}".\n\n'
+                f'Existing segment titles (DO NOT duplicate): '
+                f'{existing_titles}\n\n'
+                f'{auto_count} Each segment must have a unique angle.\n\n'
+                f'Sources:\n{combined}\n\n'
+                f'Return JSON: {{"segments": [{{"title": "...", '
+                f'"hook": "1-2 sentence attention grabber", '
+                f'"script": "3-5 sentence educational content", '
+                f'"visual_cue": "what to show on screen"}}]}}'
+            )}],
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(response.choices[0].message.content)
+
+        next_num = max((s["segment_num"] for s in existing), default=0) + 1
+        created = 0
+        source_url_list = json.dumps(
+            [sid for sid in source_ids[:10]], ensure_ascii=False)
+
+        for seg_data in data.get("segments", []):
+            title = seg_data.get("title", "")
+            if title.lower() in existing_titles:
+                print(f"[FC] Skipping duplicate: {title}")
+                continue
+            seg_id = create_segment(
+                topic_id, next_num + created, title=title)
+            update_segment(
+                seg_id,
+                hook=seg_data.get("hook", ""),
+                script=seg_data.get("script", ""),
+                visual_cue=seg_data.get("visual_cue", ""),
+                source="firecrawl",
+                source_urls=source_url_list,
+                status="ready",
+            )
+            created += 1
+            existing_titles.append(title.lower())
+
+        update_topic(topic_id, total_segments=next_num + created - 1)
+        update_research_task(
+            task_id, status="done",
+            result=f"Created {created} segments from {len(source_ids)} sources")
+        print(f"[FC] Created {created} segments from {len(source_ids)} sources")
+
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        print(f"[FC] generate_from_sources ERROR: {exc}")
+        update_research_task(task_id, status="failed", error=str(exc))
+
+
 def _check_all_done(topic_id):
     segments = get_segments_for_topic(topic_id)
     ready = sum(1 for s in segments if s["status"] == "ready")
