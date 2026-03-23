@@ -4,7 +4,7 @@ import {
   Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
   BookOpen, Video, Music, Volume2, ChevronDown, Loader2,
-  Eye, Sparkles, X, Square, Search, Palette, ChevronRight, Zap,
+  Eye, Sparkles, X, Square, Search, Palette, ChevronRight, Zap, Download,
 } from 'lucide-react'
 import ResearchPanel from '../components/ResearchPanel'
 
@@ -20,6 +20,21 @@ const CAPTION_META = {
 
 function isActive(s) { return !['done', 'failed', 'pending'].includes(s) }
 function fmtTrack(f) { return f.replace('.mp3', '').replace(/_/g, ' ') }
+function fmtError(err) {
+  if (!err) return 'Unknown error'
+  if (err.includes('payment_required') || err.includes('paid_plan'))
+    return 'ElevenLabs paid plan required for this feature'
+  if (err.includes('rate_limit') || err.includes('429'))
+    return 'Rate limit reached — try again in a moment'
+  if (err.includes('api_key') || err.includes('unauthorized') || err.includes('401'))
+    return 'API key invalid or expired — check Settings'
+  if (err.includes('Cancelled'))
+    return 'Cancelled by user'
+  if (err.includes('FFmpeg'))
+    return 'Video encoding failed — check FFmpeg installation'
+  if (err.length > 120) return err.substring(0, 120) + '...'
+  return err
+}
 
 export default function TopicDetail() {
   const { topicId } = useParams()
@@ -54,7 +69,7 @@ export default function TopicDetail() {
   }, [data, topicId, load])
 
   if (!data) return <div className="empty-state"><Loader2 size={24} className="spin" /></div>
-  const { topic, jobs, segments, research, sources, source_stats, fc_jobs } = data
+  const { topic, jobs, segments, research, sources, source_stats, fc_jobs, segment_configs } = data
   const doneJobs = jobs?.filter(j => j.status === 'done').length || 0
   const readyCount = segments?.filter(s => s.status === 'ready').length || 0
 
@@ -98,7 +113,8 @@ export default function TopicDetail() {
       {tab === 'generate' && (
         <VideoStudio topicId={topicId} topic={topic}
           segments={segments || []} jobs={jobs || []} onRefresh={load}
-          searchParams={searchParams} setSearchParams={setSearchParams} />
+          searchParams={searchParams} setSearchParams={setSearchParams}
+          initialConfigs={segment_configs || {}} />
       )}
     </div>
   )
@@ -110,7 +126,7 @@ export default function TopicDetail() {
    Left: collapsible segments | Center: preview | Right: controls
    ══════════════════════════════════════════════════════════════ */
 
-function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, setSearchParams }) {
+function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, setSearchParams, initialConfigs }) {
   const selectedSegId = searchParams.get('seg') || null
   const setSelectedSegId = (id) => {
     const p = Object.fromEntries(searchParams.entries())
@@ -128,7 +144,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [provider, setProvider] = useState('')
   const [voiceId, setVoiceId] = useState('')
   const [music, setMusic] = useState('')
-  const [segSettings, setSegSettings] = useState({})
+  const [segSettings, setSegSettings] = useState(initialConfigs || {})
 
   const readySegs = segments.filter(s => s.status === 'ready')
   const selectedSeg = readySegs.find(s => s.id === selectedSegId) || readySegs[0] || null
@@ -143,8 +159,10 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     fetch('/api/voice-providers').then(r => r.json()).then(d => {
       const p = d.providers || []
       setVoiceProviders(p)
-      const def = p.find(x => x.default) || p[0]
-      if (def) setProvider(def.id)
+      if (!provider) {
+        const def = p.find(x => x.default) || p[0]
+        if (def) setProvider(def.id)
+      }
     })
     fetch('/api/music').then(r => r.json()).then(d => setMusicTracks(d.tracks || []))
     fetch('/api/voice-presets').then(r => r.json()).then(d => setVoicePresets(d.presets || {}))
@@ -162,8 +180,18 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     if (!selectedSegId && readySegs.length) setSelectedSegId(readySegs[0].id)
   }, [readySegs.length])
 
-  const setSetting = (segId, key, val) =>
-    setSegSettings(p => ({ ...p, [segId]: { ...(p[segId] || {}), [key]: val } }))
+  const setSetting = (segId, key, val) => {
+    setSegSettings(p => {
+      const updated = { ...p, [segId]: { ...(p[segId] || {}), [key]: val } }
+      // Persist to backend (fire-and-forget)
+      fetch(`/api/topics/${topicId}/segments/${segId}/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: updated[segId] }),
+      }).catch(() => {})
+      return updated
+    })
+  }
 
   const handleGenerate = async (seg) => {
     const s = segSettings[seg.id] || {}
@@ -326,13 +354,19 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               )}
 
               {!activeJob && doneJob && (
-                <video
-                  key={doneJob.id}
-                  className="ve-c-video"
-                  src={doneJob.video_url}
-                  controls
-                  preload="metadata"
-                />
+                <div className="ve-c-video-wrap">
+                  <video
+                    key={doneJob.id}
+                    className="ve-c-video"
+                    src={doneJob.video_url}
+                    controls
+                    preload="metadata"
+                  />
+                  <a className="ve-c-download" href={doneJob.video_url}
+                    download={`segment_${selectedSeg.segment_num}.mp4`} title="Download video">
+                    <Download size={16} />
+                  </a>
+                </div>
               )}
 
               {!activeJob && !doneJob && (
@@ -359,7 +393,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             {!activeJob && segJobs.find(j => j.status === 'failed') && (
               <div className="ve-c-error">
                 <AlertCircle size={12} />
-                {segJobs.find(j => j.status === 'failed').error}
+                {fmtError(segJobs.find(j => j.status === 'failed').error)}
               </div>
             )}
           </>

@@ -90,13 +90,16 @@ def topic_detail(topic_id: str):
     segments = get_segments_for_topic(topic_id)
     research = get_research_tasks(topic_id)
     from db import get_firecrawl_jobs, get_research_sources, get_source_stats
+    from db import get_all_segment_configs
     sources = get_research_sources(topic_id)
     source_stats = get_source_stats(topic_id)
     fc_jobs = get_firecrawl_jobs(topic_id)
+    seg_configs = get_all_segment_configs(topic_id)
     return {
         "topic": topic, "jobs": jobs, "segments": segments,
         "research": research, "sources": sources,
         "source_stats": source_stats, "fc_jobs": fc_jobs,
+        "segment_configs": seg_configs,
     }
 
 
@@ -493,6 +496,23 @@ def cancel_job(job_id: str):
         update_job(job_id, status=STATUS_FAILED, error="Cancelled by user")
         return {"status": "cancelled"}
     return {"status": "not_active"}
+
+
+class SegmentConfigRequest(BaseModel):
+    config: dict
+
+
+@app.put("/api/topics/{topic_id}/segments/{segment_id}/config")
+def save_segment_config_ep(topic_id: str, segment_id: str, req: SegmentConfigRequest):
+    from db import save_segment_config
+    save_segment_config(segment_id, topic_id, req.config)
+    return {"status": "saved"}
+
+
+@app.get("/api/topics/{topic_id}/segment-configs")
+def get_segment_configs_ep(topic_id: str):
+    from db import get_all_segment_configs
+    return {"configs": get_all_segment_configs(topic_id)}
 
 
 @app.get("/api/voice-presets")

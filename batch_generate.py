@@ -86,8 +86,11 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
     if intro_sfx_prompt:
         from audio_utils import generate_sfx_elevenlabs
         sfx_path = os.path.join(output_dir, f"seg{sid}_intro_sfx.mp3")
-        generate_sfx_elevenlabs(intro_sfx_prompt, 3.0, sfx_path)
-        audio_parts.append(sfx_path)
+        try:
+            generate_sfx_elevenlabs(intro_sfx_prompt, 3.0, sfx_path)
+            audio_parts.append(sfx_path)
+        except Exception as e:
+            print(f"  [Seg {sid}] Intro SFX failed ({e}), skipping")
 
     tts.generate(segment["hook"], hook_path, **voice_kwargs)
     hook_dur = probe_duration(hook_path)
@@ -108,8 +111,14 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
             f"Calm ambient instrumental background music for an educational video about "
             f"{segment.get('series_title', 'science')}: {segment.get('title', '')}"
         )
-        generate_music_elevenlabs(prompt, total_dur + 2, music_path)
-        music_label = "ai_generated"
+        try:
+            generate_music_elevenlabs(prompt, total_dur + 2, music_path)
+            music_label = "ai_generated"
+        except Exception as e:
+            print(f"  [Seg {sid}] AI music failed ({e}), falling back to local library")
+            music_src = pick_music(music_track)
+            prepare_music(music_src, total_dur, music_path)
+            music_label = os.path.basename(music_src)
     else:
         music_src = pick_music(music_track)
         prepare_music(music_src, total_dur, music_path)
@@ -321,7 +330,10 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         return job_id, video_path
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        update_job(job_id, status=STATUS_FAILED, error=str(exc))
+        err_msg = str(exc)
+        if len(err_msg) > 300:
+            err_msg = err_msg[:300]
+        update_job(job_id, status=STATUS_FAILED, error=err_msg)
         print(f"  [Seg {sid}] FAILED: {exc}")
         return job_id, None
 

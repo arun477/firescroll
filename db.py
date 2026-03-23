@@ -147,6 +147,17 @@ def init_db(db_path=DB_PATH):
             FOREIGN KEY (topic_id) REFERENCES topics(id)
         );
         CREATE INDEX IF NOT EXISTS idx_fc_jobs_topic ON firecrawl_jobs(topic_id);
+
+        CREATE TABLE IF NOT EXISTS segment_config (
+            segment_id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            config TEXT NOT NULL DEFAULT '{}',
+            meta TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id),
+            FOREIGN KEY (segment_id) REFERENCES segments(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_segcfg_topic ON segment_config(topic_id);
     """)
     conn.commit()
     conn.close()
@@ -499,6 +510,52 @@ def delete_api_key(key_name):
     conn.execute("DELETE FROM api_keys WHERE key_name = ?", (key_name,))
     conn.commit()
     conn.close()
+
+
+def save_segment_config(segment_id, topic_id, config):
+    import json as _json
+    conn = get_conn()
+    config_str = _json.dumps(config) if isinstance(config, dict) else config
+    conn.execute(
+        "INSERT INTO segment_config (segment_id, topic_id, config, updated_at) "
+        "VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(segment_id) DO UPDATE SET config = ?, updated_at = ?",
+        (segment_id, topic_id, config_str, _now(), config_str, _now()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_segment_config(segment_id):
+    import json as _json
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT config FROM segment_config WHERE segment_id = ?", (segment_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return {}
+    try:
+        return _json.loads(row["config"])
+    except Exception:
+        return {}
+
+
+def get_all_segment_configs(topic_id):
+    import json as _json
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT segment_id, config FROM segment_config WHERE topic_id = ?",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    result = {}
+    for r in rows:
+        try:
+            result[r["segment_id"]] = _json.loads(r["config"])
+        except Exception:
+            result[r["segment_id"]] = {}
+    return result
 
 
 init_db()
