@@ -584,6 +584,188 @@ a { color: var(--blue); text-decoration: none; }
   cursor: not-allowed;
 }
 
+/* =================== CREATE PAGE =================== */
+.create-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 40px);
+  padding: 0 40px;
+}
+
+.create-center {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+  margin-top: -60px;
+}
+
+.create-h1 {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1.1;
+  color: #fafafa;
+  margin-bottom: 40px;
+}
+
+.create-fire {
+  background: linear-gradient(135deg, #ef4444, #f97316, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.create-form {
+  margin-bottom: 32px;
+}
+
+.create-input-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 5px;
+  transition: all 0.25s;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+}
+
+.create-input-wrap:focus-within {
+  border-color: rgba(255,255,255,0.14);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.create-input {
+  flex: 1;
+  padding: 16px 18px;
+  background: none;
+  border: none;
+  color: #fafafa;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+.create-input::placeholder {
+  color: #3f3f46;
+  font-weight: 400;
+}
+
+.create-submit {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #fafafa;
+  border: none;
+  color: #09090b;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.create-submit:hover:not(:disabled) {
+  background: #e4e4e7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255,255,255,0.1);
+}
+
+.create-submit:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+}
+
+/* Segment pills */
+.create-options {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.create-seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-seg-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #27272a;
+}
+
+.create-seg-pills {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+}
+
+.create-seg-pill {
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: #3f3f46;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.create-seg-pill:hover {
+  color: #a1a1aa;
+}
+
+.create-seg-pill-on {
+  background: rgba(255,255,255,0.08);
+  color: #fafafa;
+}
+
+/* Suggestions */
+.create-suggestions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.create-sug-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #27272a;
+}
+
+.create-sug {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.04);
+  color: #3f3f46;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.create-sug:hover {
+  border-color: rgba(255,255,255,0.12);
+  color: #fafafa;
+  background: rgba(255,255,255,0.03);
+}
+
 /* =================== BUTTONS =================== */
 .btn {
   padding: 9px 18px;
