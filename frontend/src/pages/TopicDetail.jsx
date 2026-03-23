@@ -178,6 +178,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
         music_prompt: s.music_prompt || null,
         voice_style: s.voice_style || null,
         voice_settings: s.voice_settings || null,
+        intro_sfx_prompt: s.intro_sfx_prompt || null,
         segment_ids: [seg.segment_num],
       }),
     })
@@ -550,6 +551,28 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             )}
           </Section>
 
+          {/* ── Intro Sound Effect ── */}
+          {(settings.voice_provider || provider) === 'elevenlabs' && (
+            <Section icon={Sparkles} title="Intro SFX"
+              value={settings.intro_sfx_prompt ? 'On' : 'Off'}>
+              <div className="ve-sfx">
+                <textarea
+                  className="ve-ai-music-input"
+                  placeholder="e.g. Dramatic whoosh with bass hit, cinematic reveal..."
+                  value={settings.intro_sfx_prompt || ''}
+                  onChange={e => setSetting(selectedSeg.id, 'intro_sfx_prompt', e.target.value)}
+                  rows={2}
+                />
+                <div className="ve-ai-music-hint">
+                  3-second sound effect prepended before the voice. Leave empty to skip.
+                </div>
+                {settings.intro_sfx_prompt && (
+                  <SfxPreviewButton prompt={settings.intro_sfx_prompt} />
+                )}
+              </div>
+            </Section>
+          )}
+
           {/* ── Generate ── */}
           <div className="ve-gen">
             <button className="ve-gen-btn"
@@ -600,5 +623,45 @@ function Section({ icon: Icon, title, value, children, defaultOpen = false }) {
       </button>
       {open && <div className="ve-sec-body">{children}</div>}
     </div>
+  )
+}
+
+function SfxPreviewButton({ prompt }) {
+  const [loading, setLoading] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef(null)
+
+  const handlePreview = async () => {
+    if (playing && audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+      setPlaying(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/sfx/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, duration_seconds: 3 }),
+      })
+      if (!res.ok) { setLoading(false); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audioRef.current = audio
+      audio.onended = () => { setPlaying(false); URL.revokeObjectURL(url) }
+      audio.play()
+      setPlaying(true)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  return (
+    <button className="ve-sfx-preview" onClick={handlePreview} disabled={loading}>
+      {loading ? <><Loader2 size={11} className="spin" /> Generating...</>
+        : playing ? <><Square size={11} /> Stop</>
+        : <><Play size={11} /> Preview SFX</>}
+    </button>
   )
 }

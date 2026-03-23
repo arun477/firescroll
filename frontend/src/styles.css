@@ -2780,6 +2780,7 @@ a { color: var(--blue); text-decoration: none; }
 .ve-vc {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 6px 8px;
   border-radius: 5px;
   background: transparent;
@@ -2803,6 +2804,52 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .ve-vc-on .ve-vc-name { color: var(--text); font-weight: 600; }
+
+.ve-vc-preview {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.ve-vc:hover .ve-vc-preview { opacity: 0.6; }
+.ve-vc-preview:hover { opacity: 1 !important; background: rgba(255,255,255,0.08); }
+
+.ve-vc-previewing {
+  opacity: 1 !important;
+  color: var(--blue);
+  animation: pulse 1.5s ease infinite;
+}
+
+/* SFX section */
+.ve-sfx { display: flex; flex-direction: column; gap: 6px; }
+
+.ve-sfx-preview {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+  align-self: flex-start;
+}
+.ve-sfx-preview:hover { background: rgba(255,255,255,0.07); }
+.ve-sfx-preview:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Mode cards */
 .ve-modes {
