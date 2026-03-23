@@ -88,27 +88,27 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh 
 
   return (
     <div className="task-manager">
-      <button className="collapsible-header" onClick={() => setExpanded(!expanded)}>
+      <div className="collapsible-header" onClick={() => setExpanded(!expanded)}>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <span>Activity</span>
         <span className="collapsible-count">
           {allItems.length}
           {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
         </span>
-      </button>
+        <button className="task-clear-btn" onClick={e => { e.stopPropagation(); clearCompleted() }}>
+          Clear
+        </button>
+      </div>
 
       {expanded && (
         <div className="task-content">
-          <div className="task-toolbar">
-            <div className="task-filters">
-              {filters.map(f => (
-                <button key={f} className={`task-filter ${filter === f ? 'active' : ''}`}
-                  onClick={() => setFilter(f)}>
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
-            </div>
-            <button className="task-clear-btn" onClick={clearCompleted}>Clear</button>
+          <div className="task-filters">
+            {filters.map(f => (
+              <button key={f} className={`task-filter ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
           </div>
 
           <div className="task-list">
@@ -122,9 +122,9 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh 
               return (
                 <div key={`${item.kind}-${item.id}`} className="task-row">
                   <span className="task-icon">
-                    {isDone && <CheckCircle2 size={13} style={{ color: 'var(--green)' }} />}
-                    {isFailed && <AlertCircle size={13} style={{ color: 'var(--accent)' }} />}
-                    {isActive && <Loader2 size={13} className="spin" style={{ color: 'var(--blue)' }} />}
+                    {isDone && <CheckCircle2 size={13} style={{ color: '#6bb88a' }} />}
+                    {isFailed && <AlertCircle size={13} style={{ color: '#d97070' }} />}
+                    {isActive && <Loader2 size={13} className="spin" style={{ color: '#7dacf0' }} />}
                     {item.status === 'pending' && <Clock size={13} style={{ color: 'var(--text-muted)' }} />}
                   </span>
                   <span className="task-query">

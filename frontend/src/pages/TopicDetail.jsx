@@ -90,8 +90,8 @@ export default function TopicDetail() {
           <span className="td-subtitle">
             {topic.series_title && <>{topic.series_title} · </>}
             {topic.total_segments} seg
-            {readySegs > 0 && <> · <span className="td-done-count">{readySegs} ready</span></>}
-            {doneJobs > 0 && <> · <span style={{ color: 'var(--blue)' }}>{doneJobs} videos</span></>}
+            {readySegs > 0 && <> · {readySegs} ready</>}
+            {doneJobs > 0 && <> · {doneJobs} videos</>}
           </span>
         </div>
         <div className="td-header-actions">

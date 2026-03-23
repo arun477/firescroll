@@ -102,26 +102,27 @@ export default function ResearchPanel({
           <FirecrawlStatus />
         </div>
 
-        <FirecrawlToolbar
-          topicId={topicId}
-          segments={segments}
-          onRefresh={onRefresh}
-        />
-
-        <div className="rp-seg-toolbar">
-          <div className="rp-search">
-            <Search size={13} />
-            <input
-              placeholder="Search segments..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="rp-search-input"
-            />
+        <div className="rp-tools-row">
+          <FirecrawlToolbar
+            topicId={topicId}
+            segments={segments}
+            onRefresh={onRefresh}
+          />
+          <div className="rp-tools-right">
+            <div className="rp-search">
+              <Search size={13} />
+              <input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="rp-search-input"
+              />
+            </div>
+            <button className="btn btn-secondary btn-sm"
+              onClick={() => setAddingSegment(!addingSegment)}>
+              <Plus size={13} />
+            </button>
           </div>
-          <button className="btn btn-secondary btn-sm"
-            onClick={() => setAddingSegment(!addingSegment)}>
-            <Plus size={13} /> Add
-          </button>
         </div>
 
         {addingSegment && (

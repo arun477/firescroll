@@ -80,10 +80,6 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
 
   return (
     <div className="fc-toolbar-container">
-      <div className="fc-toolbar-label">
-        <img src="/firecrawl-logo.svg" alt="" width="16" height="16" />
-        <span>Firecrawl Tools</span>
-      </div>
       <div className="fc-toolbar">
         {TOOLS.map(tool => {
           const Icon = tool.icon

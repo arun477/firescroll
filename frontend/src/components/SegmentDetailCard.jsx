@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import {
   CheckCircle2, Clock, FileText, Loader2, AlertCircle,
-  Cpu, Globe, ChevronDown, ChevronRight, Save, Trash2, RefreshCw,
+  Cpu, Globe, ChevronDown, ChevronRight, Save, Pencil, Trash2, RefreshCw,
   ExternalLink,
 } from 'lucide-react'
 
 const STATUS_CFG = {
   draft: { icon: FileText, color: 'var(--text-muted)', label: 'Draft' },
-  researching: { icon: Loader2, color: 'var(--blue)', label: 'Researching', spin: true },
-  ready: { icon: CheckCircle2, color: 'var(--green)', label: 'Ready' },
-  failed: { icon: AlertCircle, color: 'var(--accent)', label: 'Failed' },
+  researching: { icon: Loader2, color: '#7dacf0', label: 'Researching', spin: true },
+  ready: { icon: CheckCircle2, color: '#6bb88a', label: 'Ready' },
+  failed: { icon: AlertCircle, color: '#d97070', label: 'Failed' },
 }
 
 export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
