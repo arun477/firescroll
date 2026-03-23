@@ -2247,15 +2247,20 @@ a { color: var(--blue); text-decoration: none; }
 .spin { animation: spin 1s linear infinite; }
 
 /* ═══════════════════════════════════════════════════════════════
-   VIDEO EDITOR — Two-Panel Studio Layout
+   VIDEO EDITOR — Three-Panel Studio Layout
+   Left: segments | Center: preview | Right: controls
    ═══════════════════════════════════════════════════════════════ */
 
 .ve {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 260px 1fr 300px;
   gap: 2px;
-  min-height: calc(100vh - 120px);
-  animation: fadeUp 0.3s ease both;
+  height: calc(100vh - 120px);
+  animation: fadeUp 0.25s ease both;
+}
+
+.ve.ve-left-collapsed {
+  grid-template-columns: 36px 1fr 300px;
 }
 
 /* ─── LEFT PANEL: Segment List ─── */
