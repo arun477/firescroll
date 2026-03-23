@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   ChevronDown, ChevronRight, Trash2, Loader2,
   CheckCircle2, AlertCircle, Clock, Search, FileText,
-  Globe, Bot, Database, Cpu,
+  Globe, Bot, Database, Cpu, Sparkles,
 } from 'lucide-react'
 
 const TYPE_ICONS = {
@@ -17,6 +17,7 @@ const TYPE_ICONS = {
   agent: Bot,
   extract: Database,
   batch_scrape: FileText,
+  source_to_segments: Sparkles,
 }
 
 function normalizeItems(tasks, fcJobs) {
