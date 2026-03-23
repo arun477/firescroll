@@ -645,20 +645,9 @@ function FeaturesSection() {
             <ViralPatternsViz />
           </div>
 
-          {/* Media Library */}
-          <div className={`ln-fs-viz ${active === 4 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-ft-media">
-              <div className="ln-ft-media-drop">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16"/></svg>
-                <span>Drop video or click to upload</span>
-              </div>
-              {['sunset_timelapse.mp4', 'ocean_waves.mp4', 'city_night.mp4'].map(f => (
-                <div key={f} className="ln-ft-media-file">
-                  <div className="ln-ft-media-thumb" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
+          {/* Media Library — visual grid */}
+          <div className={`ln-fs-viz ln-fs-viz-media ${active === 4 ? 'ln-fs-viz-on' : ''}`}>
+            <MediaLibraryViz />
           </div>
         </div>
       </div>
