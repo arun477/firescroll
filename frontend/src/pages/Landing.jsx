@@ -144,7 +144,7 @@ export default function Landing() {
           <div className="ln-flow-arrow"><ArrowRight size={16} /></div>
           <div className="ln-flow-step"><span>03</span> Configure in Studio</div>
           <div className="ln-flow-arrow"><ArrowRight size={16} /></div>
-          <div className="ln-flow-step"><span>04</span> Generate & export</div>
+          <div className="ln-flow-step"><span>04</span> Generate & scroll</div>
         </div>
       </section>
 
@@ -337,6 +337,56 @@ function ViralPatternsViz() {
           <span className="ln-vp-stat-num">↑67%</span>
           <span className="ln-vp-stat-label">finish</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function MediaLibraryViz() {
+  return (
+    <div className="ln-ml">
+      {/* Stacked video cards */}
+      <div className="ln-ml-stack">
+        <div className="ln-ml-scard ln-ml-scard-4" style={{ background: 'linear-gradient(160deg, #0c0c0e, #18181b)' }} />
+        <div className="ln-ml-scard ln-ml-scard-3" style={{ background: 'linear-gradient(160deg, #0f0f12, #1c1c20)' }} />
+        <div className="ln-ml-scard ln-ml-scard-2" style={{ background: 'linear-gradient(160deg, #111114, #222228)' }} />
+        <div className="ln-ml-scard ln-ml-scard-1" style={{ background: 'linear-gradient(160deg, #141418, #27272a)' }}>
+          <div className="ln-ml-scard-play">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div className="ln-ml-scard-bottom">
+            <span className="ln-ml-scard-name">ocean_waves.mp4</span>
+            <span className="ln-ml-scard-dur">0:45</span>
+          </div>
+        </div>
+
+        {/* Uploading card floating down */}
+        <div className="ln-ml-uploading">
+          <div className="ln-ml-uploading-inner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+            <span>Uploading...</span>
+            <div className="ln-ml-uploading-bar"><div className="ln-ml-uploading-fill" /></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating info badges */}
+      <div className="ln-ml-badge ln-ml-badge-tl">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m2 2 20 20"/><path d="M11 5L6 9H2v6h4l5 4V5Z"/></svg>
+        Audio auto-stripped
+      </div>
+      <div className="ln-ml-badge ln-ml-badge-tr">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" x2="15.4" y1="13.5" y2="17.5"/><line x1="15.4" x2="8.6" y1="6.5" y2="10.5"/></svg>
+        Shared across projects
+      </div>
+      <div className="ln-ml-badge ln-ml-badge-bl">
+        MP4 · MOV · AVI · WebM
+      </div>
+      <div className="ln-ml-badge ln-ml-badge-br">
+        <div className="ln-ml-dots">
+          {[...Array(4)].map((_, i) => <div key={i} className="ln-ml-dot" style={{ animationDelay: `${i * 0.2}s` }} />)}
+        </div>
+        12 videos ready
       </div>
     </div>
   )

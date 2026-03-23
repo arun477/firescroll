@@ -5262,6 +5262,208 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 /* ── Feature 5: Media library ── */
+/* ── Feature 5: Media Library — stack layout ── */
+.ln-fs-viz-media {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.ln-ml {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card stack */
+.ln-ml-stack {
+  position: relative;
+  width: 200px;
+  height: 300px;
+  z-index: 2;
+}
+
+.ln-ml-scard {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ln-ml-scard-4 {
+  transform: translateY(24px) scale(0.88);
+  opacity: 0.3;
+  z-index: 1;
+}
+
+.ln-ml-scard-3 {
+  transform: translateY(16px) scale(0.92);
+  opacity: 0.5;
+  z-index: 2;
+}
+
+.ln-ml-scard-2 {
+  transform: translateY(8px) scale(0.96);
+  opacity: 0.7;
+  z-index: 3;
+}
+
+.ln-ml-scard-1 {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.03);
+}
+
+.ln-ml-scard-play {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.8);
+  animation: mlPlayPulse 3s ease-in-out infinite;
+}
+
+@keyframes mlPlayPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(255,255,255,0.05); }
+}
+
+.ln-ml-scard-bottom {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ln-ml-scard-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+}
+
+.ln-ml-scard-dur {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Uploading card */
+.ln-ml-uploading {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  animation: mlUploadFloat 4s ease-in-out infinite;
+}
+
+@keyframes mlUploadFloat {
+  0%, 100% { top: -50px; opacity: 0.4; }
+  40%, 60% { top: -20px; opacity: 1; }
+}
+
+.ln-ml-uploading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: rgba(10,10,12,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  color: #71717a;
+}
+
+.ln-ml-uploading-inner span {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.ln-ml-uploading-bar {
+  width: 60px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+.ln-ml-uploading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
+  border-radius: 1px;
+  animation: mlUploadProgress 3s ease-in-out infinite;
+}
+
+@keyframes mlUploadProgress {
+  0% { width: 0; }
+  60% { width: 80%; }
+  100% { width: 100%; }
+}
+
+/* Floating badges */
+.ln-ml-badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(10,10,12,0.7);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+  font-size: 9px;
+  font-weight: 600;
+  color: #52525b;
+  z-index: 1;
+}
+
+.ln-ml-badge-tl { top: 20px; left: 0; }
+.ln-ml-badge-tr { top: 20px; right: 0; }
+.ln-ml-badge-bl { bottom: 20px; left: 0; }
+.ln-ml-badge-br { bottom: 20px; right: 0; }
+
+.ln-ml-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.ln-ml-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: mlDotPulse 2s ease-in-out infinite;
+}
+
+@keyframes mlDotPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Legacy media styles */
 .ln-ft-media {
   display: flex;
   flex-direction: column;
