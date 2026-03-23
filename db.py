@@ -64,6 +64,12 @@ def init_db(db_path=DB_PATH):
 
         CREATE INDEX IF NOT EXISTS idx_jobs_topic ON jobs(topic_id);
         CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+
+        CREATE TABLE IF NOT EXISTS api_keys (
+            key_name TEXT PRIMARY KEY,
+            key_value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
     """)
     conn.commit()
     conn.close()
@@ -182,6 +188,55 @@ def get_completed_videos(topic_id=None):
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+API_KEY_NAMES = ["openai", "firecrawl", "elevenlabs"]
+
+
+def set_api_key(key_name, key_value):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO api_keys (key_name, key_value, updated_at) "
+        "VALUES (?, ?, ?) "
+        "ON CONFLICT(key_name) DO UPDATE SET key_value = ?, updated_at = ?",
+        (key_name, key_value, _now(), key_value, _now()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_api_key(key_name):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT key_value FROM api_keys WHERE key_name = ?", (key_name,)
+    ).fetchone()
+    conn.close()
+    return row["key_value"] if row else None
+
+
+def get_all_api_keys():
+    conn = get_conn()
+    rows = conn.execute("SELECT key_name, key_value, updated_at FROM api_keys").fetchall()
+    conn.close()
+    keys = {}
+    for r in rows:
+        val = r["key_value"]
+        keys[r["key_name"]] = {
+            "masked": val[:8] + "..." + val[-4:] if len(val) > 12 else "***",
+            "is_set": True,
+            "updated_at": r["updated_at"],
+        }
+    for name in API_KEY_NAMES:
+        if name not in keys:
+            keys[name] = {"masked": "", "is_set": False, "updated_at": None}
+    return keys
+
+
+def delete_api_key(key_name):
+    conn = get_conn()
+    conn.execute("DELETE FROM api_keys WHERE key_name = ?", (key_name,))
+    conn.commit()
+    conn.close()
 
 
 init_db()

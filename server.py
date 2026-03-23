@@ -7,7 +7,17 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from db import get_all_topics, get_completed_videos, get_job, get_jobs_for_topic, get_topic
+from db import (
+    API_KEY_NAMES,
+    delete_api_key,
+    get_all_api_keys,
+    get_all_topics,
+    get_completed_videos,
+    get_job,
+    get_jobs_for_topic,
+    get_topic,
+    set_api_key,
+)
 
 app = FastAPI(title="FireScroll")
 
@@ -150,3 +160,29 @@ def serve_video(job_id: str):
     if not job or not job["video_path"]:
         return {"error": "not found"}
     return FileResponse(job["video_path"], media_type="video/mp4")
+
+
+class ApiKeyRequest(BaseModel):
+    key_name: str
+    key_value: str
+
+
+@app.get("/api/settings/keys")
+def list_api_keys():
+    return get_all_api_keys()
+
+
+@app.post("/api/settings/keys")
+def save_api_key(req: ApiKeyRequest):
+    if req.key_name not in API_KEY_NAMES:
+        return {"error": f"Invalid key name. Valid: {API_KEY_NAMES}"}
+    set_api_key(req.key_name, req.key_value)
+    return {"status": "saved", "key_name": req.key_name}
+
+
+@app.delete("/api/settings/keys/{key_name}")
+def remove_api_key(key_name: str):
+    if key_name not in API_KEY_NAMES:
+        return {"error": f"Invalid key name. Valid: {API_KEY_NAMES}"}
+    delete_api_key(key_name)
+    return {"status": "deleted", "key_name": key_name}
