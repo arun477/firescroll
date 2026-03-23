@@ -60,7 +60,8 @@ def _run_ffmpeg(cmd):
 
 def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
                   music_track=None, music_source=None, music_prompt=None,
-                  voice_style=None, voice_settings=None):
+                  voice_style=None, voice_settings=None,
+                  intro_sfx_prompt=None):
     tts = get_voice_provider(voice_provider)
     sid = segment["id"]
     hook_path = os.path.join(output_dir, f"seg{sid}_hook.mp3")
@@ -80,13 +81,22 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
     elif voice_settings and isinstance(voice_settings, dict):
         voice_kwargs.update(voice_settings)
 
+    # Intro sound effect (ElevenLabs)
+    audio_parts = []
+    if intro_sfx_prompt:
+        from audio_utils import generate_sfx_elevenlabs
+        sfx_path = os.path.join(output_dir, f"seg{sid}_intro_sfx.mp3")
+        generate_sfx_elevenlabs(intro_sfx_prompt, 3.0, sfx_path)
+        audio_parts.append(sfx_path)
+
     tts.generate(segment["hook"], hook_path, **voice_kwargs)
     hook_dur = probe_duration(hook_path)
 
     tts.generate(segment["script"], script_path, **voice_kwargs)
     script_dur = probe_duration(script_path)
 
-    stitch_audio([hook_path, script_path], voice_path)
+    audio_parts.extend([hook_path, script_path])
+    stitch_audio(audio_parts, voice_path)
     total_dur = probe_duration(voice_path)
 
     # Music: ElevenLabs AI or local library
@@ -203,7 +213,8 @@ def _is_cancelled(job_id):
 def _generate_single(segment, mode, caption, output_dir, job_id,
                      voice_provider=None, voice_id=None, music_track=None,
                      music_source=None, music_prompt=None,
-                     voice_style=None, voice_settings=None):
+                     voice_style=None, voice_settings=None,
+                     intro_sfx_prompt=None):
     try:
         sid = segment["id"]
         topic = segment.get("series_title", "topic").lower().replace(" ", "_")
@@ -228,7 +239,8 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                                     music_source=music_source,
                                     music_prompt=music_prompt,
                                     voice_style=voice_style,
-                                    voice_settings=voice_settings)
+                                    voice_settings=voice_settings,
+                                    intro_sfx_prompt=intro_sfx_prompt)
         timing = audio_result["timing"]
         update_job(job_id, audio_path=audio_result["audio_path"],
                    duration_seconds=timing["total_duration"], progress=15)

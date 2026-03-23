@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
@@ -123,6 +123,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [voicePresets, setVoicePresets] = useState({})
   const [musicTracks, setMusicTracks] = useState([])
   const [voiceSearch, setVoiceSearch] = useState('')
+  const [previewingVoice, setPreviewingVoice] = useState(null)
+  const previewAudioRef = useRef(null)
   const [provider, setProvider] = useState('')
   const [voiceId, setVoiceId] = useState('')
   const [music, setMusic] = useState('')
@@ -191,6 +193,39 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
       }),
     })
     onRefresh()
+  }
+
+  const handlePreviewVoice = async (voiceIdToPreview) => {
+    // Stop any playing preview
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause()
+      previewAudioRef.current = null
+    }
+    if (previewingVoice === voiceIdToPreview) {
+      setPreviewingVoice(null)
+      return
+    }
+    setPreviewingVoice(voiceIdToPreview)
+    try {
+      const res = await fetch('/api/voice-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voice_id: voiceIdToPreview,
+          provider: provider || 'elevenlabs',
+          voice_style: segSettings[selectedSeg?.id]?.voice_style || null,
+        }),
+      })
+      if (!res.ok) { setPreviewingVoice(null); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      previewAudioRef.current = audio
+      audio.onended = () => { setPreviewingVoice(null); URL.revokeObjectURL(url) }
+      audio.play()
+    } catch {
+      setPreviewingVoice(null)
+    }
   }
 
   const handleCancel = async (jobId) => {
@@ -363,10 +398,15 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                   <span className="ve-vc-name">Default</span>
                 </button>
                 {voices.filter(v => !voiceSearch || v.name.toLowerCase().includes(voiceSearch.toLowerCase())).map(v => (
-                  <button key={v.id} className={`ve-vc ${localVoice === v.id ? 've-vc-on' : ''}`}
+                  <div key={v.id} className={`ve-vc ${localVoice === v.id ? 've-vc-on' : ''}`}
                     onClick={() => setSetting(selectedSeg.id, 'voice_id', v.id)}>
                     <span className="ve-vc-name">{v.name}</span>
-                  </button>
+                    <button className={`ve-vc-preview ${previewingVoice === v.id ? 've-vc-previewing' : ''}`}
+                      onClick={e => { e.stopPropagation(); handlePreviewVoice(v.id) }}
+                      title="Preview voice">
+                      {previewingVoice === v.id ? <Square size={9} /> : <Play size={9} />}
+                    </button>
+                  </div>
                 ))}
               </>)}
             </div>

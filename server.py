@@ -53,6 +53,7 @@ class GenerateRequest(BaseModel):
     music_prompt: Optional[str] = None
     voice_style: Optional[str] = None
     voice_settings: Optional[dict] = None
+    intro_sfx_prompt: Optional[str] = None
     segment_ids: Optional[list] = None
 
 
@@ -64,6 +65,7 @@ class GenerateAllRequest(BaseModel):
     music_prompt: Optional[str] = None
     voice_style: Optional[str] = None
     voice_settings: Optional[dict] = None
+    intro_sfx_prompt: Optional[str] = None
 
 
 @app.get("/api/topics")
@@ -210,7 +212,8 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                                  music_source=req.music_source,
                                  music_prompt=req.music_prompt,
                                  voice_style=req.voice_style,
-                                 voice_settings=req.voice_settings)
+                                 voice_settings=req.voice_settings,
+                                 intro_sfx_prompt=req.intro_sfx_prompt)
             if not req.segment_ids:
                 break
 
@@ -519,6 +522,50 @@ def list_voices_ep(provider: str):
         return {"provider": provider, "voices": vp.list_voices()}
     except Exception as e:
         return {"provider": provider, "voices": [], "error": str(e)}
+
+
+class VoicePreviewRequest(BaseModel):
+    voice_id: str
+    provider: str = "elevenlabs"
+    text: str = "Welcome to FireScroll. Let me show you how this voice sounds."
+    voice_style: Optional[str] = None
+
+
+@app.post("/api/voice-preview")
+def voice_preview(req: VoicePreviewRequest):
+    import tempfile
+    from fastapi.responses import FileResponse
+    from voice import get_provider as get_voice_provider, VOICE_PRESETS
+    try:
+        vp = get_voice_provider(req.provider)
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        kwargs = {"voice": req.voice_id}
+        if req.voice_style and req.voice_style in VOICE_PRESETS:
+            kwargs.update(VOICE_PRESETS[req.voice_style])
+        vp.generate(req.text, tmp.name, **kwargs)
+        return FileResponse(tmp.name, media_type="audio/mpeg",
+                            filename="preview.mp3")
+    except Exception as e:
+        return {"error": str(e)}
+
+
+class SfxGenerateRequest(BaseModel):
+    prompt: str
+    duration_seconds: float = 5.0
+
+
+@app.post("/api/sfx/generate")
+def generate_sfx(req: SfxGenerateRequest):
+    import tempfile
+    from fastapi.responses import FileResponse
+    from audio_utils import generate_sfx_elevenlabs
+    try:
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        generate_sfx_elevenlabs(req.prompt, req.duration_seconds, tmp.name)
+        return FileResponse(tmp.name, media_type="audio/mpeg",
+                            filename="sfx.mp3")
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/api/music")
