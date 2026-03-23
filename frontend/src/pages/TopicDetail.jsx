@@ -749,39 +749,16 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               </div>
 
               {mediaLibrary.map(m => (
-                <div key={m.id}
-                  className={`ml-item ${settings.bg_video_id === m.id ? 'ml-item-on' : ''} ${m.status !== 'ready' ? 'ml-item-disabled' : ''}`}
-                  onClick={() => {
+                <MediaItem key={m.id} media={m}
+                  selected={settings.bg_video_id === m.id}
+                  onSelect={() => {
                     if (m.status === 'ready') {
                       setSetting(selectedSeg.id, 'bg_video_id', m.id)
                       setMediaDrawerOpen(false)
                     }
-                  }}>
-                  <div className="ml-item-thumb">
-                    {m.status === 'processing'
-                      ? <Loader2 size={18} className="spin" />
-                      : m.status === 'failed'
-                        ? <AlertCircle size={18} />
-                        : m.thumb_url
-                          ? <img src={m.thumb_url} alt="" />
-                          : <Film size={18} />}
-                  </div>
-                  <div className="ml-item-info">
-                    <div className="ml-item-name">{m.original_name || m.filename}</div>
-                    <div className="ml-item-meta">
-                      {m.status === 'processing' && 'Processing...'}
-                      {m.status === 'failed' && 'Failed to process'}
-                      {m.status === 'ready' && <>
-                        {m.duration_seconds > 0 && `${Math.round(m.duration_seconds)}s`}
-                        {m.width > 0 && ` · ${m.width}×${m.height}`}
-                        {m.file_size > 0 && ` · ${(m.file_size / (1024*1024)).toFixed(1)}MB`}
-                      </>}
-                    </div>
-                  </div>
-                  <button className="ml-item-del" onClick={e => { e.stopPropagation(); handleDeleteMedia(m.id) }}>
-                    <X size={12} />
-                  </button>
-                </div>
+                  }}
+                  onDelete={() => handleDeleteMedia(m.id)}
+                />
               ))}
 
               {mediaLibrary.length === 0 && (
@@ -851,5 +828,51 @@ function SfxPreviewButton({ prompt }) {
         : playing ? <><Square size={11} /> Stop</>
         : <><Play size={11} /> Preview SFX</>}
     </button>
+  )
+}
+
+function MediaItem({ media: m, selected, onSelect, onDelete }) {
+  const videoRef = useRef(null)
+  const [hovering, setHovering] = useState(false)
+
+  return (
+    <div
+      className={`ml-item ${selected ? 'ml-item-on' : ''} ${m.status !== 'ready' ? 'ml-item-disabled' : ''}`}
+      onClick={onSelect}
+      onMouseEnter={() => {
+        setHovering(true)
+        if (videoRef.current && m.status === 'ready') videoRef.current.play().catch(() => {})
+      }}
+      onMouseLeave={() => {
+        setHovering(false)
+        if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0 }
+      }}
+    >
+      <div className="ml-item-thumb">
+        {m.status === 'processing'
+          ? <Loader2 size={18} className="spin" />
+          : m.status === 'failed'
+            ? <AlertCircle size={18} />
+            : m.video_url
+              ? <video ref={videoRef} src={m.video_url} muted loop
+                  preload="metadata" className="ml-item-video" />
+              : <Film size={18} />}
+      </div>
+      <div className="ml-item-info">
+        <div className="ml-item-name">{m.original_name || m.filename}</div>
+        <div className="ml-item-meta">
+          {m.status === 'processing' && 'Processing...'}
+          {m.status === 'failed' && 'Failed to process'}
+          {m.status === 'ready' && <>
+            {m.duration_seconds > 0 && `${Math.round(m.duration_seconds)}s`}
+            {m.width > 0 && ` · ${m.width}×${m.height}`}
+            {m.file_size > 0 && ` · ${(m.file_size / (1024*1024)).toFixed(1)}MB`}
+          </>}
+        </div>
+      </div>
+      <button className="ml-item-del" onClick={e => { e.stopPropagation(); onDelete() }}>
+        <X size={12} />
+      </button>
+    </div>
   )
 }

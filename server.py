@@ -632,18 +632,25 @@ def _process_uploaded_video(media_id, file_path):
             print(f"[Media] No video stream: {media_id}")
             return
 
-        # Strip audio + generate thumbnail in one ffmpeg call
         base, ext = os.path.splitext(file_path)
         silent_path = base + "_silent" + ext
         thumb_path = base + "_thumb.jpg"
-        result = subprocess.run([
+
+        # Strip audio
+        subprocess.run([
             "ffmpeg", "-y", "-i", file_path,
             "-an", "-c:v", "copy", silent_path,
-            "-ss", "2", "-vframes", "1", "-vf", "scale=480:-1:flags=lanczos", thumb_path,
         ], capture_output=True, check=False)
-
         if os.path.exists(silent_path):
             os.replace(silent_path, file_path)
+
+        # Generate thumbnail
+        subprocess.run([
+            "ffmpeg", "-y", "-i", file_path,
+            "-ss", "2", "-vframes", "1",
+            "-vf", "scale=480:-1:flags=lanczos",
+            thumb_path,
+        ], capture_output=True, check=False)
 
         file_size = os.path.getsize(file_path)
 
