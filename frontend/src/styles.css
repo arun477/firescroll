@@ -2043,7 +2043,7 @@ a { color: var(--blue); text-decoration: none; }
   border: none;
   color: #27272a;
   cursor: pointer;
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
   transition: color 0.15s;
 }
@@ -2051,8 +2051,9 @@ a { color: var(--blue); text-decoration: none; }
 .seg-expand-btn:hover { color: #71717a; }
 
 .seg-detail {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 10px;
+  margin-left: 32px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255,255,255,0.04);
   animation: fadeIn 0.2s ease;
 }
@@ -2615,7 +2616,7 @@ a { color: var(--blue); text-decoration: none; }
 .rp-seg-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
   padding-bottom: 40px;
 }
 
