@@ -54,11 +54,9 @@ a { color: var(--blue); text-decoration: none; }
 .app { display: flex; height: 100vh; overflow: hidden; }
 
 .sidebar-nav {
-  width: 220px;
-  background: rgba(12, 12, 14, 0.85);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-right: 1px solid rgba(255,255,255,0.04);
+  width: 200px;
+  background: var(--bg);
+  border-right: 1px solid rgba(255,255,255,0.06);
   padding: 0;
   flex-shrink: 0;
   display: flex;
@@ -69,7 +67,7 @@ a { color: var(--blue); text-decoration: none; }
 .sidebar-logo {
   display: flex;
   align-items: center;
-  padding: 20px 18px 24px;
+  padding: 16px 20px 32px;
 }
 
 .sidebar-logo-icon {
@@ -88,8 +86,8 @@ a { color: var(--blue); text-decoration: none; }
 .sidebar-links {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 0 10px;
+  gap: 0;
+  padding: 0 12px;
   flex: 1;
 }
 
@@ -97,48 +95,37 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  color: #71717a;
+  padding: 8px 12px;
+  color: #52525b;
   font-size: 13px;
   font-weight: 500;
   border-radius: 8px;
-  transition: all var(--transition);
+  transition: all 0.15s ease;
   position: relative;
+  text-decoration: none;
 }
 
 .sidebar-links a:hover {
   color: #fafafa;
-  background: rgba(255,255,255,0.04);
 }
 
 .sidebar-links a.active {
   color: #fafafa;
-  background: rgba(255,255,255,0.06);
   font-weight: 600;
 }
 
-.sidebar-links a.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 16px;
-  border-radius: 0 2px 2px 0;
-  background: linear-gradient(180deg, #ef4444, #f97316);
-  border-radius: 0 3px 3px 0;
-}
-
 .sidebar-links a svg {
-  width: 18px;
-  height: 18px;
-  opacity: 0.5;
-  transition: opacity var(--transition);
+  width: 16px;
+  height: 16px;
+  opacity: 0.3;
+  transition: all 0.15s;
 }
 
-.sidebar-links a.active svg,
-.sidebar-links a:hover svg { opacity: 1; }
+.sidebar-links a:hover svg { opacity: 0.7; }
+
+.sidebar-links a.active svg {
+  opacity: 1;
+}
 
 /* =================== SIDEBAR KEYS =================== */
 .sidebar-keys {
@@ -427,25 +414,23 @@ a { color: var(--blue); text-decoration: none; }
 .keys-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .key-card {
   padding: 16px 18px;
   border-radius: 12px;
   background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.05);
   transition: all 0.25s;
 }
 
 .key-card:hover {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.08);
 }
 
 .key-card-connected {
-  border-color: rgba(34,197,94,0.1);
-  background: rgba(34,197,94,0.02);
+  border-color: rgba(255,255,255,0.06);
 }
 
 .key-card-header {
@@ -468,8 +453,8 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .key-card-connected .key-card-icon {
-  background: rgba(34,197,94,0.08);
-  color: #22c55e;
+  background: rgba(255,255,255,0.06);
+  color: #a1a1aa;
 }
 
 .key-card-title {
@@ -500,12 +485,9 @@ a { color: var(--blue); text-decoration: none; }
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  font-weight: 600;
-  color: #22c55e;
+  font-weight: 500;
+  color: #52525b;
   flex-shrink: 0;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(34,197,94,0.06);
 }
 
 .key-card-dot {
