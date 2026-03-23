@@ -235,15 +235,27 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     const form = new FormData()
     form.append('file', file)
     try {
-      await fetch('/api/media/upload', { method: 'POST', body: form })
+      const res = await fetch('/api/media/upload', { method: 'POST', body: form })
+      const data = await res.json()
+      if (data.error) {
+        alert(data.error)
+        setUploading(false)
+        e.target.value = ''
+        return
+      }
       // Poll until processed
       const poll = setInterval(async () => {
-        const res = await fetch('/api/media').then(r => r.json())
-        setMediaLibrary(res.media || [])
-        const processing = (res.media || []).some(m => m.status === 'processing')
-        if (!processing) { clearInterval(poll); setUploading(false) }
+        const status = await fetch(`/api/media/${data.id}/status`).then(r => r.json())
+        if (status.status !== 'processing') {
+          clearInterval(poll)
+          setUploading(false)
+          const list = await fetch('/api/media').then(r => r.json())
+          setMediaLibrary(list.media || [])
+        }
       }, 2000)
-    } catch { setUploading(false) }
+    } catch {
+      setUploading(false)
+    }
     e.target.value = ''
   }
 
@@ -586,12 +598,22 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                     <span>Random Stock</span>
                   </button>
                   {mediaLibrary.map(m => (
-                    <div key={m.id} className={`ve-media-item ${settings.bg_video_id === m.id ? 've-media-on' : ''}`}
-                      onClick={() => setSetting(selectedSeg.id, 'bg_video_id', m.id)}>
-                      {m.thumb_url
-                        ? <img className="ve-media-thumb" src={m.thumb_url} alt="" />
-                        : <Film size={14} />}
-                      <span className="ve-media-name">{m.original_name || m.filename}</span>
+                    <div key={m.id}
+                      className={`ve-media-item ${settings.bg_video_id === m.id ? 've-media-on' : ''} ${m.status !== 'ready' ? 've-media-processing' : ''}`}
+                      onClick={() => m.status === 'ready' && setSetting(selectedSeg.id, 'bg_video_id', m.id)}>
+                      {m.status === 'processing'
+                        ? <Loader2 size={14} className="spin" />
+                        : m.status === 'failed'
+                          ? <AlertCircle size={14} />
+                          : m.thumb_url
+                            ? <img className="ve-media-thumb" src={m.thumb_url} alt="" />
+                            : <Film size={14} />}
+                      <span className="ve-media-name">
+                        {m.original_name || m.filename}
+                        {m.status === 'processing' && <span className="ve-media-status"> Processing...</span>}
+                        {m.status === 'failed' && <span className="ve-media-status"> Failed</span>}
+                        {m.duration_seconds > 0 && <span className="ve-media-status"> {Math.round(m.duration_seconds)}s</span>}
+                      </span>
                       <button className="ve-media-del" onClick={e => { e.stopPropagation(); handleDeleteMedia(m.id) }}>
                         <X size={10} />
                       </button>

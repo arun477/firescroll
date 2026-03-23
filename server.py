@@ -655,20 +655,39 @@ def _process_uploaded_video(media_id, file_path):
         print(f"[Media] Processing failed: {media_id} — {e}")
 
 
+MAX_UPLOAD_SIZE = 500 * 1024 * 1024  # 500MB
+ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
+
+
 @app.post("/api/media/upload")
 async def upload_media(file: UploadFile = File(...)):
     import uuid
     from db import create_media
 
+    # Validate extension
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_VIDEO_EXTS:
+        return {"error": f"Unsupported format. Allowed: {', '.join(ALLOWED_VIDEO_EXTS)}"}
+
     media_id = uuid.uuid4().hex[:12]
     safe_name = file.filename.replace(" ", "_").replace("/", "_")
-    ext = os.path.splitext(safe_name)[1] or ".mp4"
     filename = f"{media_id}{ext}"
     file_path = os.path.join(MEDIA_DIR, filename)
 
+    # Stream to disk in chunks (handles large files without memory issues)
+    total_size = 0
+    chunk_size = 1024 * 1024  # 1MB chunks
     with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > MAX_UPLOAD_SIZE:
+                f.close()
+                os.remove(file_path)
+                return {"error": f"File too large. Maximum size: {MAX_UPLOAD_SIZE // (1024*1024)}MB"}
+            f.write(chunk)
 
     create_media(media_id, filename, file.filename, file_path)
 
@@ -679,13 +698,23 @@ async def upload_media(file: UploadFile = File(...)):
         daemon=True,
     ).start()
 
-    return {"id": media_id, "filename": filename, "status": "processing"}
+    return {"id": media_id, "filename": filename, "status": "processing",
+            "size": total_size}
+
+
+@app.get("/api/media/{media_id}/status")
+def media_status(media_id: str):
+    from db import get_media
+    m = get_media(media_id)
+    if not m:
+        return {"error": "not found"}
+    return {"id": m["id"], "status": m["status"]}
 
 
 @app.get("/api/media")
 def list_media():
     from db import get_all_media
-    items = get_all_media(status="ready")
+    items = get_all_media()
     result = []
     for m in items:
         item = {**m}

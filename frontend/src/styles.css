@@ -3318,3 +3318,14 @@ a { color: var(--blue); text-decoration: none; }
 }
 .ve-media-item:hover .ve-media-del { opacity: 0.6; }
 .ve-media-del:hover { opacity: 1 !important; color: var(--accent); background: rgba(239,68,68,0.1); }
+
+.ve-media-processing {
+  opacity: 0.5;
+  cursor: default !important;
+}
+
+.ve-media-status {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
