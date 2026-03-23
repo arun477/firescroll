@@ -1,5 +1,6 @@
 import os
 import threading
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -220,24 +221,24 @@ def generate_all(topic_id: str):
 
 class FcSearchRequest(BaseModel):
     query: str
-    segment_id: str = None
+    segment_id: Optional[str] = None
     limit: int = 5
 
 
 class FcScrapeRequest(BaseModel):
     url: str
-    segment_id: str = None
+    segment_id: Optional[str] = None
 
 
 class FcExtractRequest(BaseModel):
     url: str
     prompt: str
-    segment_id: str = None
+    segment_id: Optional[str] = None
 
 
 class FcCrawlRequest(BaseModel):
     url: str
-    segment_id: str = None
+    segment_id: Optional[str] = None
     limit: int = 10
     max_depth: int = 2
 
@@ -248,7 +249,7 @@ class FcMapRequest(BaseModel):
 
 class FcAgentRequest(BaseModel):
     prompt: str
-    segment_id: str = None
+    segment_id: Optional[str] = None
 
 
 class FcBatchScrapeRequest(BaseModel):
@@ -256,10 +257,10 @@ class FcBatchScrapeRequest(BaseModel):
 
 
 class UpdateSegmentRequest(BaseModel):
-    title: str = None
-    hook: str = None
-    script: str = None
-    visual_cue: str = None
+    title: Optional[str] = None
+    hook: Optional[str] = None
+    script: Optional[str] = None
+    visual_cue: Optional[str] = None
 
 
 @app.post("/api/topics/{topic_id}/fc/search")

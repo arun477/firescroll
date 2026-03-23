@@ -53,8 +53,8 @@ export default function ResearchTaskManager({ tasks, topicId, onRefresh }) {
                 </button>
               ))}
             </div>
-            <button className="btn btn-ghost btn-sm" onClick={clearCompleted}>
-              Clear done
+            <button className="task-clear-btn" onClick={clearCompleted}>
+              Clear
             </button>
           </div>
 
@@ -65,11 +65,11 @@ export default function ResearchTaskManager({ tasks, topicId, onRefresh }) {
               const isActive = !isDone && !isFailed && task.status !== 'pending'
               return (
                 <div key={task.id} className="task-row">
-                  <span className={`task-dot ${isDone ? 'dot-done' : ''} ${isFailed ? 'dot-fail' : ''} ${isActive ? 'dot-active' : ''}`}>
-                    {isDone && <CheckCircle2 size={10} />}
-                    {isFailed && <AlertCircle size={10} />}
-                    {isActive && <Loader2 size={10} className="spin" />}
-                    {task.status === 'pending' && <Clock size={10} />}
+                  <span className="task-icon">
+                    {isDone && <CheckCircle2 size={13} style={{ color: 'var(--green)' }} />}
+                    {isFailed && <AlertCircle size={13} style={{ color: 'var(--accent)' }} />}
+                    {isActive && <Loader2 size={13} className="spin" style={{ color: 'var(--blue)' }} />}
+                    {task.status === 'pending' && <Clock size={13} style={{ color: 'var(--text-muted)' }} />}
                   </span>
                   <span className="task-query">{task.query}</span>
                   <span className="task-actions-cell">

@@ -41,6 +41,7 @@ def _is_segment_busy(seg):
 
 
 def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
+    from db import get_conn
     sources = get_research_sources(topic_id)
     if not sources:
         return
@@ -50,18 +51,19 @@ def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
         return
 
     context = ""
+    conn = get_conn()
     for src in sources[:15]:
         title = src.get("title", "")
         url = src.get("url", "")
-        conn = __import__("db").get_conn()
         row = conn.execute(
-            "SELECT content FROM research_sources WHERE id = ?", (src["id"],)
+            "SELECT content FROM research_sources WHERE id = ?",
+            (src["id"],)
         ).fetchone()
-        conn.close()
         content = (row["content"] if row else "")[:500]
         context += f"\n--- {title} ({url}) ---\n{content}\n"
         if len(context) > 6000:
             break
+    conn.close()
 
     topic = get_topic(topic_id)
     update_segment(segment_id, status="researching")
@@ -187,8 +189,11 @@ def generate_all_ai(topic_id, topic_title, num_segments=6):
     for seg in segments:
         if _is_segment_busy(seg):
             continue
-        generate_segment_content(topic_id, seg["id"], topic_title,
-                                 seg["title"])
+        try:
+            generate_segment_content(topic_id, seg["id"], topic_title,
+                                     seg["title"])
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
     _check_all_done(topic_id)
 
 
@@ -199,8 +204,11 @@ def research_all_firecrawl(topic_id, topic_title, num_segments=6):
     for seg in segments:
         if _is_segment_busy(seg):
             continue
-        research_with_firecrawl(topic_id, seg["id"], topic_title,
-                                 seg["title"])
+        try:
+            research_with_firecrawl(topic_id, seg["id"], topic_title,
+                                     seg["title"])
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
     _check_all_done(topic_id)
 
 
