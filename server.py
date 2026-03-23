@@ -94,6 +94,9 @@ def start_research(topic_id: str, req: ResearchRequest):
     if not topic:
         return {"error": "not found"}
 
+    if topic.get("research_status") == "generating":
+        return {"status": "already_running"}
+
     def run():
         from research import generate_all_ai, research_all_firecrawl
         if req.method == "firecrawl":
@@ -116,30 +119,20 @@ def research_single_segment(topic_id: str, req: SegmentResearchRequest):
     if not topic:
         return {"error": "not found"}
 
-    def run():
-        from db import get_segments_for_topic as get_segs  # pylint: disable=reimported
-        from research import (
-            generate_segment_content,
-            generate_segment_from_research,
-            research_with_firecrawl,
-        )
-        segs = get_segs(topic_id)
-        seg = next((s for s in segs if s["id"] == req.segment_id), None)
-        if not seg:
-            return
+    segments = get_segments_for_topic(topic_id)
+    seg = next((s for s in segments if s["id"] == req.segment_id), None)
+    if not seg:
+        return {"error": "segment not found"}
 
+    if seg["status"] == "researching":
+        return {"status": "already_running"}
+
+    def run():
+        from research import generate_segment_content, research_with_firecrawl
         if req.method == "firecrawl":
-            research = research_with_firecrawl(topic_id, topic["title"], seg["title"])
-            source_urls = [s["url"] for s in research["sources"]]
-            generate_segment_from_research(
-                topic_id, req.segment_id, topic["title"],
-                seg["title"], research_content=research["content"],
-                source_urls=source_urls,
-            )
+            research_with_firecrawl(topic_id, req.segment_id, topic["title"], seg["title"])
         else:
-            generate_segment_content(
-                topic_id, req.segment_id, topic["title"], seg["title"],
-            )
+            generate_segment_content(topic_id, req.segment_id, topic["title"], seg["title"])
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}

@@ -14,6 +14,8 @@ from keystore import get_key
 
 load_dotenv()
 
+BUSY_STATUSES = ("researching", "ready")
+
 
 def _get_openai():
     from openai import OpenAI
@@ -29,7 +31,15 @@ def _get_firecrawl():
     return Firecrawl(api_key=api_key)
 
 
+def _is_segment_busy(seg):
+    return seg["status"] in BUSY_STATUSES
+
+
 def generate_series_outline(topic_id, topic_title, num_segments=6):
+    existing = get_segments_for_topic(topic_id)
+    if existing:
+        return {"segments": [{"num": s["segment_num"], "title": s["title"]} for s in existing]}
+
     task_id = create_research_task(topic_id, "outline", topic_title)
     try:
         update_research_task(task_id, status="running")
@@ -62,8 +72,9 @@ def generate_series_outline(topic_id, topic_title, num_segments=6):
 
 
 def generate_segment_content(topic_id, segment_id, topic_title, segment_title):
-    task_id = create_research_task(topic_id, "segment_content", segment_title)
+    task_id = create_research_task(topic_id, "ai_generate", segment_title)
     try:
+        update_segment(segment_id, status="researching")
         update_research_task(task_id, status="running")
         client = _get_openai()
 
@@ -82,20 +93,22 @@ def generate_segment_content(topic_id, segment_id, topic_title, segment_title):
         data = json.loads(response.choices[0].message.content)
 
         update_segment(segment_id, hook=data["hook"], script=data["script"],
-                       visual_cue=data.get("visual_cue", ""), status="ready")
+                       visual_cue=data.get("visual_cue", ""), source="ai", status="ready")
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
         raise
 
 
-def research_with_firecrawl(topic_id, topic_title, segment_title):
-    task_id = create_research_task(topic_id, "web_research",
+def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
+    task_id = create_research_task(topic_id, "web_search",
                                    f"{topic_title}: {segment_title}")
     try:
+        update_segment(segment_id, status="researching")
         update_research_task(task_id, status="searching")
         fc = _get_firecrawl()
 
@@ -113,82 +126,73 @@ def research_with_firecrawl(topic_id, topic_title, segment_title):
                 markdown = getattr(item, "markdown", "")
                 sources.append({"url": url, "title": title})
                 if markdown:
-                    combined_content += f"\n\n--- Source: {title} ({url}) ---\n{markdown[:2000]}"
+                    combined_content += (
+                        f"\n\n--- Source: {title} ({url}) ---\n{markdown[:2000]}"
+                    )
 
-        update_research_task(task_id, status="processing",
-                             result=json.dumps(sources, ensure_ascii=False))
+        update_research_task(task_id, status="processing")
 
-        return {
-            "task_id": task_id,
-            "sources": sources,
-            "content": combined_content[:8000],
-        }
-
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        update_research_task(task_id, status="failed", error=str(exc))
-        raise
-
-
-def generate_segment_from_research(topic_id, segment_id, topic_title,
-                                    segment_title, *, research_content, source_urls):
-    task_id = create_research_task(topic_id, "research_to_segment", segment_title)
-    try:
-        update_research_task(task_id, status="running")
         client = _get_openai()
-
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
                 f'Using this researched information, write one short-form video segment.\n'
                 f'Series: "{topic_title}"\n'
                 f'Segment: "{segment_title}"\n\n'
-                f'Research:\n{research_content}\n\n'
+                f'Research:\n{combined_content[:6000]}\n\n'
                 f'Return JSON: {{"hook": "1-2 sentence attention grabber with a real fact", '
-                f'"script": "3-5 sentence educational content using the research, casual tone", '
+                f'"script": "3-5 sentence educational content using the research", '
                 f'"visual_cue": "what should be shown on screen"}}'
             )}],
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
 
-        urls_json = json.dumps(source_urls, ensure_ascii=False)
+        urls_json = json.dumps([s["url"] for s in sources], ensure_ascii=False)
         update_segment(segment_id, hook=data["hook"], script=data["script"],
-                       visual_cue=data.get("visual_cue", ""),
-                       source="firecrawl", source_urls=urls_json,
-                       raw_research=research_content[:5000], status="ready")
+                       visual_cue=data.get("visual_cue", ""), source="firecrawl",
+                       source_urls=urls_json,
+                       raw_research=combined_content[:5000], status="ready")
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
         raise
 
 
 def generate_all_ai(topic_id, topic_title, num_segments=6):
     update_topic(topic_id, research_status="generating")
-    outline = generate_series_outline(topic_id, topic_title, num_segments)
+    generate_series_outline(topic_id, topic_title, num_segments)
     segments = get_segments_for_topic(topic_id)
 
     for seg in segments:
+        if _is_segment_busy(seg):
+            continue
         generate_segment_content(topic_id, seg["id"], topic_title, seg["title"])
 
-    update_topic(topic_id, research_status="done")
-    return outline
+    _check_all_done(topic_id)
 
 
 def research_all_firecrawl(topic_id, topic_title, num_segments=6):
     update_topic(topic_id, research_status="generating")
-    outline = generate_series_outline(topic_id, topic_title, num_segments)
+    generate_series_outline(topic_id, topic_title, num_segments)
     segments = get_segments_for_topic(topic_id)
 
     for seg in segments:
-        research = research_with_firecrawl(topic_id, topic_title, seg["title"])
-        source_urls = [s["url"] for s in research["sources"]]
-        generate_segment_from_research(
-            topic_id, seg["id"], topic_title, seg["title"],
-            research_content=research["content"], source_urls=source_urls,
-        )
+        if _is_segment_busy(seg):
+            continue
+        research_with_firecrawl(topic_id, seg["id"], topic_title, seg["title"])
 
-    update_topic(topic_id, research_status="done")
-    return outline
+    _check_all_done(topic_id)
+
+
+def _check_all_done(topic_id):
+    segments = get_segments_for_topic(topic_id)
+    ready = sum(1 for s in segments if s["status"] == "ready")
+    if ready == len(segments):
+        update_topic(topic_id, research_status="done")
+    else:
+        update_topic(topic_id, research_status="partial")
