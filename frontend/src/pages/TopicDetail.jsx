@@ -112,7 +112,6 @@ export default function TopicDetail() {
 
 function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
   const [selectedSegId, setSelectedSegId] = useState(null)
-  const [leftOpen, setLeftOpen] = useState(true)
   const [voiceProviders, setVoiceProviders] = useState([])
   const [voices, setVoices] = useState([])
   const [voicesLoading, setVoicesLoading] = useState(false)
@@ -207,18 +206,15 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
   const localVoice = settings.voice_id || voiceId
 
   return (
-    <div className={`ve ${leftOpen ? '' : 've-left-collapsed'}`}>
+    <div className="ve">
 
-      {/* ══════ LEFT: Collapsible Segment Bin ══════ */}
-      <div className={`ve-left ${leftOpen ? '' : 've-left-hidden'}`}>
+      {/* ══════ LEFT: Segment Bin ══════ */}
+      <div className="ve-left">
         <div className="ve-left-head">
           <span className="ve-left-label">Segments</span>
           <div className="ve-left-head-actions">
             <button className="btn btn-primary btn-xs" onClick={handleGenerateAll}>
               <Sparkles size={11} /> All
-            </button>
-            <button className="ve-collapse-btn" onClick={() => setLeftOpen(false)} title="Collapse">
-              <PanelLeftClose size={14} />
             </button>
           </div>
         </div>
