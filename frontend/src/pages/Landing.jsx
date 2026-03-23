@@ -1,5 +1,49 @@
 import { useNavigate } from 'react-router-dom'
+import { useState, useMemo, memo } from 'react'
 import { ArrowRight } from 'lucide-react'
+
+// 70 unique GIFs across 9 categories — mixed for TikTok FYP randomness
+const ALL_GIFS = [
+  // animals & cute
+  'ihbWUcwZ5MVLHk3OW2', 'fvzzTw4GevP2g', 'yXBqba0Zx8S4', '3lH05gVzcd8CocN08E',
+  '26BRzj53E0YclHilG', 'mXTYe6d2GozORrmiJR', 'jdNv8nxNMRa61mOsVq',
+  // food & cooking
+  'CP5Yar5Tc8asXAWdiJ', 'O0fU5QCjPjOWgZ6787', 'TkCdSQKx9HXoXbU6kU',
+  '0iIDiDhE5dAxXkbRXx', '8iJXzhtGs4bicJrLGI', 'rhomAxEIX4quMVjymu', 'UGeqGXZafMY2coQmq9',
+  // sunset & beach
+  'Jb90XJYZbZGvK', 'B5WYfBKkhSXLwBoRSO', 'kHyMZMDwgX8m0gyO6e', 'Jpuck5ozFThRjfsE0Y',
+  '1JsSOW3M1y8xefYZAD', 'dZP8UDOCnchq8C7dfc', '1ZjaN6QSGGCj5m1FiL', 'l4FGxWle5DTKaT4Hu',
+  // space & galaxy
+  'sJvz8Qnfly3BOuotGx', '4ydWTcMBjimLbT1CHi', '3ov9k1173PdfJWRsoE', 'Tj4jjaCxXRVSARsUzN',
+  'D35fOVm9gSQ91icJeR', 'GTJFIAnmAdrnsmXcO7', 'JQpH25Y6TrRQwtF0KY', '26n6G8lRMOrYC6rFS',
+  // nature & flowers
+  'bPT3I3JkTBUb2b5WjE', '76is5s2Px02NYK2wBY', 'ACA0cicaOzCUg', '1DkmhEV6j62K3205aP',
+  'U7z2Sfv7kXuzTbSVYI', '6Vxe4B8HqF82C9BtQm', 'YI3AQoxgLaC6RssyGx',
+  // aurora & night
+  'bPDzcb6OADZ9m', 'PGhgbrTPAqFQTeKUMb', 'QJUfI8QHc3DKbbmwPu', 'sEU384ODAcnSg',
+  // neon & city
+  'CvzUA900mgXSPIVtvO', 'A9Lbvgza45YFgY3DM0', 'ehcPwlCW2xmy6ZqoU9',
+  // ocean & underwater
+  'ZTAojHK9IHsSQ', 'oOrRt0rIDNtPa', 'l2QE7T5qsKPDhWQkU',
+  // gaming
+  'I2zNgXkq9U0m1R8JQw', 'CSRGZCZjxWNxlELtf6', 'si0Bv6N7c5wLuPLG2A',
+  'FhKuScBgdPf5EgY37e', 'GhcET7EBlVvGHzzDhI', 't7bTvMkyTz2q78OTyU',
+  'tx7EW72lH4Lh1leiXE', 'IB2IVgLi7eo0fgMWiL',
+  // anime & digital art
+  'C8gkEYivtQDlGzyAwp', 'Fbox1ygIqnga5dLinz', 'eJmUEoeU1K4d4IUbpS',
+  'nyEFXSvfHbIzoVccUd', 'usOikM00Flk139pNEv', 'q4KDyjMkgitFnBt2k8',
+  'i2Rcn45tJjqcnh3Qcl', '26ufo4EIIEdB8tX3y', 'rzMswsYn8WuCFItORN',
+  'tLz54ylpDi9NMzLH07',
+]
+
+// Pre-compute columns once — interleave so adjacent cards are always different
+const COLUMNS = Array.from({ length: 7 }, (_, c) =>
+  Array.from({ length: 8 }, (_, r) => ALL_GIFS[(r * 7 + c) % ALL_GIFS.length])
+)
+
+function gifUrl(id) {
+  return `https://media.giphy.com/media/${id}/200w.gif`
+}
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -39,34 +83,7 @@ export default function Landing() {
       <section className="ln-hero">
         {/* Scrolling phones behind hero */}
         <div className="ln-showcase">
-          <div className="ln-showcase-cols">
-            {[0, 1, 2, 3, 4, 5, 6].map(col => (
-              <div key={col} className={`ln-showcase-col ln-showcase-col-${col % 2 === 0 ? 'up' : 'down'}`}>
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="ln-phone">
-                    <div className="ln-phone-screen" style={{
-                      background: `linear-gradient(${140 + col * 20 + i * 18}deg, ${
-                        ['rgba(239,68,68,0.25)','rgba(139,92,246,0.25)','rgba(59,130,246,0.25)','rgba(249,115,22,0.25)','rgba(34,197,94,0.2)','rgba(236,72,153,0.2)','rgba(14,165,233,0.2)'][col]
-                      }, ${
-                        ['rgba(249,115,22,0.1)','rgba(59,130,246,0.1)','rgba(139,92,246,0.1)','rgba(239,68,68,0.1)','rgba(139,92,246,0.08)','rgba(249,115,22,0.08)','rgba(34,197,94,0.08)'][col]
-                      })`,
-                    }}>
-                      <div className="ln-phone-title" style={{width: `${45+Math.random()*35}%`}} />
-                      <div className="ln-phone-subtitle" style={{width: `${55+Math.random()*35}%`}} />
-                      <div className="ln-phone-wave">
-                        {[...Array(10)].map((_,j) => (
-                          <div key={j} className="ln-phone-bar" style={{
-                            height: `${15+Math.random()*65}%`,
-                            animationDelay: `${j*0.12 + col*0.2}s`,
-                          }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+          <ShowcaseGrid />
         </div>
 
         <div className="ln-hero-content">
@@ -174,3 +191,43 @@ export default function Landing() {
     </div>
   )
 }
+
+// Memoized showcase grid — never re-renders from parent state changes
+const ShowcaseGrid = memo(function ShowcaseGrid() {
+  // Stable random widths computed once
+  const titleWidths = useMemo(() => COLUMNS.flat().map(() => 40 + Math.random() * 40), [])
+  const subWidths = useMemo(() => COLUMNS.flat().map(() => 50 + Math.random() * 35), [])
+  let idx = 0
+
+  return (
+    <div className="ln-showcase-cols">
+      {COLUMNS.map((col, ci) => (
+        <div key={ci} className={`ln-showcase-col ln-showcase-col-${ci % 2 === 0 ? 'up' : 'down'}`}
+          style={{ animationDuration: `${22 + ci * 3}s` }}>
+          {col.map((gid, i) => {
+            const k = idx++
+            return (
+              <PhoneCard key={`${ci}-${i}`} gid={gid}
+                titleW={titleWidths[k]} subW={subWidths[k]} />
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+})
+
+// Individual phone card — fades in smoothly when GIF loads
+const PhoneCard = memo(function PhoneCard({ gid, titleW, subW }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <div className={`ln-phone ${loaded ? 'ln-phone-loaded' : ''}`}>
+      <img className="ln-phone-gif" src={gifUrl(gid)} alt=""
+        loading="lazy" onLoad={() => setLoaded(true)} />
+      <div className="ln-phone-overlay">
+        <div className="ln-phone-title" style={{ width: `${titleW}%` }} />
+        <div className="ln-phone-subtitle" style={{ width: `${subW}%` }} />
+      </div>
+    </div>
+  )
+})
