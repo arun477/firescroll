@@ -46,7 +46,8 @@ def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
     sources = get_research_sources(topic_id)
     print(f"[FC] Synthesize: {len(sources)} sources available")
     if not sources:
-        print("[FC] No sources to synthesize from")
+        print("[FC] No sources to synthesize from, resetting to draft")
+        update_segment(segment_id, status="draft")
         return
     segments = get_segments_for_topic(topic_id)
     seg = next((s for s in segments if s["id"] == segment_id), None)
@@ -169,36 +170,31 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         results = fc.search(query, limit=5,
                             scrape_options={"formats": ["markdown"]})
         src_count = 0
-        result_data = None
-        if hasattr(results, "data"):
-            result_data = results.data
-        elif isinstance(results, dict) and "data" in results:
-            result_data = results["data"]
+        items = []
+        if hasattr(results, "web") and results.web:
+            items = results.web
+        elif hasattr(results, "data") and results.data:
+            items = results.data
         elif isinstance(results, list):
-            result_data = results
-
-        if result_data:
-            for item in result_data:
-                if isinstance(item, dict):
-                    url = item.get("url", "")
-                    title = item.get("title", "")
-                    markdown = item.get("markdown", "") or item.get("content", "") or item.get("description", "")
-                else:
-                    url = getattr(item, "url", "")
-                    title = getattr(item, "title", "")
-                    markdown = getattr(item, "markdown", "") or getattr(item, "content", "") or getattr(item, "description", "")
-                if markdown:
-                    add_research_source(topic_id, url, title,
-                                        markdown[:5000], "search")
-                    src_count += 1
-                elif url:
-                    add_research_source(topic_id, url, title or url,
-                                        f"Source: {title} - {url}", "search")
-                    src_count += 1
+            items = results
         else:
-            print(f"[FC] Raw result type: {type(results)}")
-            if hasattr(results, "__dict__"):
-                print(f"[FC] Result attrs: {list(results.__dict__.keys())}")
+            print(f"[FC] Unknown result: {type(results)} "
+                  f"attrs={list(vars(results).keys()) if hasattr(results, '__dict__') else 'N/A'}")
+
+        for item in items:
+            url = getattr(item, "url", "") or ""
+            title = getattr(item, "title", "") or ""
+            markdown = getattr(item, "markdown", "") or ""
+            desc = getattr(item, "description", "") or ""
+            content = markdown or desc
+            if content:
+                add_research_source(topic_id, url, title,
+                                    content[:5000], "search")
+                src_count += 1
+            elif url:
+                add_research_source(topic_id, url, title or url,
+                                    desc or f"Source: {url}", "search")
+                src_count += 1
         print(f"[FC] Found {src_count} sources for: {segment_title}")
 
         update_research_task(task_id, status="processing")
@@ -268,17 +264,17 @@ def fc_search(topic_id, segment_id, query, limit=5):
                             scrape_options={"formats": ["markdown"]})
         new_count = 0
         total = 0
-        if results and hasattr(results, "data"):
-            for item in results.data:
-                url = getattr(item, "url", "")
-                title = getattr(item, "title", "")
-                md = getattr(item, "markdown", "")
-                if md:
-                    was_new = add_research_source(
-                        topic_id, url, title, md[:5000], "search")
-                    if was_new:
-                        new_count += 1
-                    total += 1
+        items = getattr(results, "web", None) or getattr(results, "data", None) or []
+        for item in items:
+            url = getattr(item, "url", "") or ""
+            title = getattr(item, "title", "") or ""
+            md = getattr(item, "markdown", "") or getattr(item, "description", "") or ""
+            if md:
+                was_new = add_research_source(
+                    topic_id, url, title, md[:5000], "search")
+                if was_new:
+                    new_count += 1
+                total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
             result_preview=f"Found {total} results, {new_count} new")
