@@ -138,6 +138,23 @@ def research_single_segment(topic_id: str, req: SegmentResearchRequest):
     return {"status": "started"}
 
 
+def _segments_to_gen_data(topic, segments):
+    result = []
+    for seg in segments:
+        if seg["status"] != "ready":
+            continue
+        result.append({
+            "id": seg["segment_num"],
+            "title": seg["title"],
+            "hook": seg["hook"],
+            "script": seg["script"],
+            "visual_cue": seg["visual_cue"] or "",
+            "series_title": topic["series_title"] or topic["title"],
+            "duration": {"min_seconds": 15, "max_seconds": 45},
+        })
+    return result
+
+
 @app.post("/api/topics/{topic_id}/generate")
 def generate_segment(topic_id: str, req: GenerateRequest):
     topic = get_topic(topic_id)
@@ -145,12 +162,11 @@ def generate_segment(topic_id: str, req: GenerateRequest):
         return {"error": "not found"}
 
     def run():
-        from batch_generate import _generate_single, load_topic
+        from batch_generate import _generate_single
         from db import create_job, has_active_job
-        data = load_topic(topic["json_path"])
-        for seg in data["segments"]:
-            seg["series_title"] = data["series_title"]
-        for seg in data["segments"]:
+        segments = get_segments_for_topic(topic_id)
+        gen_data = _segments_to_gen_data(topic, segments)
+        for seg in gen_data:
             if has_active_job(topic_id, seg["id"]):
                 continue
             job_id = create_job(topic_id, seg["id"], req.mode, req.caption)
@@ -169,9 +185,19 @@ def generate_all(topic_id: str):
         return {"error": "not found"}
 
     def run():
-        from batch_generate import batch_generate
-        batch_generate(topic["json_path"], OUTPUT_DIR, max_parallel=2,
-                       topic_id=topic_id)
+        import random
+        from batch_generate import _generate_single
+        from db import create_job
+        segments = get_segments_for_topic(topic_id)
+        gen_data = _segments_to_gen_data(topic, segments)
+        modes = ["full", "video", "split"]
+        captions = ["default", "karaoke"]
+        for seg in gen_data:
+            mode = random.choice(modes)
+            caption = random.choice(captions)
+            job_id = create_job(topic_id, seg["id"], mode, caption)
+            if job_id:
+                _generate_single(seg, mode, caption, OUTPUT_DIR, job_id)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
