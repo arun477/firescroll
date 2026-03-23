@@ -184,8 +184,8 @@ const FEATURES = [
   },
   {
     num: '04',
-    title: 'Deep Research',
-    desc: 'Firecrawl web scraping + AI synthesis. Accurate, sourced scripts generated automatically from the web.',
+    title: 'Deep Research Engine',
+    desc: 'Powered by Firecrawl. Search, scrape, crawl, and extract from any website. AI agent synthesizes sources into accurate, citation-backed scripts automatically.',
     key: 'research',
   },
   {
@@ -195,6 +195,49 @@ const FEATURES = [
     key: 'media',
   },
 ]
+
+const RESEARCH_TOOLS = [
+  { icon: 'search', name: 'Search', desc: 'Web search' },
+  { icon: 'scrape', name: 'Scrape', desc: 'Extract URLs' },
+  { icon: 'crawl', name: 'Crawl', desc: 'Deep crawl' },
+  { icon: 'extract', name: 'Extract', desc: 'Structured data' },
+  { icon: 'map', name: 'Map', desc: 'Discover URLs' },
+  { icon: 'agent', name: 'Agent', desc: 'AI research' },
+]
+
+const TOOL_ICONS = {
+  search: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+  scrape: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>,
+  crawl: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+  extract: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>,
+  map: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" x2="8" y1="2" y2="18"/><line x1="16" x2="16" y1="6" y2="22"/></svg>,
+  agent: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>,
+}
+
+function ResearchToolGrid() {
+  const [activeIdx, setActiveIdx] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setActiveIdx(p => (p + 1) % RESEARCH_TOOLS.length), 2800)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="ln-r-tools">
+      {RESEARCH_TOOLS.map((t, i) => {
+        const isActive = i === activeIdx
+        return (
+          <div key={t.name} className={`ln-r-tool ${isActive ? 'ln-r-tool-on' : ''}`}
+            style={{ opacity: isActive ? 1 : 0.55, transform: isActive ? 'scale(1.03)' : 'scale(1)' }}>
+            <div className="ln-r-tool-icon">{TOOL_ICONS[t.icon]}</div>
+            <div className="ln-r-tool-text">
+              <span className="ln-r-tool-name">{t.name}</span>
+              <span className="ln-r-tool-desc">{t.desc}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function FeaturesSection() {
   const [active, setActive] = useState(0)
@@ -224,7 +267,7 @@ function FeaturesSection() {
       <div className="ln-fs-text">
         <div className="ln-fs-intro">
           <span className="ln-fs-label">The Platform</span>
-          <h2 className="ln-fs-title">Everything you need.<br /><span className="ln-fire">Nothing you don't.</span></h2>
+          <h2 className="ln-fs-title">All you need to<br /><span className="ln-fire">fuel the scroll.</span></h2>
         </div>
         {FEATURES.map((f, i) => (
           <div
@@ -398,18 +441,78 @@ function FeaturesSection() {
             </div>
           </div>
 
-          {/* Research */}
-          <div className={`ln-fs-viz ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-ft-research">
+          {/* Research — Firecrawl branded */}
+          <div className={`ln-fs-viz ln-fs-viz-research ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
+            {/* Firecrawl header */}
+            <div className="ln-r-header">
+              <div className="ln-r-brand">
+                <img src="/firecrawl-light-logo.svg" alt="" className="ln-r-logo" />
+                <span>Firecrawl</span>
+              </div>
+              <div className="ln-r-status">
+                <span className="ln-r-status-dot" />
+                <span className="ln-r-status-text">Connected</span>
+              </div>
+            </div>
+
+            {/* Tool grid — cycles active highlight */}
+            <ResearchToolGrid />
+
+            {/* Live research flow */}
+            <div className="ln-r-flow">
+              <div className="ln-r-flow-label">Live pipeline</div>
+              <div className="ln-r-pipeline">
+                <div className="ln-r-pipe-step ln-r-pipe-done">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  </div>
+                  <span>Search "quantum computing"</span>
+                  <span className="ln-r-pipe-count">12 results</span>
+                </div>
+                <div className="ln-r-pipe-line" />
+                <div className="ln-r-pipe-step ln-r-pipe-done">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                  </div>
+                  <span>Scraping 8 sources</span>
+                  <span className="ln-r-pipe-count">42 pages</span>
+                </div>
+                <div className="ln-r-pipe-line" />
+                <div className="ln-r-pipe-step ln-r-pipe-active">
+                  <div className="ln-r-pipe-icon ln-r-pipe-icon-pulse">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
+                  </div>
+                  <span>AI synthesizing</span>
+                  <div className="ln-r-pipe-progress">
+                    <div className="ln-r-pipe-progress-bar" />
+                  </div>
+                </div>
+                <div className="ln-r-pipe-line ln-r-pipe-line-dim" />
+                <div className="ln-r-pipe-step ln-r-pipe-pending">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </div>
+                  <span>Generate 6 segments</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Source cards — staggered slide-in animation */}
+            <div className="ln-r-sources">
               {[
-                { text: 'Scraping arxiv.org...', done: false },
-                { text: 'Found 12 sources', done: false },
-                { text: 'Synthesizing scripts...', done: false },
-                { text: 'Generated 6 segments', done: true },
+                { domain: 'arxiv.org', title: 'Quantum Computing: A Survey', badge: 'markdown' },
+                { domain: 'nature.com', title: 'Advances in Qubit Architecture', badge: 'extracted' },
+                { domain: 'mit.edu', title: 'Error Correction Breakthroughs', badge: 'crawled' },
               ].map((s, i) => (
-                <div key={i} className="ln-ft-step" style={{ animationDelay: `${i * 0.6}s` }}>
-                  <div className={`ln-ft-step-dot ${s.done ? 'ln-ft-step-done' : ''}`} />
-                  <span>{s.text}</span>
+                <div key={s.domain} className="ln-r-src" style={{ animationDelay: `${i * 0.4}s` }}>
+                  <div className="ln-r-src-favicon">
+                    <div className="ln-r-src-scan" />
+                  </div>
+                  <div className="ln-r-src-info">
+                    <span className="ln-r-src-domain">{s.domain}</span>
+                    <span className="ln-r-src-title">{s.title}</span>
+                  </div>
+                  <span className="ln-r-src-badge">{s.badge}</span>
                 </div>
               ))}
             </div>
