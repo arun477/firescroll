@@ -8,7 +8,9 @@ load_dotenv()
 
 def generate_topic_json(topic_name, num_segments=6):
     from openai import OpenAI
-    client = OpenAI()
+    from keystore import get_key
+    api_key = get_key("openai")
+    client = OpenAI(api_key=api_key) if api_key else OpenAI()
 
     prompt = f"""Create a short-form educational video series about "{topic_name}".
 Split it into {num_segments} standalone short videos (15-45 seconds each).

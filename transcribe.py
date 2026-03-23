@@ -5,7 +5,9 @@ load_dotenv()
 
 def get_word_timestamps(audio_path):
     from openai import OpenAI
-    client = OpenAI()
+    from keystore import get_key
+    api_key = get_key("openai")
+    client = OpenAI(api_key=api_key) if api_key else OpenAI()
 
     with open(audio_path, "rb") as f:
         response = client.audio.transcriptions.create(

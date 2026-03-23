@@ -26,7 +26,9 @@ class OpenAIImage(ImageProvider):
 
     def __init__(self, model: str = "gpt-image-1", size: str = "1024x1536"):
         from openai import OpenAI
-        self.client = OpenAI()
+        from keystore import get_key
+        api_key = get_key("openai")
+        self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
         self.model = model
         self.size = size
 

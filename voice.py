@@ -20,7 +20,9 @@ class OpenAIVoice(VoiceProvider):
 
     def __init__(self, voice: str = "nova", model: str = "tts-1-hd"):
         from openai import OpenAI
-        self.client = OpenAI()
+        from keystore import get_key
+        api_key = get_key("openai")
+        self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
         self.voice = voice
         self.model = model
 
