@@ -184,8 +184,16 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         for item in items:
             url = getattr(item, "url", "") or ""
             title = getattr(item, "title", "") or ""
+            if not title and hasattr(item, "metadata") and item.metadata:
+                title = getattr(item.metadata, "title", "") or ""
             markdown = getattr(item, "markdown", "") or ""
             desc = getattr(item, "description", "") or ""
+            if not title and url:
+                try:
+                    from urllib.parse import urlparse
+                    title = urlparse(url).netloc
+                except Exception:  # pylint: disable=broad-exception-caught
+                    title = url[:60]
             content = markdown or desc
             if content:
                 add_research_source(topic_id, url, title,

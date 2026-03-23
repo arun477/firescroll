@@ -78,7 +78,7 @@ export default function TopicDetail() {
 
   if (!data) return <div className="empty-state">Loading...</div>
 
-  const { topic, jobs, segments, research, sources, source_stats } = data
+  const { topic, jobs, segments, research, sources, source_stats, fc_jobs } = data
   const doneJobs = jobs?.filter(j => j.status === 'done').length || 0
   const readySegs = segments?.filter(s => s.status === 'ready').length || 0
 
@@ -122,6 +122,7 @@ export default function TopicDetail() {
           research={research || []}
           sources={sources || []}
           sourceStats={source_stats || {}}
+          fcJobs={fc_jobs || []}
           onRefresh={load}
         />
       )}

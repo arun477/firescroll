@@ -10,7 +10,7 @@ import SourcesPanel from './SourcesPanel'
 import ResearchTaskManager from './ResearchTaskManager'
 
 export default function ResearchPanel({
-  topicId, topic, segments, research, sources, sourceStats, onRefresh,
+  topicId, topic, segments, research, sources, sourceStats, fcJobs, onRefresh,
 }) {
   const [generating, setGenerating] = useState(null)
 
