@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 
 export default function CreateTopic() {
   const navigate = useNavigate()
@@ -26,45 +26,60 @@ export default function CreateTopic() {
     }
   }
 
-  return (
-    <>
-      <div className="page-header">
-        <h1>Create Topic</h1>
-      </div>
+  const suggestions = ['Black Holes', 'Quantum Computing', 'DNA Replication', 'Roman Empire', 'Neural Networks', 'Ocean Depths']
 
-      <div className="card" style={{ maxWidth: 480 }}>
-        <form onSubmit={handleCreate}>
-          <div className="form-group">
-            <label>Topic</label>
+  return (
+    <div className="create-page">
+      <div className="create-center">
+        <h1 className="create-h1">What should we<br /><span className="create-fire">make a video about?</span></h1>
+
+        <form onSubmit={handleCreate} className="create-form">
+          <div className="create-input-wrap">
             <input
               type="text"
-              placeholder="Black Holes, Quantum Physics, DNA..."
+              className="create-input"
+              placeholder="Enter any topic..."
               value={topic}
               onChange={e => setTopic(e.target.value)}
               autoFocus
             />
-          </div>
-          <div className="form-group">
-            <label>Segments</label>
-            <select
-              value={segments}
-              onChange={e => setSegments(Number(e.target.value))}
+            <button
+              type="submit"
+              className="create-submit"
+              disabled={loading || !topic.trim()}
             >
-              {[3, 4, 5, 6, 7, 8].map(n => (
-                <option key={n} value={n}>{n} segments</option>
-              ))}
-            </select>
+              {loading ? <Loader2 size={16} className="spin" /> : <ArrowRight size={16} />}
+            </button>
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading || !topic.trim()}
-            style={{ width: '100%' }}
-          >
-            <Sparkles size={16} /> Create Topic
-          </button>
+
+          <div className="create-options">
+            <div className="create-seg">
+              <span className="create-seg-label">Segments</span>
+              <div className="create-seg-pills">
+                {[3, 4, 5, 6, 7, 8].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`create-seg-pill ${n === segments ? 'create-seg-pill-on' : ''}`}
+                    onClick={() => setSegments(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </form>
+
+        <div className="create-suggestions">
+          <span className="create-sug-label">Try</span>
+          {suggestions.map(s => (
+            <button key={s} className="create-sug" onClick={() => setTopic(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
