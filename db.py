@@ -60,6 +60,9 @@ def init_db(db_path=DB_PATH):
             thumb_path TEXT,
             audio_path TEXT,
             duration_seconds REAL,
+            voice_provider TEXT DEFAULT '',
+            voice_id TEXT DEFAULT '',
+            music_track TEXT DEFAULT '',
             error TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -187,16 +190,19 @@ def has_active_job(topic_id, segment_id):
     return row is not None
 
 
-def create_job(topic_id, segment_id, mode, caption):
+def create_job(topic_id, segment_id, mode, caption,
+               voice_provider="", voice_id="", music_track=""):
     if has_active_job(topic_id, segment_id):
         return None
     conn = get_conn()
     job_id = uuid.uuid4().hex[:12]
     now = _now()
     conn.execute(
-        "INSERT INTO jobs (id, topic_id, segment_id, mode, caption, status, "
-        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (job_id, topic_id, segment_id, mode, caption, STATUS_PENDING, now, now),
+        "INSERT INTO jobs (id, topic_id, segment_id, mode, caption, "
+        "voice_provider, voice_id, music_track, status, "
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (job_id, topic_id, segment_id, mode, caption,
+         voice_provider, voice_id, music_track, STATUS_PENDING, now, now),
     )
     conn.commit()
     conn.close()

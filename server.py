@@ -46,6 +46,16 @@ class CreateTopicRequest(BaseModel):
 class GenerateRequest(BaseModel):
     mode: str = "full"
     caption: str = "default"
+    voice_provider: Optional[str] = None
+    voice_id: Optional[str] = None
+    music_track: Optional[str] = None
+    segment_ids: Optional[list] = None
+
+
+class GenerateAllRequest(BaseModel):
+    voice_provider: Optional[str] = None
+    voice_id: Optional[str] = None
+    music_track: Optional[str] = None
 
 
 @app.get("/api/topics")
@@ -176,22 +186,33 @@ def generate_segment(topic_id: str, req: GenerateRequest):
         segments = get_segments_for_topic(topic_id)
         gen_data = _segments_to_gen_data(topic, segments)
         for seg in gen_data:
+            if req.segment_ids and seg["id"] not in req.segment_ids:
+                continue
             if has_active_job(topic_id, seg["id"]):
                 continue
-            job_id = create_job(topic_id, seg["id"], req.mode, req.caption)
+            job_id = create_job(topic_id, seg["id"], req.mode, req.caption,
+                                voice_provider=req.voice_provider or "",
+                                voice_id=req.voice_id or "",
+                                music_track=req.music_track or "")
             if job_id:
-                _generate_single(seg, req.mode, req.caption, OUTPUT_DIR, job_id)
-            break
+                _generate_single(seg, req.mode, req.caption, OUTPUT_DIR, job_id,
+                                 voice_provider=req.voice_provider,
+                                 voice_id=req.voice_id,
+                                 music_track=req.music_track)
+            if not req.segment_ids:
+                break
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
 
 
 @app.post("/api/topics/{topic_id}/generate-all")
-def generate_all(topic_id: str):
+def generate_all(topic_id: str, req: GenerateAllRequest = None):
     topic = get_topic(topic_id)
     if not topic:
         return {"error": "not found"}
+    if req is None:
+        req = GenerateAllRequest()
 
     def run():
         import random
@@ -207,13 +228,19 @@ def generate_all(topic_id: str):
         for seg in gen_data:
             mode = random.choice(modes)
             caption = random.choice(captions)
-            job_id = create_job(topic_id, seg["id"], mode, caption)
+            job_id = create_job(topic_id, seg["id"], mode, caption,
+                                voice_provider=req.voice_provider or "",
+                                voice_id=req.voice_id or "",
+                                music_track=req.music_track or "")
             if job_id:
                 planned.append((seg, mode, caption, job_id))
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             for seg, mode, caption, job_id in planned:
-                pool.submit(_generate_single, seg, mode, caption, OUTPUT_DIR, job_id)
+                pool.submit(_generate_single, seg, mode, caption, OUTPUT_DIR,
+                            job_id, voice_provider=req.voice_provider,
+                            voice_id=req.voice_id,
+                            music_track=req.music_track)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
@@ -435,6 +462,50 @@ def delete_research_ep(topic_id: str, task_id: str):  # noqa: ARG001
 def get_fc_jobs_ep(topic_id: str):
     from db import get_firecrawl_jobs
     return get_firecrawl_jobs(topic_id)
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel_job(job_id: str):
+    from db import get_job, update_job, STATUS_FAILED, ACTIVE_STATUSES
+    job = get_job(job_id)
+    if not job:
+        return {"error": "not found"}
+    if job["status"] in ACTIVE_STATUSES:
+        update_job(job_id, status=STATUS_FAILED, error="Cancelled by user")
+        return {"status": "cancelled"}
+    return {"status": "not_active"}
+
+
+@app.get("/api/voice-providers")
+def list_voice_providers():
+    from keystore import get_key
+    providers = []
+    has_eleven = bool(get_key("elevenlabs"))
+    has_openai = bool(get_key("openai"))
+    if has_eleven:
+        providers.append({"id": "elevenlabs", "name": "ElevenLabs", "default": True})
+    if has_openai or not has_eleven:
+        providers.append({"id": "openai", "name": "OpenAI", "default": not has_eleven})
+    return {"providers": providers}
+
+
+@app.get("/api/voices/{provider}")
+def list_voices_ep(provider: str):
+    from voice import get_provider as get_voice_provider
+    try:
+        vp = get_voice_provider(provider)
+        return {"provider": provider, "voices": vp.list_voices()}
+    except Exception as e:
+        return {"provider": provider, "voices": [], "error": str(e)}
+
+
+@app.get("/api/music")
+def list_music():
+    music_dir = os.path.join(os.path.dirname(__file__), "assets", "music")
+    if not os.path.isdir(music_dir):
+        return {"tracks": []}
+    tracks = sorted(f for f in os.listdir(music_dir) if f.endswith(".mp3"))
+    return {"tracks": tracks}
 
 
 @app.get("/api/feed")

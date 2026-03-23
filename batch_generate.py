@@ -58,24 +58,26 @@ def _run_ffmpeg(cmd):
         raise RuntimeError(f"FFmpeg error: {result.stderr[:500]}")
 
 
-def _phase_audio(segment, output_dir):
-    tts = get_voice_provider("openai")
+def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
+                  music_track=None):
+    tts = get_voice_provider(voice_provider)
     sid = segment["id"]
     hook_path = os.path.join(output_dir, f"seg{sid}_hook.mp3")
     script_path = os.path.join(output_dir, f"seg{sid}_script.mp3")
     voice_path = os.path.join(output_dir, f"seg{sid}_voice.mp3")
     final_path = os.path.join(output_dir, f"seg{sid}_final.mp3")
 
-    tts.generate(segment["hook"], hook_path)
+    voice_kwargs = {"voice": voice_id} if voice_id else {}
+    tts.generate(segment["hook"], hook_path, **voice_kwargs)
     hook_dur = probe_duration(hook_path)
 
-    tts.generate(segment["script"], script_path)
+    tts.generate(segment["script"], script_path, **voice_kwargs)
     script_dur = probe_duration(script_path)
 
     stitch_audio([hook_path, script_path], voice_path)
     total_dur = probe_duration(voice_path)
 
-    music_src = pick_music()
+    music_src = pick_music(music_track)
     music_path = os.path.join(output_dir, f"seg{sid}_music.mp3")
     prepare_music(music_src, total_dur, music_path)
     mix_voice_and_music(voice_path, music_path, final_path)
@@ -167,7 +169,8 @@ def _safe_vid(vid_dir, frame_num):
     return path
 
 
-def _generate_single(segment, mode, caption, output_dir, job_id):
+def _generate_single(segment, mode, caption, output_dir, job_id,
+                     voice_provider=None, voice_id=None, music_track=None):
     try:
         sid = segment["id"]
         topic = segment.get("series_title", "topic").lower().replace(" ", "_")
@@ -182,7 +185,10 @@ def _generate_single(segment, mode, caption, output_dir, job_id):
 
         update_job(job_id, status=STATUS_AUDIO)
         print(f"  [Seg {sid}] Audio...")
-        audio_result = _phase_audio(segment, seg_dir)
+        audio_result = _phase_audio(segment, seg_dir,
+                                    voice_provider=voice_provider,
+                                    voice_id=voice_id,
+                                    music_track=music_track)
         timing = audio_result["timing"]
         update_job(job_id, audio_path=audio_result["audio_path"],
                    duration_seconds=timing["total_duration"])

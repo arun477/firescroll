@@ -11,7 +11,7 @@ class VoiceProvider(ABC):
         pass
 
     @abstractmethod
-    def list_voices(self) -> list[str]:
+    def list_voices(self) -> list[dict]:
         pass
 
 
@@ -37,16 +37,52 @@ class OpenAIVoice(VoiceProvider):
         print(f"Audio saved: {output_path}")
         return output_path
 
-    def list_voices(self) -> list[str]:
-        return self.VOICES
+    def list_voices(self) -> list[dict]:
+        return [{"id": v, "name": v.capitalize()} for v in self.VOICES]
+
+
+class ElevenLabsVoice(VoiceProvider):
+    DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+
+    def __init__(self, voice: str = None, model: str = "eleven_v3"):
+        from elevenlabs.client import ElevenLabs
+        from keystore import get_key
+        api_key = get_key("elevenlabs")
+        if not api_key:
+            raise ValueError("ElevenLabs API key not configured")
+        self.client = ElevenLabs(api_key=api_key)
+        self.voice = voice or self.DEFAULT_VOICE_ID
+        self.model = model
+
+    def generate(self, text: str, output_path: str, **kwargs) -> str:
+        voice_id = kwargs.get("voice", self.voice)
+        audio = self.client.text_to_speech.convert(
+            text=text,
+            voice_id=voice_id,
+            model_id=self.model,
+            output_format="mp3_44100_128",
+        )
+        with open(output_path, "wb") as f:
+            for chunk in audio:
+                f.write(chunk)
+        print(f"Audio saved: {output_path}")
+        return output_path
+
+    def list_voices(self) -> list[dict]:
+        response = self.client.voices.search()
+        return [{"id": v.voice_id, "name": v.name} for v in response.voices]
 
 
 PROVIDERS = {
     "openai": OpenAIVoice,
+    "elevenlabs": ElevenLabsVoice,
 }
 
 
-def get_provider(name: str = "openai", **kwargs) -> VoiceProvider:
+def get_provider(name: str = None, **kwargs) -> VoiceProvider:
+    if name is None:
+        from keystore import get_key
+        name = "elevenlabs" if get_key("elevenlabs") else "openai"
     if name not in PROVIDERS:
         raise ValueError(f"Unknown provider: {name}. Available: {list(PROVIDERS.keys())}")
     return PROVIDERS[name](**kwargs)
