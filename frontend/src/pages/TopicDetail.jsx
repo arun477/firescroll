@@ -143,6 +143,10 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [mediaLibrary, setMediaLibrary] = useState([])
   const [uploading, setUploading] = useState(false)
   const [mediaDrawerOpen, setMediaDrawerOpen] = useState(false)
+  const uploadPollRef = useRef(null)
+
+  // Cleanup upload poll on unmount
+  useEffect(() => () => { clearInterval(uploadPollRef.current) }, [])
   const previewAudioRef = useRef(null)
   const [provider, setProvider] = useState('')
   const [voiceId, setVoiceId] = useState('')
@@ -184,15 +188,19 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     if (!selectedSegId && readySegs.length) setSelectedSegId(readySegs[0].id)
   }, [readySegs.length])
 
+  const saveTimers = useRef({})
   const setSetting = (segId, key, val) => {
     setSegSettings(p => {
       const updated = { ...p, [segId]: { ...(p[segId] || {}), [key]: val } }
-      // Persist to backend (fire-and-forget)
-      fetch(`/api/topics/${topicId}/segments/${segId}/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: updated[segId] }),
-      }).catch(() => {})
+      // Debounced persist to backend (500ms)
+      clearTimeout(saveTimers.current[segId])
+      saveTimers.current[segId] = setTimeout(() => {
+        fetch(`/api/topics/${topicId}/segments/${segId}/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: updated[segId] }),
+        }).catch(() => {})
+      }, 500)
       return updated
     })
   }
@@ -244,11 +252,18 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
         e.target.value = ''
         return
       }
-      // Poll until processed
-      const poll = setInterval(async () => {
+      // Poll until processed (max 60 attempts = 2 min)
+      let attempts = 0
+      uploadPollRef.current = setInterval(async () => {
+        attempts++
+        if (attempts > 60) {
+          clearInterval(uploadPollRef.current)
+          setUploading(false)
+          return
+        }
         const status = await fetch(`/api/media/${data.id}/status`).then(r => r.json())
         if (status.status !== 'processing') {
-          clearInterval(poll)
+          clearInterval(uploadPollRef.current)
           setUploading(false)
           const list = await fetch('/api/media').then(r => r.json())
           setMediaLibrary(list.media || [])
