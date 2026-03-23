@@ -38,23 +38,32 @@ export default function FirecrawlStatus() {
   }
 
   const { credits, concurrency } = data
-  const pct = credits.total > 0
-    ? Math.round((credits.remaining / credits.total) * 100) : 0
+  const hasCredits = credits.total > 0
+  const pct = hasCredits
+    ? Math.round((credits.remaining / credits.total) * 100) : 100
 
   return (
     <div className="fc-status-widget">
-      <Wifi size={13} style={{ color: 'var(--green)' }} />
-      <div className="fc-credit-section">
-        <div className="fc-credit-bar">
-          <div className="fc-credit-fill" style={{ width: `${pct}%` }} />
-        </div>
-        <span className="fc-credit-text">
-          {credits.remaining?.toLocaleString()} credits
-        </span>
-      </div>
-      <span className="fc-concurrency">
-        {concurrency.current}/{concurrency.max}
-      </span>
+      <img src="/firecrawl-logo.svg" alt="" width="14" height="14" />
+      {hasCredits ? (
+        <>
+          <div className="fc-credit-section">
+            <div className="fc-credit-bar">
+              <div className="fc-credit-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="fc-credit-text">
+              {credits.remaining?.toLocaleString()}
+            </span>
+          </div>
+          {concurrency.max > 0 && (
+            <span className="fc-concurrency">
+              {concurrency.current}/{concurrency.max}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="fc-credit-text">Connected</span>
+      )}
     </div>
   )
 }

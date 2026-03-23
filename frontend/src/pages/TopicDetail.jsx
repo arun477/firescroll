@@ -84,60 +84,34 @@ export default function TopicDetail() {
 
   return (
     <div className="topic-detail">
-      <div className="td-header">
-        <div className="td-header-left">
+      <div className="td-compact-header">
+        <div className="td-title-row">
           <h1 className="td-title">{topic.title}</h1>
-          <div className="td-sub">
-            {topic.series_title && <span>{topic.series_title}</span>}
-            {topic.series_title && <span className="td-dot" />}
-            <span>{topic.total_segments} segments</span>
-            {readySegs > 0 && (
-              <>
-                <span className="td-dot" />
-                <span className="td-done-count">
-                  {readySegs} researched
-                </span>
-              </>
-            )}
-            {doneJobs > 0 && (
-              <>
-                <span className="td-dot" />
-                <span style={{ color: 'var(--blue)' }}>
-                  {doneJobs} videos
-                </span>
-              </>
-            )}
-          </div>
+          <span className="td-subtitle">
+            {topic.series_title && <>{topic.series_title} · </>}
+            {topic.total_segments} seg
+            {readySegs > 0 && <> · <span className="td-done-count">{readySegs} ready</span></>}
+            {doneJobs > 0 && <> · <span style={{ color: 'var(--blue)' }}>{doneJobs} videos</span></>}
+          </span>
         </div>
-        <div className="actions">
-          <button
-            className="btn btn-secondary"
-            onClick={() => navigate(`/?topic=${topicId}`)}
-          >
-            <Eye size={15} /> Feed
+        <div className="td-header-actions">
+          <div className="td-tabs-inline">
+            <button className={`td-tab ${tab === 'research' ? 'active' : ''}`}
+              onClick={() => setTab('research')}>
+              <BookOpen size={14} /> Research
+              {readySegs > 0 && <span className="td-tab-badge">{readySegs}/{segments?.length || 0}</span>}
+            </button>
+            <button className={`td-tab ${tab === 'generate' ? 'active' : ''}`}
+              onClick={() => setTab('generate')}>
+              <Video size={14} /> Videos
+              {doneJobs > 0 && <span className="td-tab-badge">{doneJobs}</span>}
+            </button>
+          </div>
+          <button className="btn btn-secondary btn-sm"
+            onClick={() => navigate(`/?topic=${topicId}`)}>
+            <Eye size={14} /> Feed
           </button>
         </div>
-      </div>
-
-      <div className="td-tabs">
-        <button
-          className={`td-tab ${tab === 'research' ? 'active' : ''}`}
-          onClick={() => setTab('research')}
-        >
-          <BookOpen size={15} /> Research
-          {readySegs > 0 && (
-            <span className="td-tab-badge">{readySegs}/{segments?.length || 0}</span>
-          )}
-        </button>
-        <button
-          className={`td-tab ${tab === 'generate' ? 'active' : ''}`}
-          onClick={() => setTab('generate')}
-        >
-          <Video size={15} /> Generate Videos
-          {doneJobs > 0 && (
-            <span className="td-tab-badge">{doneJobs}</span>
-          )}
-        </button>
       </div>
 
       {tab === 'research' && (

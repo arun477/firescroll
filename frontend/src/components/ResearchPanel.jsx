@@ -28,101 +28,86 @@ export default function ResearchPanel({
   const busyCount = segments.filter(s => s.status === 'researching').length
   const isRunning = topic.research_status === 'generating' || busyCount > 0
   const srcCount = sourceStats?.total || 0
-  const runningTasks = (research || []).filter(
-    t => !['done', 'failed', 'pending'].includes(t.status)
-  ).length
 
   return (
-    <div className="rp">
-      <div className="rp-top-bar">
-        <div className="rp-top-left">
-          <div className="rp-stats-row">
-            <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
-              <CheckCircle2 size={12} />
-              {readyCount}/{segments.length || topic.total_segments} segments
-            </span>
-            {srcCount > 0 && (
-              <span className="rp-chip">
-                <Database size={12} />
-                {srcCount} sources
+    <div className="rp-split">
+      <div className="rp-left">
+        <div className="rp-controls">
+          <div className="rp-controls-left">
+            <div className="rp-chips">
+              <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
+                <CheckCircle2 size={12} />
+                {readyCount}/{segments.length || topic.total_segments}
               </span>
-            )}
-            {busyCount > 0 && (
-              <span className="rp-chip rp-chip-blue">
-                <Loader2 size={12} className="spin" />
-                {busyCount} researching
-              </span>
-            )}
-            {runningTasks > 0 && (
-              <span className="rp-chip rp-chip-blue">
-                <Loader2 size={12} className="spin" />
-                {runningTasks} tasks
-              </span>
-            )}
-          </div>
-          <div className="rp-bulk-actions">
+              {srcCount > 0 && (
+                <span className="rp-chip">
+                  <Database size={12} /> {srcCount}
+                </span>
+              )}
+              {busyCount > 0 && (
+                <span className="rp-chip rp-chip-blue">
+                  <Loader2 size={12} className="spin" /> {busyCount}
+                </span>
+              )}
+            </div>
+            <div className="rp-divider" />
             <button className="btn btn-secondary btn-sm"
               onClick={() => handleGenerateAll('ai')}
               disabled={isRunning || generating}>
               {generating === 'ai'
-                ? <><Loader2 size={13} className="spin" /> Running</>
-                : <><Sparkles size={13} /> AI Generate All</>}
+                ? <Loader2 size={13} className="spin" />
+                : <><Sparkles size={13} /> AI All</>}
             </button>
             <button className="btn btn-firecrawl btn-sm"
               onClick={() => handleGenerateAll('firecrawl')}
               disabled={isRunning || generating}>
               {generating === 'firecrawl'
-                ? <><Loader2 size={13} className="spin" /> Researching</>
-                : <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Web Research All</>}
+                ? <Loader2 size={13} className="spin" />
+                : <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Web All</>}
             </button>
           </div>
+          <FirecrawlStatus />
         </div>
-        <FirecrawlStatus />
+
+        <FirecrawlToolbar
+          topicId={topicId}
+          segments={segments}
+          onRefresh={onRefresh}
+        />
+
+        <div className="rp-seg-list">
+          {segments.length > 0 ? (
+            segments.map(seg => (
+              <SegmentDetailCard
+                key={seg.id}
+                seg={seg}
+                topicId={topicId}
+                onRefresh={onRefresh}
+              />
+            ))
+          ) : (
+            <div className="rp-empty-msg">
+              <p>Click AI All or Web All to start.</p>
+            </div>
+          )}
+        </div>
+
+        <FirecrawlBadge variant="footer" />
       </div>
 
-      <div className="rp-layout">
-        <div className="rp-main">
-          <FirecrawlToolbar
-            topicId={topicId}
-            segments={segments}
-            onRefresh={onRefresh}
-          />
-
-          <div className="rp-seg-list">
-            {segments.length > 0 ? (
-              segments.map(seg => (
-                <SegmentDetailCard
-                  key={seg.id}
-                  seg={seg}
-                  topicId={topicId}
-                  onRefresh={onRefresh}
-                />
-              ))
-            ) : (
-              <div className="rp-empty">
-                <h3>No segments yet</h3>
-                <p>Click AI Generate All or Web Research All to start.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rp-sidebar">
-          <SourcesPanel
-            sources={sources || []}
-            stats={sourceStats}
-            topicId={topicId}
-            onRefresh={onRefresh}
-          />
-          <ResearchTaskManager
-            tasks={research || []}
-            topicId={topicId}
-            onRefresh={onRefresh}
-          />
-        </div>
+      <div className="rp-right">
+        <SourcesPanel
+          sources={sources || []}
+          stats={sourceStats}
+          topicId={topicId}
+          onRefresh={onRefresh}
+        />
+        <ResearchTaskManager
+          tasks={research || []}
+          topicId={topicId}
+          onRefresh={onRefresh}
+        />
       </div>
-
-      <FirecrawlBadge variant="footer" />
     </div>
   )
 }

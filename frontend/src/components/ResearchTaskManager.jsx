@@ -71,18 +71,17 @@ export default function ResearchTaskManager({ tasks, topicId, onRefresh }) {
                     {isActive && <Loader2 size={10} className="spin" />}
                     {task.status === 'pending' && <Clock size={10} />}
                   </span>
-                  <span className="task-type">{task.task_type.replace(/_/g, ' ')}</span>
                   <span className="task-query">{task.query}</span>
-                  {isFailed && (
-                    <button className="task-action" title="Retry">
-                      <RefreshCw size={11} />
-                    </button>
-                  )}
-                  {(isDone || isFailed) && (
-                    <button className="task-action" onClick={() => handleDelete(task.id)} title="Delete">
-                      <Trash2 size={11} />
-                    </button>
-                  )}
+                  <span className="task-actions-cell">
+                    {isFailed && (
+                      <button className="task-action" title="Retry"><RefreshCw size={10} /></button>
+                    )}
+                    {(isDone || isFailed) && (
+                      <button className="task-action" onClick={() => handleDelete(task.id)} title="Delete">
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </span>
                   <span className="task-time">
                     {new Date(task.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
