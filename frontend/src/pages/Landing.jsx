@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, useMemo, memo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { ArrowRight } from 'lucide-react'
 
 // 70 unique GIFs across 9 categories — mixed for TikTok FYP randomness
@@ -131,131 +131,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="ln-feat">
-        <h2 className="ln-h2">Everything under one roof</h2>
-
-        {/* Row 1: Two big cards */}
-        <div className="ln-feat-row ln-feat-row-2">
-          <div className="ln-card ln-card-voices">
-            <div className="ln-card-text">
-              <h3>ElevenLabs Voices</h3>
-              <p>50+ ultra-realistic AI voices with 5 style presets. Fine-tune stability, clarity, style, and speed per segment.</p>
-            </div>
-            <div className="ln-card-viz">
-              <div className="ln-viz-voices">
-                {['Bella', 'Roger', 'Sarah', 'Laura', 'Charlie', 'George', 'Callum'].map((n, i) => (
-                  <div key={n} className={`ln-viz-voice ${i === 3 ? 'ln-viz-voice-on' : ''}`}>
-                    <div className="ln-viz-voice-wave">
-                      {[...Array(8)].map((_,j) => <div key={j} style={{height: `${20+Math.random()*60}%`, animationDelay: `${j*0.1+i*0.05}s`}} />)}
-                    </div>
-                    <span>{n}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="ln-viz-presets">
-                {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
-                  <span key={p} className={`ln-viz-preset ${i === 1 ? 'ln-viz-preset-on' : ''}`}>{p}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="ln-card ln-card-music">
-            <div className="ln-card-text">
-              <h3>AI Music & SFX</h3>
-              <p>Generate custom instrumentals with ElevenLabs or pick from 20+ built-in ambient tracks. AI sound effects for intros.</p>
-            </div>
-            <div className="ln-card-viz">
-              <div className="ln-viz-eq-big">
-                {[...Array(40)].map((_,i) => <div key={i} className="ln-viz-eq-bar" style={{animationDelay: `${i*0.06}s`}} />)}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Full-width studio */}
-        <div className="ln-feat-row ln-feat-row-1">
-          <div className="ln-card ln-card-studio-full">
-            <div className="ln-studio-top">
-              <div>
-                <h3>Video Studio</h3>
-                <p>Pick voice, visuals, music, and captions for every segment. Preview in real-time. Generate with one click.</p>
-              </div>
-              <div className="ln-studio-modes">
-                <span className="ln-studio-mode ln-studio-mode-on">AI Backgrounds</span>
-                <span className="ln-studio-mode">Video BG</span>
-                <span className="ln-studio-mode">Split Screen</span>
-                <span className="ln-studio-mode">Karaoke</span>
-              </div>
-            </div>
-            <div className="ln-studio-mock">
-              <div className="ln-sm-left">
-                {['The Blueprint of Life', 'DNA Structure', 'Gene Expression', 'Protein Synthesis', 'Mutations'].map((t, i) => (
-                  <div key={i} className={`ln-sm-seg ${i===0 ? 'ln-sm-seg-on' : ''}`}>
-                    <div className="ln-sm-n">{i+1}</div>
-                    <div className="ln-sm-t">{t}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="ln-sm-center">
-                <div className="ln-sm-phone">
-                  <img className="ln-sm-phone-gif" src={gifUrl(ALL_GIFS[24])} alt="" loading="lazy" />
-                  <div className="ln-sm-phone-overlay">
-                    <div className="ln-sm-phone-title">DNA: The Blueprint</div>
-                    <div className="ln-sm-phone-sub">Part 1 of 5</div>
-                  </div>
-                </div>
-              </div>
-              <div className="ln-sm-right">
-                <div className="ln-sm-section">Voice</div>
-                <div className="ln-sm-row"><span className="ln-sm-chip ln-sm-chip-on">ElevenLabs</span><span className="ln-sm-chip">OpenAI</span></div>
-                <div className="ln-sm-section">Style</div>
-                <div className="ln-sm-row"><span className="ln-sm-chip">Natural</span><span className="ln-sm-chip ln-sm-chip-on">Dramatic</span><span className="ln-sm-chip">Calm</span></div>
-                <div className="ln-sm-section">Music</div>
-                <div className="ln-sm-row"><span className="ln-sm-chip ln-sm-chip-on">AI Generate</span><span className="ln-sm-chip">Library</span></div>
-                <div className="ln-sm-btn" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3: Two cards */}
-        <div className="ln-feat-row ln-feat-row-2">
-          <div className="ln-card">
-            <h3>Deep Research</h3>
-            <p>Firecrawl web scraping + AI synthesis. Accurate, sourced scripts generated automatically from the web.</p>
-            <div className="ln-card-viz">
-              <div className="ln-viz-research">
-                {['Scraping arxiv.org...', 'Found 12 sources', 'Synthesizing scripts...', 'Generated 6 segments'].map((t, i) => (
-                  <div key={i} className="ln-viz-step" style={{animationDelay: `${i*0.5}s`}}>
-                    <div className={`ln-viz-step-dot ${i===3 ? 'ln-viz-step-done' : ''}`} />
-                    <span>{t}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="ln-card">
-            <h3>Media Library</h3>
-            <p>Upload your own background videos. Audio stripped automatically. Canva-style shared library across all projects.</p>
-            <div className="ln-card-viz">
-              <div className="ln-viz-upload">
-                <div className="ln-viz-upload-zone">Drop video or click to upload</div>
-                <div className="ln-viz-upload-files">
-                  {['sunset_timelapse.mp4', 'ocean_waves.mp4', 'city_night.mp4'].map(f => (
-                    <div key={f} className="ln-viz-upload-file">
-                      <div className="ln-viz-upload-thumb" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Features — scroll reveal */}
+      <FeaturesSection navigate={navigate} />
 
       {/* How it works */}
       <section className="ln-flow">
@@ -281,6 +158,266 @@ export default function Landing() {
         </button>
         <p className="ln-fine">Bring your own API keys. Free and open source.</p>
       </section>
+    </div>
+  )
+}
+
+// Features data
+const FEATURES = [
+  {
+    num: '01',
+    title: '50+ Ultra-Realistic Voices',
+    desc: 'Powered by ElevenLabs. Five style presets — natural, dramatic, energetic, calm, storyteller. Fine-tune stability, clarity, and speed per segment.',
+    key: 'voices',
+  },
+  {
+    num: '02',
+    title: 'Complete Video Studio',
+    desc: 'Configure voice, visuals, music, and captions for every segment. Four visual modes. Real-time preview. One-click generation.',
+    key: 'studio',
+  },
+  {
+    num: '03',
+    title: 'AI Music & Sound Effects',
+    desc: 'Generate custom instrumentals with ElevenLabs or choose from 20+ built-in ambient tracks. AI sound effects for cinematic intros.',
+    key: 'music',
+  },
+  {
+    num: '04',
+    title: 'Deep Research',
+    desc: 'Firecrawl web scraping + AI synthesis. Accurate, sourced scripts generated automatically from the web.',
+    key: 'research',
+  },
+  {
+    num: '05',
+    title: 'Media Library',
+    desc: 'Upload your own background videos. Audio stripped automatically. Shared library across all your projects.',
+    key: 'media',
+  },
+]
+
+function FeaturesSection() {
+  const [active, setActive] = useState(0)
+  const containerRef = useRef(null)
+  const stepRefs = useRef([])
+
+  useEffect(() => {
+    const onScroll = () => {
+      const trigger = window.innerHeight * 0.55
+      let best = 0
+      for (let i = stepRefs.current.length - 1; i >= 0; i--) {
+        const el = stepRefs.current[i]
+        if (!el) continue
+        if (el.getBoundingClientRect().top <= trigger) { best = i; break }
+      }
+      setActive(prev => prev === best ? prev : best)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return (
+    <section className="ln-fs" ref={containerRef}>
+      {/* Left: scrolling text steps */}
+      <div className="ln-fs-text">
+        <div className="ln-fs-intro">
+          <span className="ln-fs-label">The Platform</span>
+          <h2 className="ln-fs-title">Everything you need.<br /><span className="ln-fire">Nothing you don't.</span></h2>
+        </div>
+        {FEATURES.map((f, i) => (
+          <div
+            key={f.key}
+            ref={el => stepRefs.current[i] = el}
+            className={`ln-fs-step ${active === i ? 'ln-fs-step-active' : ''}`}
+          >
+            <span className="ln-fs-num">{f.num}</span>
+            <h3 className="ln-fs-h3">{f.title}</h3>
+            <p className="ln-fs-desc">{f.desc}</p>
+          </div>
+        ))}
+        {/* Spacer so last item can reach center */}
+        <div className="ln-fs-spacer" />
+      </div>
+
+      {/* Right: sticky visual that swaps */}
+      <div className="ln-fs-sticky">
+        <div className="ln-fs-visuals">
+          {/* Voices */}
+          <div className={`ln-fs-viz ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-voices-grid">
+              {['Aria', 'Roger', 'Sarah', 'Laura', 'Charlie', 'George', 'Lily', 'Chris'].map((name, i) => (
+                <div key={name} className={`ln-ft-voice ${i === 3 ? 'ln-ft-voice-active' : ''}`}>
+                  <div className="ln-ft-voice-bars">
+                    {[...Array(12)].map((_, j) => (
+                      <div key={j} className="ln-ft-voice-bar" style={{ height: `${15 + Math.random() * 70}%`, animationDelay: `${j * 0.08 + i * 0.04}s` }} />
+                    ))}
+                  </div>
+                  <span className="ln-ft-voice-name">{name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="ln-ft-presets">
+              {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
+                <span key={p} className={`ln-ft-preset ${i === 1 ? 'ln-ft-preset-active' : ''}`}>{p}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Studio — hero phone with grouped floating controls */}
+          <div className={`ln-fs-viz ln-fs-viz-studio ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-hero-phone">
+              <StudioPreviewPhone />
+            </div>
+
+            {/* Voice group — top right */}
+            <div className="ln-grp ln-grp-voice">
+              <div className="ln-grp-label">Voice</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-on">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                  ElevenLabs
+                </div>
+              </div>
+              <div className="ln-grp-label">Style</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Natural</div>
+                <div className="ln-pill ln-pill-sel">Dramatic</div>
+                <div className="ln-pill">Calm</div>
+                <div className="ln-pill">Energetic</div>
+              </div>
+            </div>
+
+            {/* Visual mode — right center */}
+            <div className="ln-grp ln-grp-mode">
+              <div className="ln-grp-label">Visual</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-sel">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                  AI Backgrounds
+                </div>
+                <div className="ln-pill">Split Screen</div>
+              </div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Video BG</div>
+                <div className="ln-pill">Karaoke</div>
+              </div>
+            </div>
+
+            {/* Audio — bottom right */}
+            <div className="ln-grp ln-grp-audio">
+              <div className="ln-grp-label">Audio</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-on">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  AI Music
+                </div>
+                <div className="ln-pill">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Captions
+                </div>
+              </div>
+            </div>
+
+            {/* Generate button — bottom */}
+            <div className="ln-gen-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Generate
+            </div>
+          </div>
+
+          {/* Music */}
+          <div className={`ln-fs-viz ${active === 2 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-eq">
+              {[...Array(48)].map((_, i) => (
+                <div key={i} className="ln-ft-eq-bar" style={{ animationDelay: `${i * 0.05}s` }} />
+              ))}
+            </div>
+            <div className="ln-ft-eq-meta">
+              <span className="ln-ft-eq-tag">AI Generated</span>
+              <span className="ln-ft-eq-dur">0:45</span>
+            </div>
+          </div>
+
+          {/* Research */}
+          <div className={`ln-fs-viz ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-research">
+              {[
+                { text: 'Scraping arxiv.org...', done: false },
+                { text: 'Found 12 sources', done: false },
+                { text: 'Synthesizing scripts...', done: false },
+                { text: 'Generated 6 segments', done: true },
+              ].map((s, i) => (
+                <div key={i} className="ln-ft-step" style={{ animationDelay: `${i * 0.6}s` }}>
+                  <div className={`ln-ft-step-dot ${s.done ? 'ln-ft-step-done' : ''}`} />
+                  <span>{s.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Media Library */}
+          <div className={`ln-fs-viz ${active === 4 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-media">
+              <div className="ln-ft-media-drop">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16"/></svg>
+                <span>Drop video or click to upload</span>
+              </div>
+              {['sunset_timelapse.mp4', 'ocean_waves.mp4', 'city_night.mp4'].map(f => (
+                <div key={f} className="ln-ft-media-file">
+                  <div className="ln-ft-media-thumb" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Studio preview phone — loads real video from feed, falls back to GIF
+function StudioPreviewPhone() {
+  const [video, setVideo] = useState(null)
+  const [muted, setMuted] = useState(true)
+  const videoRef = useRef(null)
+
+  useState(() => {
+    fetch('/api/feed').then(r => r.json()).then(items => {
+      if (items.length > 0) setVideo(items[0])
+    }).catch(() => {})
+  })
+
+  const toggleAudio = () => {
+    setMuted(prev => {
+      const next = !prev
+      if (videoRef.current) videoRef.current.muted = next
+      return next
+    })
+  }
+
+  return (
+    <div className="ln-sm-phone">
+      {video?.video_url ? (
+        <video ref={videoRef} className="ln-sm-phone-gif" src={video.video_url}
+          autoPlay muted loop playsInline preload="metadata" />
+      ) : (
+        <img className="ln-sm-phone-gif" src={gifUrl(ALL_GIFS[24])} alt="" loading="lazy" />
+      )}
+      <div className="ln-sm-phone-overlay">
+        <div className="ln-sm-phone-title">{video?.topic || 'DNA: The Blueprint'}</div>
+        <div className="ln-sm-phone-sub">{video ? `Part ${video.segment_id}` : 'Part 1 of 5'}</div>
+      </div>
+      {video?.video_url && (
+        <button className={`ln-mic-btn ${!muted ? 'ln-mic-on' : ''}`} onClick={toggleAudio}>
+          {muted ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          )}
+        </button>
+      )}
     </div>
   )
 }
