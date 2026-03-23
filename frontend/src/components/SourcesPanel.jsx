@@ -21,7 +21,7 @@ const TYPE_COLORS = {
 }
 
 export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
 
   const filtered = filter === 'all'

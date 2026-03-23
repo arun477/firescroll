@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Sparkles, Loader2, CheckCircle2,
+  Sparkles, Loader2, CheckCircle2, Database,
 } from 'lucide-react'
 import FirecrawlBadge from './FirecrawlBadge'
 import FirecrawlStatus from './FirecrawlStatus'
@@ -27,89 +27,100 @@ export default function ResearchPanel({
   const readyCount = segments.filter(s => s.status === 'ready').length
   const busyCount = segments.filter(s => s.status === 'researching').length
   const isRunning = topic.research_status === 'generating' || busyCount > 0
+  const srcCount = sourceStats?.total || 0
+  const runningTasks = (research || []).filter(
+    t => !['done', 'failed', 'pending'].includes(t.status)
+  ).length
 
   return (
-    <div className="research-panel">
-      <div className="rp-header">
-        <div className="rp-header-left">
-          <h2>Research</h2>
-          <div className="rp-stats">
-            <span className={`rp-stat ${readyCount > 0 ? 'rp-stat-good' : ''}`}>
-              <CheckCircle2 size={13} />
+    <div className="rp">
+      <div className="rp-top-bar">
+        <div className="rp-top-left">
+          <div className="rp-stats-row">
+            <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
+              <CheckCircle2 size={12} />
               {readyCount}/{segments.length || topic.total_segments} segments
             </span>
-            {(sourceStats?.total || 0) > 0 && (
-              <span className="rp-stat">
-                <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />
-                {sourceStats.total} sources
+            {srcCount > 0 && (
+              <span className="rp-chip">
+                <Database size={12} />
+                {srcCount} sources
               </span>
             )}
             {busyCount > 0 && (
-              <span className="rp-stat rp-stat-active">
-                <Loader2 size={13} className="spin" />
-                {busyCount} active
+              <span className="rp-chip rp-chip-blue">
+                <Loader2 size={12} className="spin" />
+                {busyCount} researching
+              </span>
+            )}
+            {runningTasks > 0 && (
+              <span className="rp-chip rp-chip-blue">
+                <Loader2 size={12} className="spin" />
+                {runningTasks} tasks
               </span>
             )}
           </div>
+          <div className="rp-bulk-actions">
+            <button className="btn btn-secondary btn-sm"
+              onClick={() => handleGenerateAll('ai')}
+              disabled={isRunning || generating}>
+              {generating === 'ai'
+                ? <><Loader2 size={13} className="spin" /> Running</>
+                : <><Sparkles size={13} /> AI Generate All</>}
+            </button>
+            <button className="btn btn-firecrawl btn-sm"
+              onClick={() => handleGenerateAll('firecrawl')}
+              disabled={isRunning || generating}>
+              {generating === 'firecrawl'
+                ? <><Loader2 size={13} className="spin" /> Researching</>
+                : <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Web Research All</>}
+            </button>
+          </div>
         </div>
-        <div className="rp-header-right">
-          <FirecrawlStatus />
-        </div>
+        <FirecrawlStatus />
       </div>
 
-      <div className="rp-actions">
-        <button className="btn btn-secondary"
-          onClick={() => handleGenerateAll('ai')}
-          disabled={isRunning || generating}>
-          {generating === 'ai'
-            ? <><Loader2 size={14} className="spin" /> Running...</>
-            : <><Sparkles size={14} /> AI Generate All</>}
-        </button>
-        <button className="btn btn-firecrawl"
-          onClick={() => handleGenerateAll('firecrawl')}
-          disabled={isRunning || generating}>
-          {generating === 'firecrawl'
-            ? <><Loader2 size={14} className="spin" /> Researching...</>
-            : <><img src="/firecrawl-logo.svg" alt="" width="14" height="14" /> Web Research All</>}
-        </button>
+      <div className="rp-layout">
+        <div className="rp-main">
+          <FirecrawlToolbar
+            topicId={topicId}
+            segments={segments}
+            onRefresh={onRefresh}
+          />
+
+          <div className="rp-seg-list">
+            {segments.length > 0 ? (
+              segments.map(seg => (
+                <SegmentDetailCard
+                  key={seg.id}
+                  seg={seg}
+                  topicId={topicId}
+                  onRefresh={onRefresh}
+                />
+              ))
+            ) : (
+              <div className="rp-empty">
+                <h3>No segments yet</h3>
+                <p>Click AI Generate All or Web Research All to start.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rp-sidebar">
+          <SourcesPanel
+            sources={sources || []}
+            stats={sourceStats}
+            topicId={topicId}
+            onRefresh={onRefresh}
+          />
+          <ResearchTaskManager
+            tasks={research || []}
+            topicId={topicId}
+            onRefresh={onRefresh}
+          />
+        </div>
       </div>
-
-      <FirecrawlToolbar
-        topicId={topicId}
-        segments={segments}
-        onRefresh={onRefresh}
-      />
-
-      {segments.length > 0 ? (
-        <div className="research-grid">
-          {segments.map(seg => (
-            <SegmentDetailCard
-              key={seg.id}
-              seg={seg}
-              topicId={topicId}
-              onRefresh={onRefresh}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rp-empty">
-          <h3>No segments yet</h3>
-          <p>Use the buttons above to start researching.</p>
-        </div>
-      )}
-
-      <SourcesPanel
-        sources={sources || []}
-        stats={sourceStats}
-        topicId={topicId}
-        onRefresh={onRefresh}
-      />
-
-      <ResearchTaskManager
-        tasks={research || []}
-        topicId={topicId}
-        onRefresh={onRefresh}
-      />
 
       <FirecrawlBadge variant="footer" />
     </div>

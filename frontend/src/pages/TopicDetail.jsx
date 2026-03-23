@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Play, Shuffle, Eye, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
@@ -22,19 +22,22 @@ function getStatusInfo(status) {
 export default function TopicDetail() {
   const { topicId } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState(null)
   const [generating, setGenerating] = useState(false)
-  const [tab, setTab] = useState('research')
+
+  const tab = searchParams.get('tab') || 'research'
+  const setTab = (t) => setSearchParams({ tab: t })
 
   const load = () => {
     fetch(`/api/topics/${topicId}`)
       .then(r => r.json())
       .then(d => {
         setData(d)
-        const segs = d.segments || []
-        const readySegs = segs.filter(s => s.status === 'ready')
-        if (readySegs.length > 0 && tab === 'research') {
-          setTab(readySegs.length === segs.length ? 'generate' : 'research')
+        if (!searchParams.get('tab')) {
+          const segs = d.segments || []
+          const allReady = segs.length > 0 && segs.every(s => s.status === 'ready')
+          if (allReady) setSearchParams({ tab: 'generate' })
         }
       })
   }
@@ -75,7 +78,7 @@ export default function TopicDetail() {
 
   if (!data) return <div className="empty-state">Loading...</div>
 
-  const { topic, jobs, segments, research } = data
+  const { topic, jobs, segments, research, sources, source_stats } = data
   const doneJobs = jobs?.filter(j => j.status === 'done').length || 0
   const readySegs = segments?.filter(s => s.status === 'ready').length || 0
 
@@ -143,6 +146,8 @@ export default function TopicDetail() {
           topic={topic}
           segments={segments || []}
           research={research || []}
+          sources={sources || []}
+          sourceStats={source_stats || {}}
           onRefresh={load}
         />
       )}

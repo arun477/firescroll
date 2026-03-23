@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 export default function ResearchTaskManager({ tasks, topicId, onRefresh }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
 
   const filtered = filter === 'all'
