@@ -3,7 +3,9 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "firescroll.db")
+_db_dir = os.path.join(os.path.dirname(__file__), "dbdata")
+os.makedirs(_db_dir, exist_ok=True)
+DB_PATH = os.path.join(_db_dir, "firescroll.db")
 
 STATUS_PENDING = "pending"
 STATUS_AUDIO = "audio"
