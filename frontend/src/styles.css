@@ -2273,8 +2273,6 @@ a { color: var(--blue); text-decoration: none; }
   height: calc(100vh - 120px);
 }
 
-.ve-left-hidden { display: none; }
-
 .ve-left-head {
   display: flex;
   align-items: center;
@@ -2298,34 +2296,6 @@ a { color: var(--blue); text-decoration: none; }
   padding: 3px 8px;
   font-size: 10px;
   border-radius: 6px;
-}
-
-.ve-collapse-btn, .ve-expand-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  transition: all 0.1s;
-}
-.ve-collapse-btn:hover, .ve-expand-btn:hover {
-  color: var(--text);
-  background: rgba(255,255,255,0.06);
-}
-
-.ve-expand-btn {
-  position: sticky;
-  top: 0;
-  height: calc(100vh - 120px);
-  display: flex;
-  align-items: flex-start;
-  padding-top: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  justify-content: center;
 }
 
 .ve-seg-list {

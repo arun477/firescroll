@@ -4,8 +4,7 @@ import {
   Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
   BookOpen, Video, Music, Volume2, ChevronDown, Loader2,
-  Eye, Sparkles, X, Square, Search, Palette, ChevronRight,
-  ChevronLeft, Zap, PanelLeftClose, PanelLeftOpen,
+  Eye, Sparkles, X, Square, Search, Palette, ChevronRight, Zap,
 } from 'lucide-react'
 import ResearchPanel from '../components/ResearchPanel'
 
@@ -258,13 +257,6 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
           </div>
         )}
       </div>
-
-      {/* Collapsed left toggle */}
-      {!leftOpen && (
-        <button className="ve-expand-btn" onClick={() => setLeftOpen(true)} title="Expand segments">
-          <PanelLeftOpen size={16} />
-        </button>
-      )}
 
       {/* ══════ CENTER: Preview ══════ */}
       <div className="ve-center">
