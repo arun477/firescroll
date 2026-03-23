@@ -44,7 +44,9 @@ def _is_segment_busy(seg):
 def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
     from db import get_conn
     sources = get_research_sources(topic_id)
+    print(f"[FC] Synthesize: {len(sources)} sources available")
     if not sources:
+        print("[FC] No sources to synthesize from")
         return
     segments = get_segments_for_topic(topic_id)
     seg = next((s for s in segments if s["id"] == segment_id), None)
@@ -207,18 +209,22 @@ def generate_all_ai(topic_id, topic_title, num_segments=6):
 
 
 def research_all_firecrawl(topic_id, topic_title, num_segments=6):
+    print(f"[FC] Starting research_all for: {topic_title}")
     update_topic(topic_id, research_status="generating")
     generate_series_outline(topic_id, topic_title, num_segments)
     segments = get_segments_for_topic(topic_id)
+    print(f"[FC] Got {len(segments)} segments")
     for seg in segments:
         if _is_segment_busy(seg):
+            print(f"[FC] Skipping busy: {seg['title']}")
             continue
         try:
             research_with_firecrawl(topic_id, seg["id"], topic_title,
                                      seg["title"])
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            print(f"[FC] Segment failed: {seg['title']}: {exc}")
     _check_all_done(topic_id)
+    print(f"[FC] All done for: {topic_title}")
 
 
 def _check_all_done(topic_id):
