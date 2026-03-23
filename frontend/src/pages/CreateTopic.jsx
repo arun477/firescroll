@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 export default function CreateTopic() {
   const navigate = useNavigate()
@@ -61,11 +61,7 @@ export default function CreateTopic() {
             disabled={loading || !topic.trim()}
             style={{ width: '100%' }}
           >
-            {loading ? (
-              <><Loader2 size={16} className="spin" /> Generating with AI...</>
-            ) : (
-              <><Sparkles size={16} /> Create Topic</>
-            )}
+            <Sparkles size={16} /> Create Topic
           </button>
         </form>
       </div>

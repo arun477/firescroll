@@ -41,8 +41,9 @@ def init_db(db_path=DB_PATH):
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             series_title TEXT,
-            json_path TEXT NOT NULL,
+            json_path TEXT DEFAULT '',
             total_segments INTEGER DEFAULT 0,
+            research_status TEXT DEFAULT 'pending',
             created_at TEXT NOT NULL
         );
 
@@ -66,6 +67,40 @@ def init_db(db_path=DB_PATH):
 
         CREATE INDEX IF NOT EXISTS idx_jobs_topic ON jobs(topic_id);
         CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+
+        CREATE TABLE IF NOT EXISTS segments (
+            id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            segment_num INTEGER NOT NULL,
+            title TEXT,
+            hook TEXT,
+            script TEXT,
+            visual_cue TEXT,
+            source TEXT DEFAULT 'ai',
+            source_urls TEXT,
+            raw_research TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_segments_topic ON segments(topic_id);
+
+        CREATE TABLE IF NOT EXISTS research_tasks (
+            id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            task_type TEXT NOT NULL,
+            query TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            result TEXT,
+            error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_research_topic ON research_tasks(topic_id);
 
         CREATE TABLE IF NOT EXISTS api_keys (
             key_name TEXT PRIMARY KEY,
@@ -190,6 +225,85 @@ def get_completed_videos(topic_id=None):
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def create_segment(topic_id, segment_num, *, title="", hook="", script="",
+                    visual_cue="", source="ai"):
+    conn = get_conn()
+    seg_id = uuid.uuid4().hex[:12]
+    now = _now()
+    conn.execute(
+        "INSERT INTO segments (id, topic_id, segment_num, title, hook, script, "
+        "visual_cue, source, status, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)",
+        (seg_id, topic_id, segment_num, title, hook, script, visual_cue, source, now, now),
+    )
+    conn.commit()
+    conn.close()
+    return seg_id
+
+
+def update_segment(seg_id, **kwargs):
+    conn = get_conn()
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [seg_id]
+    conn.execute(f"UPDATE segments SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_segments_for_topic(topic_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM segments WHERE topic_id = ? ORDER BY segment_num",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_research_task(topic_id, task_type, query=""):
+    conn = get_conn()
+    task_id = uuid.uuid4().hex[:12]
+    now = _now()
+    conn.execute(
+        "INSERT INTO research_tasks (id, topic_id, task_type, query, status, "
+        "created_at, updated_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+        (task_id, topic_id, task_type, query, now, now),
+    )
+    conn.commit()
+    conn.close()
+    return task_id
+
+
+def update_research_task(task_id, **kwargs):
+    conn = get_conn()
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [task_id]
+    conn.execute(f"UPDATE research_tasks SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_research_tasks(topic_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM research_tasks WHERE topic_id = ? ORDER BY created_at",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def update_topic(topic_id, **kwargs):
+    conn = get_conn()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [topic_id]
+    conn.execute(f"UPDATE topics SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
 
 
 API_KEY_NAMES = ["openai", "firecrawl", "elevenlabs"]

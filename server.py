@@ -9,14 +9,18 @@ from pydantic import BaseModel
 
 from db import (
     API_KEY_NAMES,
+    create_topic,
     delete_api_key,
     get_all_api_keys,
     get_all_topics,
     get_completed_videos,
     get_job,
     get_jobs_for_topic,
+    get_research_tasks,
+    get_segments_for_topic,
     get_topic,
     set_api_key,
+    update_topic,
 )
 
 app = FastAPI(title="FireScroll")
@@ -62,32 +66,83 @@ def topic_detail(topic_id: str):
     for job in jobs:
         if job.get("video_path") and os.path.exists(job["video_path"]):
             job["video_url"] = f"/static/{os.path.relpath(job['video_path'], OUTPUT_DIR)}"
-    return {"topic": topic, "jobs": jobs}
+    segments = get_segments_for_topic(topic_id)
+    research = get_research_tasks(topic_id)
+    return {"topic": topic, "jobs": jobs, "segments": segments, "research": research}
 
 
 @app.post("/api/topics/create")
 def create_topic_endpoint(req: CreateTopicRequest):
-    from db import create_topic, find_topic_by_json
-
-    slug = req.topic.lower().replace(" ", "_")
-    json_path = os.path.abspath(f"data/topics/{slug}.json")
-
-    existing = find_topic_by_json(json_path)
-    if existing:
-        return {"topic_id": existing["id"], "json_path": json_path}
-
-    from topic_generator import generate_topic_json
-    json_path = generate_topic_json(req.topic, req.segments)
-
-    from batch_generate import load_topic
-    data = load_topic(json_path)
     topic_id = create_topic(
-        title=data["topic"],
-        series_title=data["series_title"],
-        json_path=os.path.abspath(json_path),
-        total_segments=len(data["segments"]),
+        title=req.topic,
+        series_title="",
+        json_path="",
+        total_segments=req.segments,
     )
-    return {"topic_id": topic_id, "json_path": json_path}
+    update_topic(topic_id, research_status="pending")
+    return {"topic_id": topic_id}
+
+
+class ResearchRequest(BaseModel):
+    method: str = "ai"
+    num_segments: int = 6
+
+
+@app.post("/api/topics/{topic_id}/research")
+def start_research(topic_id: str, req: ResearchRequest):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "not found"}
+
+    def run():
+        from research import generate_all_ai, research_all_firecrawl
+        if req.method == "firecrawl":
+            research_all_firecrawl(topic_id, topic["title"], req.num_segments)
+        else:
+            generate_all_ai(topic_id, topic["title"], req.num_segments)
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started", "method": req.method}
+
+
+class SegmentResearchRequest(BaseModel):
+    segment_id: str
+    method: str = "ai"
+
+
+@app.post("/api/topics/{topic_id}/research/segment")
+def research_single_segment(topic_id: str, req: SegmentResearchRequest):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "not found"}
+
+    def run():
+        from db import get_segments_for_topic as get_segs  # pylint: disable=reimported
+        from research import (
+            generate_segment_content,
+            generate_segment_from_research,
+            research_with_firecrawl,
+        )
+        segs = get_segs(topic_id)
+        seg = next((s for s in segs if s["id"] == req.segment_id), None)
+        if not seg:
+            return
+
+        if req.method == "firecrawl":
+            research = research_with_firecrawl(topic_id, topic["title"], seg["title"])
+            source_urls = [s["url"] for s in research["sources"]]
+            generate_segment_from_research(
+                topic_id, req.segment_id, topic["title"],
+                seg["title"], research_content=research["content"],
+                source_urls=source_urls,
+            )
+        else:
+            generate_segment_content(
+                topic_id, req.segment_id, topic["title"], seg["title"],
+            )
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
 
 
 @app.post("/api/topics/{topic_id}/generate")
