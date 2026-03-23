@@ -3997,7 +3997,7 @@ a { color: var(--blue); text-decoration: none; }
 
 .ln-ft-hero-phone {
   position: absolute;
-  left: 50%;
+  left: 34%;
   top: 50%;
   transform: translate(-50%, -54%);
   z-index: 4;
@@ -4050,6 +4050,45 @@ a { color: var(--blue); text-decoration: none; }
   font-size: 12px;
   color: rgba(255,255,255,0.5);
   margin-top: 3px;
+}
+
+/* Mic toggle button — pops out of phone top-right */
+.ln-mic-btn {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: rgba(20,20,24,0.9);
+  backdrop-filter: blur(12px);
+  color: #71717a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.ln-mic-btn:hover {
+  background: rgba(30,30,36,0.95);
+  border-color: rgba(255,255,255,0.2);
+  transform: scale(1.08);
+}
+
+.ln-mic-btn.ln-mic-on {
+  background: rgba(34,197,94,0.15);
+  border-color: rgba(34,197,94,0.4);
+  color: #22c55e;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 20px rgba(34,197,94,0.15);
+}
+
+.ln-mic-btn.ln-mic-on:hover {
+  background: rgba(34,197,94,0.2);
+  border-color: rgba(34,197,94,0.5);
 }
 
 /* Grouped controls around phone */
@@ -4131,27 +4170,62 @@ a { color: var(--blue); text-decoration: none; }
   right: 2%;
 }
 
-/* Generate button */
-.ln-gen-btn {
+/* Generate flow — line from config → button → video */
+.ln-gen-flow {
   position: absolute;
-  z-index: 2;
-  bottom: 3%;
-  left: 50%;
-  transform: translateX(-50%);
+  z-index: 3;
+  top: 50%;
+  right: 210px;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 0;
+}
+
+/* Incoming line from config */
+.ln-gen-line-in {
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(59,130,246,0.4), rgba(59,130,246,0.6));
+}
+
+/* Generate button */
+.ln-gen-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
   font-weight: 700;
   color: #fafafa;
-  background: linear-gradient(135deg, rgba(59,130,246,0.4), rgba(139,92,246,0.4));
+  background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(139,92,246,0.35));
   border: 1px solid rgba(59,130,246,0.3);
   border-radius: 12px;
-  padding: 10px 24px;
-  box-shadow: 0 4px 20px rgba(59,130,246,0.2);
+  padding: 10px 20px;
+  box-shadow: 0 4px 24px rgba(59,130,246,0.2), 0 0 40px rgba(139,92,246,0.08);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .ln-gen-btn svg { color: #fafafa; }
+
+/* Outgoing line to video with arrow */
+.ln-gen-line-out {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(139,92,246,0.6), rgba(34,197,94,0.5));
+  position: relative;
+}
+
+.ln-gen-arrow {
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid rgba(34,197,94,0.6);
+}
 
 .ln-ft-ctrl-label {
   font-size: 9px;

@@ -200,6 +200,7 @@ function FeaturesSection() {
   const [active, setActive] = useState(0)
   const containerRef = useRef(null)
   const stepRefs = useRef([])
+  const studioVideoRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => {
@@ -267,7 +268,8 @@ function FeaturesSection() {
           {/* Studio — hero phone with grouped floating controls */}
           <div className={`ln-fs-viz ln-fs-viz-studio ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
             <div className="ln-ft-hero-phone">
-              <StudioPreviewPhone />
+              <StudioPreviewPhone videoRefOut={studioVideoRef} />
+              <PhoneMicButton videoRef={studioVideoRef} show={active === 1} />
             </div>
 
             {/* Voice group — top right */}
@@ -319,10 +321,16 @@ function FeaturesSection() {
               </div>
             </div>
 
-            {/* Generate button — bottom */}
-            <div className="ln-gen-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Generate
+            {/* Generate flow — config → generate → video */}
+            <div className="ln-gen-flow">
+              <div className="ln-gen-line ln-gen-line-in" />
+              <div className="ln-gen-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Generate
+              </div>
+              <div className="ln-gen-line ln-gen-line-out">
+                <div className="ln-gen-arrow" />
+              </div>
             </div>
           </div>
 
@@ -378,9 +386,8 @@ function FeaturesSection() {
 }
 
 // Studio preview phone — loads real video from feed, falls back to GIF
-function StudioPreviewPhone() {
+function StudioPreviewPhone({ videoRefOut }) {
   const [video, setVideo] = useState(null)
-  const [muted, setMuted] = useState(true)
   const videoRef = useRef(null)
 
   useState(() => {
@@ -389,13 +396,10 @@ function StudioPreviewPhone() {
     }).catch(() => {})
   })
 
-  const toggleAudio = () => {
-    setMuted(prev => {
-      const next = !prev
-      if (videoRef.current) videoRef.current.muted = next
-      return next
-    })
-  }
+  // Share ref with parent
+  useEffect(() => {
+    if (videoRefOut) videoRefOut.current = videoRef.current
+  })
 
   return (
     <div className="ln-sm-phone">
@@ -409,16 +413,29 @@ function StudioPreviewPhone() {
         <div className="ln-sm-phone-title">{video?.topic || 'DNA: The Blueprint'}</div>
         <div className="ln-sm-phone-sub">{video ? `Part ${video.segment_id}` : 'Part 1 of 5'}</div>
       </div>
-      {video?.video_url && (
-        <button className={`ln-mic-btn ${!muted ? 'ln-mic-on' : ''}`} onClick={toggleAudio}>
-          {muted ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-          )}
-        </button>
-      )}
     </div>
+  )
+}
+
+// Mic button rendered outside phone to avoid overflow clip
+function PhoneMicButton({ videoRef, show }) {
+  const [muted, setMuted] = useState(true)
+  if (!show) return null
+  const toggle = () => {
+    setMuted(prev => {
+      const next = !prev
+      if (videoRef.current) videoRef.current.muted = next
+      return next
+    })
+  }
+  return (
+    <button className={`ln-mic-btn ${!muted ? 'ln-mic-on' : ''}`} onClick={toggle}>
+      {muted ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      )}
+    </button>
   )
 }
 
