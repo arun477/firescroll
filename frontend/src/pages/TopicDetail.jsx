@@ -140,6 +140,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [musicTracks, setMusicTracks] = useState([])
   const [voiceSearch, setVoiceSearch] = useState('')
   const [previewingVoice, setPreviewingVoice] = useState(null)
+  const [mediaLibrary, setMediaLibrary] = useState([])
+  const [uploading, setUploading] = useState(false)
   const previewAudioRef = useRef(null)
   const [provider, setProvider] = useState('')
   const [voiceId, setVoiceId] = useState('')
@@ -166,6 +168,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     })
     fetch('/api/music').then(r => r.json()).then(d => setMusicTracks(d.tracks || []))
     fetch('/api/voice-presets').then(r => r.json()).then(d => setVoicePresets(d.presets || {}))
+    fetch('/api/media').then(r => r.json()).then(d => setMediaLibrary(d.media || []))
   }, [])
 
   useEffect(() => {
@@ -207,6 +210,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
         voice_style: s.voice_style || null,
         voice_settings: s.voice_settings || null,
         intro_sfx_prompt: s.intro_sfx_prompt || null,
+        bg_video_id: s.bg_video_id || null,
         segment_ids: [seg.segment_num],
       }),
     })
@@ -222,6 +226,30 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
       }),
     })
     onRefresh()
+  }
+
+  const handleUploadVideo = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      await fetch('/api/media/upload', { method: 'POST', body: form })
+      // Poll until processed
+      const poll = setInterval(async () => {
+        const res = await fetch('/api/media').then(r => r.json())
+        setMediaLibrary(res.media || [])
+        const processing = (res.media || []).some(m => m.status === 'processing')
+        if (!processing) { clearInterval(poll); setUploading(false) }
+      }, 2000)
+    } catch { setUploading(false) }
+    e.target.value = ''
+  }
+
+  const handleDeleteMedia = async (mediaId) => {
+    await fetch(`/api/media/${mediaId}`, { method: 'DELETE' })
+    setMediaLibrary(prev => prev.filter(m => m.id !== mediaId))
   }
 
   const handlePreviewVoice = async (voiceIdToPreview) => {
@@ -538,6 +566,40 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                 })}
               </div>
             </div>
+
+            {/* Background video picker (for video/split modes) */}
+            {(mode === 'video' || mode === 'split') && (
+              <div className="ve-media-lib">
+                <div className="ve-media-lib-head">
+                  <span className="ve-media-lib-label">Background Video</span>
+                  <label className="ve-media-upload-btn">
+                    {uploading ? <Loader2 size={11} className="spin" /> : <Download size={11} style={{ transform: 'rotate(180deg)' }} />}
+                    {uploading ? 'Processing...' : 'Upload'}
+                    <input type="file" accept="video/*" onChange={handleUploadVideo}
+                      style={{ display: 'none' }} disabled={uploading} />
+                  </label>
+                </div>
+                <div className="ve-media-grid">
+                  <button className={`ve-media-item ${!settings.bg_video_id ? 've-media-on' : ''}`}
+                    onClick={() => setSetting(selectedSeg.id, 'bg_video_id', '')}>
+                    <Shuffle size={14} />
+                    <span>Random Stock</span>
+                  </button>
+                  {mediaLibrary.map(m => (
+                    <div key={m.id} className={`ve-media-item ${settings.bg_video_id === m.id ? 've-media-on' : ''}`}
+                      onClick={() => setSetting(selectedSeg.id, 'bg_video_id', m.id)}>
+                      {m.thumb_url
+                        ? <img className="ve-media-thumb" src={m.thumb_url} alt="" />
+                        : <Film size={14} />}
+                      <span className="ve-media-name">{m.original_name || m.filename}</span>
+                      <button className="ve-media-del" onClick={e => { e.stopPropagation(); handleDeleteMedia(m.id) }}>
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Section>
 
           {/* ── Music ── */}

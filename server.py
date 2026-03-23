@@ -2,7 +2,7 @@ import os
 import threading
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -54,6 +54,7 @@ class GenerateRequest(BaseModel):
     voice_style: Optional[str] = None
     voice_settings: Optional[dict] = None
     intro_sfx_prompt: Optional[str] = None
+    bg_video_id: Optional[str] = None
     segment_ids: Optional[list] = None
 
 
@@ -66,6 +67,7 @@ class GenerateAllRequest(BaseModel):
     voice_style: Optional[str] = None
     voice_settings: Optional[dict] = None
     intro_sfx_prompt: Optional[str] = None
+    bg_video_id: Optional[str] = None
 
 
 @app.get("/api/topics")
@@ -216,7 +218,8 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                                  music_prompt=req.music_prompt,
                                  voice_style=req.voice_style,
                                  voice_settings=req.voice_settings,
-                                 intro_sfx_prompt=req.intro_sfx_prompt)
+                                 intro_sfx_prompt=req.intro_sfx_prompt,
+                                 bg_video_id=req.bg_video_id)
             if not req.segment_ids:
                 break
 
@@ -586,6 +589,120 @@ def generate_sfx(req: SfxGenerateRequest):
                             filename="sfx.mp3")
     except Exception as e:
         return {"error": str(e)}
+
+
+MEDIA_DIR = os.path.join(os.path.dirname(__file__), "media_library")
+os.makedirs(MEDIA_DIR, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
+
+
+def _process_uploaded_video(media_id, file_path):
+    """Strip audio, generate thumbnail, probe metadata."""
+    import subprocess
+    import json as _json
+    from db import update_media
+
+    try:
+        # Probe video info
+        probe = subprocess.run([
+            "ffprobe", "-v", "quiet", "-print_format", "json",
+            "-show_format", "-show_streams", file_path,
+        ], capture_output=True, text=True, check=False)
+        info = _json.loads(probe.stdout) if probe.returncode == 0 else {}
+        duration = float(info.get("format", {}).get("duration", 0))
+        width, height = 0, 0
+        for s in info.get("streams", []):
+            if s.get("codec_type") == "video":
+                width = int(s.get("width", 0))
+                height = int(s.get("height", 0))
+                break
+
+        # Strip audio → create silent version
+        base, ext = os.path.splitext(file_path)
+        silent_path = base + "_silent" + ext
+        subprocess.run([
+            "ffmpeg", "-y", "-i", file_path,
+            "-an", "-c:v", "copy", silent_path,
+        ], capture_output=True, check=False)
+
+        # If strip succeeded, replace original
+        if os.path.exists(silent_path):
+            os.replace(silent_path, file_path)
+
+        # Generate thumbnail
+        thumb_path = base + "_thumb.jpg"
+        subprocess.run([
+            "ffmpeg", "-y", "-i", file_path,
+            "-ss", "1", "-vframes", "1",
+            "-vf", "scale=320:-1",
+            thumb_path,
+        ], capture_output=True, check=False)
+
+        file_size = os.path.getsize(file_path)
+
+        update_media(media_id,
+                     status="ready",
+                     duration_seconds=duration,
+                     width=width, height=height,
+                     file_size=file_size,
+                     thumb_path=thumb_path if os.path.exists(thumb_path) else "")
+
+        print(f"[Media] Processed: {media_id} ({duration:.1f}s, {width}x{height})")
+
+    except Exception as e:
+        update_media(media_id, status="failed",
+                     meta=_json.dumps({"error": str(e)[:200]}))
+        print(f"[Media] Processing failed: {media_id} — {e}")
+
+
+@app.post("/api/media/upload")
+async def upload_media(file: UploadFile = File(...)):
+    import uuid
+    from db import create_media
+
+    media_id = uuid.uuid4().hex[:12]
+    safe_name = file.filename.replace(" ", "_").replace("/", "_")
+    ext = os.path.splitext(safe_name)[1] or ".mp4"
+    filename = f"{media_id}{ext}"
+    file_path = os.path.join(MEDIA_DIR, filename)
+
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    create_media(media_id, filename, file.filename, file_path)
+
+    # Process in background
+    threading.Thread(
+        target=_process_uploaded_video,
+        args=(media_id, file_path),
+        daemon=True,
+    ).start()
+
+    return {"id": media_id, "filename": filename, "status": "processing"}
+
+
+@app.get("/api/media")
+def list_media():
+    from db import get_all_media
+    items = get_all_media(status="ready")
+    result = []
+    for m in items:
+        item = {**m}
+        item["video_url"] = f"/media/{m['filename']}"
+        if m.get("thumb_path") and os.path.exists(m["thumb_path"]):
+            item["thumb_url"] = f"/media/{os.path.basename(m['thumb_path'])}"
+        else:
+            item["thumb_url"] = None
+        result.append(item)
+    return {"media": result}
+
+
+@app.delete("/api/media/{media_id}")
+def delete_media_ep(media_id: str):
+    from db import delete_media
+    delete_media(media_id)
+    return {"status": "deleted"}
 
 
 @app.get("/api/music")

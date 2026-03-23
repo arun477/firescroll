@@ -11,7 +11,14 @@ HALF_H = HEIGHT // 2
 VIDEO_DIR = os.path.join(os.path.dirname(__file__), "assets", "videos")
 
 
-def pick_video(name=None):
+def pick_video(name=None, media_id=None):
+    # User-uploaded media library video
+    if media_id:
+        from db import get_media
+        m = get_media(media_id)
+        if m and m.get("file_path") and os.path.exists(m["file_path"]):
+            return m["file_path"]
+
     if name:
         path = os.path.join(VIDEO_DIR, name)
         if os.path.exists(path):

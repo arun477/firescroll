@@ -223,7 +223,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                      voice_provider=None, voice_id=None, music_track=None,
                      music_source=None, music_prompt=None,
                      voice_style=None, voice_settings=None,
-                     intro_sfx_prompt=None):
+                     intro_sfx_prompt=None, bg_video_id=None):
     try:
         sid = segment["id"]
         topic = segment.get("series_title", "topic").lower().replace(" ", "_")
@@ -278,7 +278,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
 
         if needs_vid:
             print(f"  [Seg {sid}] Extracting video frames...")
-            vid_src = pick_video()
+            vid_src = pick_video(media_id=bg_video_id)
             vid_dir = os.path.join(seg_dir, "vid_frames")
             os.makedirs(vid_dir, exist_ok=True)
             target_h = HEIGHT if mode == "video" else HEIGHT // 2

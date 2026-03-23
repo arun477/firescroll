@@ -158,6 +158,23 @@ def init_db(db_path=DB_PATH):
             FOREIGN KEY (segment_id) REFERENCES segments(id)
         );
         CREATE INDEX IF NOT EXISTS idx_segcfg_topic ON segment_config(topic_id);
+
+        CREATE TABLE IF NOT EXISTS media_library (
+            id TEXT PRIMARY KEY,
+            filename TEXT NOT NULL,
+            original_name TEXT,
+            file_path TEXT NOT NULL,
+            thumb_path TEXT,
+            duration_seconds REAL,
+            width INTEGER,
+            height INTEGER,
+            file_size INTEGER,
+            media_type TEXT DEFAULT 'video',
+            status TEXT DEFAULT 'processing',
+            meta TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_media_status ON media_library(status);
     """)
     conn.commit()
     conn.close()
@@ -508,6 +525,69 @@ def get_all_api_keys():
 def delete_api_key(key_name):
     conn = get_conn()
     conn.execute("DELETE FROM api_keys WHERE key_name = ?", (key_name,))
+    conn.commit()
+    conn.close()
+
+
+def create_media(media_id, filename, original_name, file_path):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO media_library (id, filename, original_name, file_path, "
+        "status, created_at) VALUES (?, ?, ?, ?, 'processing', ?)",
+        (media_id, filename, original_name, file_path, _now()),
+    )
+    conn.commit()
+    conn.close()
+    return media_id
+
+
+def update_media(media_id, **kwargs):
+    conn = get_conn()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [media_id]
+    conn.execute(f"UPDATE media_library SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_all_media(status=None):
+    conn = get_conn()
+    if status:
+        rows = conn.execute(
+            "SELECT * FROM media_library WHERE status = ? ORDER BY created_at DESC",
+            (status,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM media_library ORDER BY created_at DESC"
+        ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_media(media_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM media_library WHERE id = ?", (media_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def delete_media(media_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT file_path, thumb_path FROM media_library WHERE id = ?",
+        (media_id,),
+    ).fetchone()
+    conn.close()
+    if row:
+        import os as _os
+        for p in [row["file_path"], row["thumb_path"]]:
+            if p and _os.path.exists(p):
+                _os.remove(p)
+    conn = get_conn()
+    conn.execute("DELETE FROM media_library WHERE id = ?", (media_id,))
     conn.commit()
     conn.close()
 
