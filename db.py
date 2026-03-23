@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sqlite3
 import uuid
@@ -107,6 +108,42 @@ def init_db(db_path=DB_PATH):
             key_value TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS research_sources (
+            id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            url TEXT NOT NULL,
+            title TEXT,
+            content TEXT,
+            content_hash TEXT,
+            source_type TEXT,
+            screenshot_url TEXT,
+            word_count INTEGER DEFAULT 0,
+            metadata TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id)
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_src_dedup
+            ON research_sources(topic_id, content_hash);
+        CREATE INDEX IF NOT EXISTS idx_sources_topic ON research_sources(topic_id);
+
+        CREATE TABLE IF NOT EXISTS firecrawl_jobs (
+            id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            segment_id TEXT,
+            job_type TEXT NOT NULL,
+            target TEXT,
+            config TEXT,
+            status TEXT DEFAULT 'pending',
+            pages_found INTEGER DEFAULT 0,
+            credits_used INTEGER DEFAULT 0,
+            result_preview TEXT,
+            error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fc_jobs_topic ON firecrawl_jobs(topic_id);
     """)
     conn.commit()
     conn.close()
@@ -122,15 +159,16 @@ def find_topic_by_json(json_path):
 
 
 def create_topic(title, series_title, json_path, total_segments):
-    existing = find_topic_by_json(json_path)
-    if existing:
-        return existing["id"]
+    if json_path:
+        existing = find_topic_by_json(json_path)
+        if existing:
+            return existing["id"]
 
     conn = get_conn()
     topic_id = uuid.uuid4().hex[:12]
     conn.execute(
-        "INSERT INTO topics (id, title, series_title, json_path, total_segments, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO topics (id, title, series_title, json_path, "
+        "total_segments, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         (topic_id, title, series_title, json_path, total_segments, _now()),
     )
     conn.commit()
@@ -152,7 +190,6 @@ def has_active_job(topic_id, segment_id):
 def create_job(topic_id, segment_id, mode, caption):
     if has_active_job(topic_id, segment_id):
         return None
-
     conn = get_conn()
     job_id = uuid.uuid4().hex[:12]
     now = _now()
@@ -236,7 +273,8 @@ def create_segment(topic_id, segment_num, *, title="", hook="", script="",
         "INSERT INTO segments (id, topic_id, segment_num, title, hook, script, "
         "visual_cue, source, status, created_at, updated_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)",
-        (seg_id, topic_id, segment_num, title, hook, script, visual_cue, source, now, now),
+        (seg_id, topic_id, segment_num, title, hook, script, visual_cue, source,
+         now, now),
     )
     conn.commit()
     conn.close()
@@ -261,6 +299,13 @@ def get_segments_for_topic(topic_id):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def delete_segment(seg_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM segments WHERE id = ?", (seg_id,))
+    conn.commit()
+    conn.close()
 
 
 def create_research_task(topic_id, task_type, query=""):
@@ -297,6 +342,13 @@ def get_research_tasks(topic_id):
     return [dict(r) for r in rows]
 
 
+def delete_research_task(task_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM research_tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+
 def update_topic(topic_id, **kwargs):
     conn = get_conn()
     sets = ", ".join(f"{k} = ?" for k in kwargs)
@@ -304,6 +356,92 @@ def update_topic(topic_id, **kwargs):
     conn.execute(f"UPDATE topics SET {sets} WHERE id = ?", vals)
     conn.commit()
     conn.close()
+
+
+def add_research_source(topic_id, url, title, content, source_type, *,
+                         screenshot_url=""):
+    content_hash = hashlib.sha256((content or "").encode()).hexdigest()
+    word_count = len((content or "").split())
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO research_sources "
+            "(id, topic_id, url, title, content, content_hash, source_type, "
+            "screenshot_url, word_count, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uuid.uuid4().hex[:12], topic_id, url, title, content,
+             content_hash, source_type, screenshot_url, word_count, _now()),
+        )
+        conn.commit()
+        inserted = conn.execute("SELECT changes()").fetchone()[0]
+    finally:
+        conn.close()
+    return inserted > 0
+
+
+def get_research_sources(topic_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, topic_id, url, title, source_type, screenshot_url, "
+        "word_count, created_at FROM research_sources "
+        "WHERE topic_id = ? ORDER BY created_at DESC",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_research_source(source_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM research_sources WHERE id = ?", (source_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_source_stats(topic_id):
+    conn = get_conn()
+    total = conn.execute(
+        "SELECT COUNT(*) FROM research_sources WHERE topic_id = ?", (topic_id,)
+    ).fetchone()[0]
+    conn.close()
+    return {"total": total}
+
+
+def create_firecrawl_job(topic_id, job_type, target, *,
+                          segment_id=None, config=""):
+    conn = get_conn()
+    job_id = uuid.uuid4().hex[:12]
+    now = _now()
+    conn.execute(
+        "INSERT INTO firecrawl_jobs (id, topic_id, segment_id, job_type, "
+        "target, config, status, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)",
+        (job_id, topic_id, segment_id, job_type, target, config, now, now),
+    )
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def update_firecrawl_job(job_id, **kwargs):
+    conn = get_conn()
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [job_id]
+    conn.execute(f"UPDATE firecrawl_jobs SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_firecrawl_jobs(topic_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM firecrawl_jobs WHERE topic_id = ? "
+        "ORDER BY created_at DESC",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 API_KEY_NAMES = ["openai", "firecrawl", "elevenlabs"]
@@ -332,7 +470,9 @@ def get_api_key(key_name):
 
 def get_all_api_keys():
     conn = get_conn()
-    rows = conn.execute("SELECT key_name, key_value, updated_at FROM api_keys").fetchall()
+    rows = conn.execute(
+        "SELECT key_name, key_value, updated_at FROM api_keys"
+    ).fetchall()
     conn.close()
     keys = {}
     for r in rows:

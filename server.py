@@ -68,7 +68,15 @@ def topic_detail(topic_id: str):
             job["video_url"] = f"/static/{os.path.relpath(job['video_path'], OUTPUT_DIR)}"
     segments = get_segments_for_topic(topic_id)
     research = get_research_tasks(topic_id)
-    return {"topic": topic, "jobs": jobs, "segments": segments, "research": research}
+    from db import get_firecrawl_jobs, get_research_sources, get_source_stats
+    sources = get_research_sources(topic_id)
+    source_stats = get_source_stats(topic_id)
+    fc_jobs = get_firecrawl_jobs(topic_id)
+    return {
+        "topic": topic, "jobs": jobs, "segments": segments,
+        "research": research, "sources": sources,
+        "source_stats": source_stats, "fc_jobs": fc_jobs,
+    }
 
 
 @app.post("/api/topics/create")
@@ -208,6 +216,170 @@ def generate_all(topic_id: str):
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
+
+
+class FcSearchRequest(BaseModel):
+    query: str
+    segment_id: str = None
+    limit: int = 5
+
+
+class FcScrapeRequest(BaseModel):
+    url: str
+    segment_id: str = None
+
+
+class FcExtractRequest(BaseModel):
+    url: str
+    prompt: str
+    segment_id: str = None
+
+
+class FcCrawlRequest(BaseModel):
+    url: str
+    segment_id: str = None
+    limit: int = 10
+    max_depth: int = 2
+
+
+class FcMapRequest(BaseModel):
+    url: str
+
+
+class FcAgentRequest(BaseModel):
+    prompt: str
+    segment_id: str = None
+
+
+class FcBatchScrapeRequest(BaseModel):
+    urls: list
+
+
+class UpdateSegmentRequest(BaseModel):
+    title: str = None
+    hook: str = None
+    script: str = None
+    visual_cue: str = None
+
+
+@app.post("/api/topics/{topic_id}/fc/search")
+def fc_search_ep(topic_id: str, req: FcSearchRequest):
+    def run():
+        from research import fc_search
+        fc_search(topic_id, req.segment_id, req.query, req.limit)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.post("/api/topics/{topic_id}/fc/scrape")
+def fc_scrape_ep(topic_id: str, req: FcScrapeRequest):
+    def run():
+        from research import fc_scrape
+        fc_scrape(topic_id, req.segment_id, req.url)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.post("/api/topics/{topic_id}/fc/extract")
+def fc_extract_ep(topic_id: str, req: FcExtractRequest):
+    def run():
+        from research import fc_extract
+        fc_extract(topic_id, req.segment_id, req.url, req.prompt)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.post("/api/topics/{topic_id}/fc/crawl")
+def fc_crawl_ep(topic_id: str, req: FcCrawlRequest):
+    def run():
+        from research import fc_crawl
+        fc_crawl(topic_id, req.segment_id, req.url, req.limit,
+                 req.max_depth)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.post("/api/topics/{topic_id}/fc/map")
+def fc_map_ep(topic_id: str, req: FcMapRequest):
+    from research import fc_map
+    result = fc_map(topic_id, req.url)
+    return result
+
+
+@app.post("/api/topics/{topic_id}/fc/agent")
+def fc_agent_ep(topic_id: str, req: FcAgentRequest):
+    def run():
+        from research import fc_agent
+        fc_agent(topic_id, req.segment_id, req.prompt)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.post("/api/topics/{topic_id}/fc/batch-scrape")
+def fc_batch_scrape_ep(topic_id: str, req: FcBatchScrapeRequest):
+    def run():
+        from research import fc_batch_scrape
+        fc_batch_scrape(topic_id, req.urls)
+    threading.Thread(target=run, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.get("/api/fc/status")
+def fc_status_ep():
+    from research import fc_status
+    return fc_status()
+
+
+@app.get("/api/topics/{topic_id}/sources")
+def get_sources_ep(topic_id: str):
+    from db import get_research_sources as _get_src
+    from db import get_source_stats as _get_stats
+    return {"sources": _get_src(topic_id), "stats": _get_stats(topic_id)}
+
+
+@app.delete("/api/topics/{topic_id}/sources/{source_id}")
+def delete_source_ep(topic_id: str, source_id: str):  # noqa: ARG001
+    from db import delete_research_source
+    delete_research_source(source_id)
+    return {"status": "deleted"}
+
+
+@app.put("/api/topics/{topic_id}/segments/{segment_id}")
+def edit_segment_ep(topic_id: str, segment_id: str,  # noqa: ARG001
+                    req: UpdateSegmentRequest):
+    from db import update_segment
+    updates = {}
+    if req.title is not None:
+        updates["title"] = req.title
+    if req.hook is not None:
+        updates["hook"] = req.hook
+    if req.script is not None:
+        updates["script"] = req.script
+    if req.visual_cue is not None:
+        updates["visual_cue"] = req.visual_cue
+    if updates:
+        update_segment(segment_id, **updates)
+    return {"status": "updated"}
+
+
+@app.delete("/api/topics/{topic_id}/segments/{segment_id}")
+def delete_segment_ep(topic_id: str, segment_id: str):  # noqa: ARG001
+    from db import delete_segment
+    delete_segment(segment_id)
+    return {"status": "deleted"}
+
+
+@app.delete("/api/topics/{topic_id}/research/{task_id}")
+def delete_research_ep(topic_id: str, task_id: str):  # noqa: ARG001
+    from db import delete_research_task
+    delete_research_task(task_id)
+    return {"status": "deleted"}
+
+
+@app.get("/api/topics/{topic_id}/fc/jobs")
+def get_fc_jobs_ep(topic_id: str):
+    from db import get_firecrawl_jobs
+    return get_firecrawl_jobs(topic_id)
 
 
 @app.get("/api/feed")

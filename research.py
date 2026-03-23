@@ -3,9 +3,14 @@ import json
 from dotenv import load_dotenv
 
 from db import (
+    add_research_source,
+    create_firecrawl_job,
     create_research_task,
     create_segment,
+    get_research_sources,
     get_segments_for_topic,
+    get_topic,
+    update_firecrawl_job,
     update_research_task,
     update_segment,
     update_topic,
@@ -35,37 +40,83 @@ def _is_segment_busy(seg):
     return seg["status"] in BUSY_STATUSES
 
 
+def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
+    sources = get_research_sources(topic_id)
+    if not sources:
+        return
+    segments = get_segments_for_topic(topic_id)
+    seg = next((s for s in segments if s["id"] == segment_id), None)
+    if not seg:
+        return
+
+    context = ""
+    for src in sources[:15]:
+        title = src.get("title", "")
+        url = src.get("url", "")
+        conn = __import__("db").get_conn()
+        row = conn.execute(
+            "SELECT content FROM research_sources WHERE id = ?", (src["id"],)
+        ).fetchone()
+        conn.close()
+        content = (row["content"] if row else "")[:500]
+        context += f"\n--- {title} ({url}) ---\n{content}\n"
+        if len(context) > 6000:
+            break
+
+    topic = get_topic(topic_id)
+    update_segment(segment_id, status="researching")
+
+    client = _get_openai()
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": (
+            f'Using this researched information, write one short-form video segment.\n'
+            f'Series: "{topic["title"]}"\nSegment: "{seg["title"]}"\n\n'
+            f'Research:\n{context}\n\n'
+            f'Return JSON: {{"hook": "1-2 sentence attention grabber", '
+            f'"script": "3-5 sentence educational content", '
+            f'"visual_cue": "what should be shown on screen"}}'
+        )}],
+        response_format={"type": "json_object"},
+    )
+    data = json.loads(response.choices[0].message.content)
+    source_urls = [s["url"] for s in sources[:10]]
+    update_segment(segment_id, hook=data["hook"], script=data["script"],
+                   visual_cue=data.get("visual_cue", ""), source=source,
+                   source_urls=json.dumps(source_urls, ensure_ascii=False),
+                   status="ready")
+
+
 def generate_series_outline(topic_id, topic_title, num_segments=6):
     existing = get_segments_for_topic(topic_id)
     if existing:
-        return {"segments": [{"num": s["segment_num"], "title": s["title"]} for s in existing]}
+        return {"segments": [{"num": s["segment_num"], "title": s["title"]}
+                             for s in existing]}
 
     task_id = create_research_task(topic_id, "outline", topic_title)
     try:
         update_research_task(task_id, status="running")
         client = _get_openai()
-
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
-                f'Create a {num_segments}-part short-form video series outline about '
-                f'"{topic_title}". Return JSON: {{"series_title": "...", "segments": '
-                f'[{{"num": 1, "title": "catchy title", "angle": "unique angle/hook"}}]}}'
+                f'Create a {num_segments}-part short-form video series outline '
+                f'about "{topic_title}". Return JSON: '
+                f'{{"series_title": "...", "segments": '
+                f'[{{"num": 1, "title": "catchy title"}}]}}'
             )}],
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
-
-        update_topic(topic_id, series_title=data.get("series_title", topic_title),
-                     total_segments=len(data["segments"]), research_status="outline_done")
-
+        update_topic(topic_id,
+                     series_title=data.get("series_title", topic_title),
+                     total_segments=len(data["segments"]),
+                     research_status="outline_done")
         for seg in data["segments"]:
-            create_segment(topic_id, seg["num"], title=seg["title"], source="ai")
-
+            create_segment(topic_id, seg["num"], title=seg["title"])
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
-
     except Exception as exc:  # pylint: disable=broad-exception-caught
         update_research_task(task_id, status="failed", error=str(exc))
         raise
@@ -77,27 +128,24 @@ def generate_segment_content(topic_id, segment_id, topic_title, segment_title):
         update_segment(segment_id, status="researching")
         update_research_task(task_id, status="running")
         client = _get_openai()
-
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
-                f'Write content for one short-form educational video segment.\n'
-                f'Series: "{topic_title}"\n'
-                f'Segment: "{segment_title}"\n\n'
+                f'Write content for one short-form educational video.\n'
+                f'Series: "{topic_title}"\nSegment: "{segment_title}"\n\n'
                 f'Return JSON: {{"hook": "1-2 sentence attention grabber", '
-                f'"script": "3-5 sentence educational content, casual tone", '
+                f'"script": "3-5 sentence educational content", '
                 f'"visual_cue": "what should be shown on screen"}}'
             )}],
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
-
         update_segment(segment_id, hook=data["hook"], script=data["script"],
-                       visual_cue=data.get("visual_cue", ""), source="ai", status="ready")
+                       visual_cue=data.get("visual_cue", ""),
+                       source="ai", status="ready")
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
-
     except Exception as exc:  # pylint: disable=broad-exception-caught
         update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
@@ -111,52 +159,21 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         update_segment(segment_id, status="researching")
         update_research_task(task_id, status="searching")
         fc = _get_firecrawl()
-
-        search_query = f"{topic_title} {segment_title} educational facts"
-        results = fc.search(search_query, limit=5,
+        query = f"{topic_title} {segment_title} educational facts"
+        results = fc.search(query, limit=5,
                             scrape_options={"formats": ["markdown"]})
-
-        sources = []
-        combined_content = ""
-
         if results and hasattr(results, "data"):
             for item in results.data:
                 url = getattr(item, "url", "")
                 title = getattr(item, "title", "")
                 markdown = getattr(item, "markdown", "")
-                sources.append({"url": url, "title": title})
                 if markdown:
-                    combined_content += (
-                        f"\n\n--- Source: {title} ({url}) ---\n{markdown[:2000]}"
-                    )
+                    add_research_source(topic_id, url, title,
+                                        markdown[:5000], "search")
 
         update_research_task(task_id, status="processing")
-
-        client = _get_openai()
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": (
-                f'Using this researched information, write one short-form video segment.\n'
-                f'Series: "{topic_title}"\n'
-                f'Segment: "{segment_title}"\n\n'
-                f'Research:\n{combined_content[:6000]}\n\n'
-                f'Return JSON: {{"hook": "1-2 sentence attention grabber with a real fact", '
-                f'"script": "3-5 sentence educational content using the research", '
-                f'"visual_cue": "what should be shown on screen"}}'
-            )}],
-            response_format={"type": "json_object"},
-        )
-        data = json.loads(response.choices[0].message.content)
-
-        urls_json = json.dumps([s["url"] for s in sources], ensure_ascii=False)
-        update_segment(segment_id, hook=data["hook"], script=data["script"],
-                       visual_cue=data.get("visual_cue", ""), source="firecrawl",
-                       source_urls=urls_json,
-                       raw_research=combined_content[:5000], status="ready")
-        update_research_task(task_id, status="done",
-                             result=json.dumps(data, ensure_ascii=False))
-        return data
-
+        _synthesize_segment(topic_id, segment_id, "firecrawl")
+        update_research_task(task_id, status="done")
     except Exception as exc:  # pylint: disable=broad-exception-caught
         update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
@@ -167,12 +184,11 @@ def generate_all_ai(topic_id, topic_title, num_segments=6):
     update_topic(topic_id, research_status="generating")
     generate_series_outline(topic_id, topic_title, num_segments)
     segments = get_segments_for_topic(topic_id)
-
     for seg in segments:
         if _is_segment_busy(seg):
             continue
-        generate_segment_content(topic_id, seg["id"], topic_title, seg["title"])
-
+        generate_segment_content(topic_id, seg["id"], topic_title,
+                                 seg["title"])
     _check_all_done(topic_id)
 
 
@@ -180,12 +196,11 @@ def research_all_firecrawl(topic_id, topic_title, num_segments=6):
     update_topic(topic_id, research_status="generating")
     generate_series_outline(topic_id, topic_title, num_segments)
     segments = get_segments_for_topic(topic_id)
-
     for seg in segments:
         if _is_segment_busy(seg):
             continue
-        research_with_firecrawl(topic_id, seg["id"], topic_title, seg["title"])
-
+        research_with_firecrawl(topic_id, seg["id"], topic_title,
+                                 seg["title"])
     _check_all_done(topic_id)
 
 
@@ -196,3 +211,206 @@ def _check_all_done(topic_id):
         update_topic(topic_id, research_status="done")
     else:
         update_topic(topic_id, research_status="partial")
+
+
+# --- Firecrawl Power Functions ---
+
+def fc_search(topic_id, segment_id, query, limit=5):
+    job_id = create_firecrawl_job(topic_id, "search", query,
+                                   segment_id=segment_id)
+    try:
+        fc = _get_firecrawl()
+        results = fc.search(query, limit=limit,
+                            scrape_options={"formats": ["markdown"]})
+        new_count = 0
+        total = 0
+        if results and hasattr(results, "data"):
+            for item in results.data:
+                url = getattr(item, "url", "")
+                title = getattr(item, "title", "")
+                md = getattr(item, "markdown", "")
+                if md:
+                    was_new = add_research_source(
+                        topic_id, url, title, md[:5000], "search")
+                    if was_new:
+                        new_count += 1
+                    total += 1
+        update_firecrawl_job(
+            job_id, status="done", pages_found=total,
+            result_preview=f"Found {total} results, {new_count} new")
+        if segment_id:
+            _synthesize_segment(topic_id, segment_id, "firecrawl")
+        return {"total": total, "new": new_count}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_scrape(topic_id, segment_id, url):
+    job_id = create_firecrawl_job(topic_id, "scrape", url,
+                                   segment_id=segment_id)
+    try:
+        fc = _get_firecrawl()
+        result = fc.scrape(url, formats=["markdown"])
+        md = getattr(result, "markdown", "") or ""
+        title = ""
+        if hasattr(result, "metadata") and result.metadata:
+            title = getattr(result.metadata, "title", "") or ""
+        was_new = add_research_source(topic_id, url, title, md[:5000],
+                                       "scrape")
+        preview = f"Scraped: {title[:80]}" if title else f"Scraped {url[:80]}"
+        update_firecrawl_job(job_id, status="done", pages_found=1,
+                             result_preview=preview)
+        if segment_id:
+            _synthesize_segment(topic_id, segment_id, "firecrawl")
+        return {"url": url, "title": title, "new": was_new}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_extract(topic_id, segment_id, url, extract_prompt):
+    config = json.dumps({"prompt": extract_prompt})
+    job_id = create_firecrawl_job(topic_id, "extract", url,
+                                   segment_id=segment_id, config=config)
+    try:
+        fc = _get_firecrawl()
+        result = fc.scrape(
+            url, formats=[{"type": "json", "prompt": extract_prompt}])
+        json_data = getattr(result, "json", None) or {}
+        content = json.dumps(json_data, ensure_ascii=False, indent=2)
+        title = f"Extract: {extract_prompt[:60]}"
+        add_research_source(topic_id, url, title, content, "extract")
+        update_firecrawl_job(job_id, status="done", pages_found=1,
+                             result_preview=content[:500])
+        if segment_id:
+            _synthesize_segment(topic_id, segment_id, "firecrawl")
+        return {"url": url, "data": json_data}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_crawl(topic_id, segment_id, url, limit=10, max_depth=2):
+    config = json.dumps({"limit": limit, "max_depth": max_depth})
+    job_id = create_firecrawl_job(topic_id, "crawl", url,
+                                   segment_id=segment_id, config=config)
+    try:
+        fc = _get_firecrawl()
+        result = fc.crawl(url, limit=limit,
+                          max_discovery_depth=max_depth,
+                          scrape_options={"formats": ["markdown"]})
+        new_count = 0
+        total = 0
+        if hasattr(result, "data"):
+            for doc in result.data:
+                meta = doc.metadata if hasattr(doc, "metadata") else None
+                page_url = getattr(meta, "source_url", url) if meta else url
+                page_title = getattr(meta, "title", "") if meta else ""
+                md = getattr(doc, "markdown", "") or ""
+                if md:
+                    was_new = add_research_source(
+                        topic_id, page_url, page_title, md[:5000], "crawl")
+                    if was_new:
+                        new_count += 1
+                    total += 1
+        update_firecrawl_job(
+            job_id, status="done", pages_found=total,
+            result_preview=f"Crawled {total} pages, {new_count} new")
+        if segment_id:
+            _synthesize_segment(topic_id, segment_id, "firecrawl")
+        return {"total": total, "new": new_count}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_map(topic_id, url):
+    job_id = create_firecrawl_job(topic_id, "map", url)
+    try:
+        fc = _get_firecrawl()
+        result = fc.map(url, limit=200)
+        links = getattr(result, "links", []) or []
+        update_firecrawl_job(
+            job_id, status="done", pages_found=len(links),
+            result_preview=json.dumps(links[:30], ensure_ascii=False))
+        return {"links": links, "total": len(links)}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_agent(topic_id, segment_id, prompt):
+    job_id = create_firecrawl_job(topic_id, "agent", prompt,
+                                   segment_id=segment_id)
+    try:
+        fc = _get_firecrawl()
+        result = fc.agent(prompt=prompt)
+        content = ""
+        if hasattr(result, "data"):
+            if isinstance(result.data, (dict, list)):
+                content = json.dumps(result.data, ensure_ascii=False)
+            else:
+                content = str(result.data)
+        if content:
+            add_research_source(
+                topic_id, f"agent://{prompt[:50]}",
+                f"Agent: {prompt[:80]}", content[:5000], "agent")
+        update_firecrawl_job(
+            job_id, status="done",
+            result_preview=content[:500] if content else "No data")
+        if segment_id:
+            _synthesize_segment(topic_id, segment_id, "firecrawl")
+        return {"result": content[:2000]}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_batch_scrape(topic_id, urls):
+    job_id = create_firecrawl_job(topic_id, "batch_scrape",
+                                   json.dumps(urls[:20]))
+    try:
+        fc = _get_firecrawl()
+        result = fc.batch_scrape(urls[:20], formats=["markdown"])
+        new_count = 0
+        total = 0
+        if hasattr(result, "data"):
+            for doc in result.data:
+                meta = doc.metadata if hasattr(doc, "metadata") else None
+                page_url = getattr(meta, "source_url", "") if meta else ""
+                page_title = getattr(meta, "title", "") if meta else ""
+                md = getattr(doc, "markdown", "") or ""
+                if md and page_url:
+                    was_new = add_research_source(
+                        topic_id, page_url, page_title, md[:5000], "scrape")
+                    if was_new:
+                        new_count += 1
+                    total += 1
+        update_firecrawl_job(
+            job_id, status="done", pages_found=total,
+            result_preview=f"Batch: {total} pages, {new_count} new")
+        return {"total": total, "new": new_count}
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        update_firecrawl_job(job_id, status="failed", error=str(exc))
+        raise
+
+
+def fc_status():
+    try:
+        fc = _get_firecrawl()
+        credit_info = fc.get_credit_usage()
+        concurrency = fc.get_concurrency()
+        return {
+            "connected": True,
+            "credits": {
+                "remaining": getattr(credit_info, "remaining", 0),
+                "total": getattr(credit_info, "total", 0),
+            },
+            "concurrency": {
+                "current": getattr(concurrency, "current", 0),
+                "max": getattr(concurrency, "max", 0),
+            },
+        }
+    except Exception:  # pylint: disable=broad-exception-caught
+        return {"connected": False, "credits": {}, "concurrency": {}}
