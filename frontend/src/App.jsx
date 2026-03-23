@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, ScrollText, Key } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Flame, Key } from 'lucide-react'
 import Feed from './pages/Feed'
 import Dashboard from './pages/Dashboard'
 import TopicDetail from './pages/TopicDetail'
@@ -41,7 +41,7 @@ export default function App() {
           <span className="logo-text">FireScroll</span>
         </div>
         <div className="sidebar-links">
-          <NavLink to="/" end><ScrollText size={18} />Feed</NavLink>
+          <NavLink to="/" end><Flame size={18} />Feed</NavLink>
           <NavLink to="/dashboard"><LayoutDashboard size={18} />Dashboard</NavLink>
           <NavLink to="/create"><PlusCircle size={18} />Create</NavLink>
           <NavLink to="/settings"><Key size={18} />API Keys</NavLink>

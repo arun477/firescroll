@@ -57,8 +57,9 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
       if (active === 'map' && data.links) {
         setResult({ type: 'map', links: data.links, total: data.total })
       } else {
-        setResult({ type: 'started' })
-        setTimeout(onRefresh, 2000)
+        setActive(null)
+        setForm({})
+        setTimeout(onRefresh, 1500)
       }
     } catch (err) {
       setResult({ type: 'error', message: err.message })
@@ -73,9 +74,10 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls }),
     })
-    setResult({ type: 'started' })
+    setActive(null)
+    setForm({})
     setLoading(false)
-    setTimeout(onRefresh, 2000)
+    setTimeout(onRefresh, 1500)
   }
 
   return (

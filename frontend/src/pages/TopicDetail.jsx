@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Play, Shuffle, Eye, AlertCircle, Clock, CheckCircle2,
+  Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
   BookOpen, Video,
 } from 'lucide-react'
@@ -109,7 +109,7 @@ export default function TopicDetail() {
           </div>
           <button className="btn btn-secondary btn-sm"
             onClick={() => navigate(`/?topic=${topicId}`)}>
-            <Eye size={14} /> Feed
+            <Flame size={14} /> Feed
           </button>
         </div>
       </div>
