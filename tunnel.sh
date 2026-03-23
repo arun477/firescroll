@@ -5,8 +5,9 @@
 
 SERVER="dev"
 PORTS=(
-    "8000:localhost:8000"  # FastAPI backend
-    "3000:localhost:3000"  # React frontend
+    "8500:localhost:8500"  # FastAPI backend
+    "3500:localhost:3500"  # React frontend (docker)
+    "3000:localhost:3000"  # React frontend (dev)
 )
 
 PID_FILE="/tmp/firescroll-tunnel.pid"
