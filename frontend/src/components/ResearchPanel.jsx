@@ -19,7 +19,20 @@ export default function ResearchPanel({
   const [addingSegment, setAddingSegment] = useState(false)
   const [newTitle, setNewTitle] = useState('')
 
+  const [segData, setSegData] = useState(null)
   const perPage = 10
+
+  const fetchSegments = async (q = searchQuery, p = page) => {
+    const res = await fetch(
+      `/api/topics/${topicId}/segments?q=${encodeURIComponent(q)}&page=${p}&per_page=${perPage}`
+    )
+    const data = await res.json()
+    setSegData(data)
+  }
+
+  useEffect(() => { fetchSegments() }, [topicId, searchQuery, page])
+
+  const refresh = () => { onRefresh(); fetchSegments() }
 
   const handleGenerateAll = async (method) => {
     setGenerating(method)
@@ -28,7 +41,7 @@ export default function ResearchPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ method, num_segments: topic.total_segments }),
     })
-    setTimeout(() => { setGenerating(null); onRefresh() }, 1500)
+    setTimeout(() => { setGenerating(null); refresh() }, 1500)
   }
 
   const handleAddSegment = async () => {
@@ -48,17 +61,9 @@ export default function ResearchPanel({
   const isRunning = topic.research_status === 'generating' || busyCount > 0
   const srcCount = sourceStats?.total || 0
 
-  const filtered = searchQuery
-    ? segments.filter(s => {
-      const q = searchQuery.toLowerCase()
-      return (s.title || '').toLowerCase().includes(q) ||
-             (s.hook || '').toLowerCase().includes(q) ||
-             (s.script || '').toLowerCase().includes(q)
-    })
-    : segments
-
-  const totalPages = Math.ceil(filtered.length / perPage)
-  const paged = filtered.slice((page - 1) * perPage, page * perPage)
+  const paged = segData?.segments || segments.slice(0, perPage)
+  const totalPages = segData?.pages || 1
+  const totalSegs = segData?.total || segments.length
 
   useEffect(() => { setPage(1) }, [searchQuery])
 
@@ -106,7 +111,7 @@ export default function ResearchPanel({
           <FirecrawlToolbar
             topicId={topicId}
             segments={segments}
-            onRefresh={onRefresh}
+            onRefresh={refresh}
           />
           <div className="rp-tools-right">
             <div className="rp-search">
@@ -153,7 +158,7 @@ export default function ResearchPanel({
                 key={seg.id}
                 seg={seg}
                 topicId={topicId}
-                onRefresh={onRefresh}
+                onRefresh={refresh}
               />
             ))
           ) : (
@@ -187,13 +192,13 @@ export default function ResearchPanel({
           sources={sources || []}
           stats={sourceStats}
           topicId={topicId}
-          onRefresh={onRefresh}
+          onRefresh={refresh}
         />
         <ResearchTaskManager
           tasks={research || []}
           fcJobs={fcJobs || []}
           topicId={topicId}
-          onRefresh={onRefresh}
+          onRefresh={refresh}
         />
       </div>
     </div>

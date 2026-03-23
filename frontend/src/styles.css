@@ -1761,6 +1761,13 @@ a { color: var(--blue); text-decoration: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 180px;
+}
+
+.source-row:hover .source-title {
+  white-space: normal;
+  overflow: visible;
+  max-width: none;
 }
 
 .source-meta {
@@ -2159,8 +2166,13 @@ a { color: var(--blue); text-decoration: none; }
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 10px 0;
+  padding: 8px 0;
   margin-top: 4px;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 2;
 }
 
 .rp-page-btn {
