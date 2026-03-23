@@ -166,27 +166,27 @@ export default function Landing() {
 const FEATURES = [
   {
     num: '01',
-    title: '50+ Ultra-Realistic Voices',
-    desc: 'Powered by ElevenLabs. Five style presets — natural, dramatic, energetic, calm, storyteller. Fine-tune stability, clarity, and speed per segment.',
+    title: 'ElevenLabs Audio Suite',
+    desc: '50+ ultra-realistic voices with five style presets. AI-generated music and cinematic sound effects. Every audio element powered by ElevenLabs.',
     key: 'voices',
   },
   {
     num: '02',
+    title: 'Deep Research Engine',
+    desc: 'Powered by Firecrawl. Search, scrape, crawl, and extract from any website. AI agent synthesizes sources into accurate, citation-backed scripts automatically.',
+    key: 'research',
+  },
+  {
+    num: '03',
     title: 'Complete Video Studio',
     desc: 'Configure voice, visuals, music, and captions for every segment. Four visual modes. Real-time preview. One-click generation.',
     key: 'studio',
   },
   {
-    num: '03',
-    title: 'AI Music & Sound Effects',
-    desc: 'Generate custom instrumentals with ElevenLabs or choose from 20+ built-in ambient tracks. AI sound effects for cinematic intros.',
-    key: 'music',
-  },
-  {
     num: '04',
-    title: 'Deep Research Engine',
-    desc: 'Powered by Firecrawl. Search, scrape, crawl, and extract from any website. AI agent synthesizes sources into accurate, citation-backed scripts automatically.',
-    key: 'research',
+    title: 'Viral Short-Form Patterns',
+    desc: 'Proven scroll-stopping formats — hook intros, split-screen debates, karaoke lyrics, caption overlays. Every template designed for maximum watch time.',
+    key: 'tiktok',
   },
   {
     num: '05',
@@ -236,6 +236,128 @@ function ResearchToolGrid() {
         )
       })}
     </div>
+  )
+}
+
+function ViralPatternsViz() {
+  const [activeMode, setActiveMode] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setActiveMode(p => (p + 1) % 3), 3500)
+    return () => clearInterval(id)
+  }, [])
+  const modes = [
+    { name: 'AI Backgrounds', key: 'full', desc: 'AI-generated scene per sentence' },
+    { name: 'Split Screen', key: 'split', desc: 'Top video + bottom captions' },
+    { name: 'Video Background', key: 'video', desc: 'Your own footage as backdrop' },
+  ]
+  return (
+    <>
+      {/* Visual Modes — cycling phone preview */}
+      <div className="ln-tk-sec">
+        <span className="ln-tk-sec-label">Visual modes</span>
+        <div className="ln-tk-modes">
+          <div className="ln-tk-preview">
+            {/* Full/AI BG */}
+            <div className={`ln-tk-scene ${activeMode === 0 ? 'ln-tk-scene-on' : ''}`}>
+              <div className="ln-tk-scene-bg ln-tk-scene-ai">
+                <div className="ln-tk-scene-shimmer" />
+              </div>
+              <div className="ln-tk-scene-caption">
+                <div className="ln-tk-scene-cap-line" />
+                <div className="ln-tk-scene-cap-line ln-tk-scene-cap-short" />
+              </div>
+            </div>
+            {/* Split */}
+            <div className={`ln-tk-scene ${activeMode === 1 ? 'ln-tk-scene-on' : ''}`}>
+              <div className="ln-tk-scene-split-top" />
+              <div className="ln-tk-scene-split-mid" />
+              <div className="ln-tk-scene-split-bot">
+                <div className="ln-tk-scene-cap-line" />
+                <div className="ln-tk-scene-cap-line ln-tk-scene-cap-short" />
+              </div>
+            </div>
+            {/* Video BG */}
+            <div className={`ln-tk-scene ${activeMode === 2 ? 'ln-tk-scene-on' : ''}`}>
+              <div className="ln-tk-scene-bg ln-tk-scene-vid">
+                <div className="ln-tk-scene-vid-play">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+              </div>
+              <div className="ln-tk-scene-caption">
+                <div className="ln-tk-scene-cap-line" />
+              </div>
+            </div>
+          </div>
+          <div className="ln-tk-mode-pills">
+            {modes.map((m, i) => (
+              <div key={m.key} className={`ln-tk-mode ${i === activeMode ? 'ln-tk-mode-on' : ''}`}
+                style={{ opacity: i === activeMode ? 1 : 0.5, transition: 'all 0.6s cubic-bezier(0.4,0,0.2,1)' }}>
+                <span className="ln-tk-mode-name">{m.name}</span>
+                <span className="ln-tk-mode-desc">{m.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Hook system */}
+      <div className="ln-tk-sec">
+        <span className="ln-tk-sec-label">Hook system</span>
+        <div className="ln-tk-hook">
+          <div className="ln-tk-hook-timeline">
+            <div className="ln-tk-hook-seg ln-tk-hook-seg-hook">
+              <span>Hook</span>
+              <span className="ln-tk-hook-dur">3s</span>
+            </div>
+            <div className="ln-tk-hook-seg ln-tk-hook-seg-sfx">
+              <span>SFX</span>
+            </div>
+            <div className="ln-tk-hook-seg ln-tk-hook-seg-script">
+              <span>Main Script</span>
+              <span className="ln-tk-hook-dur">42s</span>
+            </div>
+          </div>
+          <div className="ln-tk-hook-scan" />
+        </div>
+      </div>
+
+      {/* Captions */}
+      <div className="ln-tk-sec">
+        <span className="ln-tk-sec-label">Caption styles</span>
+        <div className="ln-tk-cap-row">
+          {[
+            { text: 'BOLD', cls: 'ln-tk-cap-bold', name: 'Impact', on: true },
+            { text: 'Glow', cls: 'ln-tk-cap-glow', name: 'Neon' },
+            { text: 'Type_', cls: 'ln-tk-cap-type', name: 'Reveal' },
+            { text: 'Outline', cls: 'ln-tk-cap-outline', name: 'Clean' },
+          ].map(c => (
+            <div key={c.name} className={`ln-tk-cap ${c.on ? 'ln-tk-cap-on' : ''}`}>
+              <span className={`ln-tk-cap-preview ${c.cls}`}>{c.text}</span>
+              <span className="ln-tk-cap-name">{c.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Engagement stats */}
+      <div className="ln-tk-sec ln-tk-stats">
+        <div className="ln-tk-stat">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span className="ln-tk-stat-val">94%</span>
+          <span className="ln-tk-stat-name">Watch rate</span>
+        </div>
+        <div className="ln-tk-stat">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+          <span className="ln-tk-stat-val">2.4x</span>
+          <span className="ln-tk-stat-name">Retention</span>
+        </div>
+        <div className="ln-tk-stat">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          <span className="ln-tk-stat-val">↑67%</span>
+          <span className="ln-tk-stat-name">Completion</span>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -289,7 +411,7 @@ function FeaturesSection() {
         <div className="ln-fs-visuals">
           {/* Voices — ElevenLabs branded */}
           <div className={`ln-fs-viz ln-fs-viz-voices ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
-            {/* ElevenLabs header */}
+            {/* Header */}
             <div className="ln-v-header">
               <div className="ln-v-brand">
                 <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
@@ -307,9 +429,6 @@ function FeaturesSection() {
                 { name: 'Laura', desc: 'Warm & expressive', active: true },
                 { name: 'Aria', desc: 'Clear & professional' },
                 { name: 'Roger', desc: 'Deep & authoritative' },
-                { name: 'Sarah', desc: 'Friendly & bright' },
-                { name: 'Charlie', desc: 'Calm & soothing' },
-                { name: 'George', desc: 'Bold & cinematic' },
               ].map((v, i) => (
                 <div key={v.name} className={`ln-v-card ${v.active ? 'ln-v-card-on' : ''}`}>
                   <div className="ln-v-card-play">
@@ -329,120 +448,62 @@ function FeaturesSection() {
             </div>
 
             {/* Style presets */}
-            <div className="ln-v-styles">
-              <span className="ln-v-styles-label">Style presets</span>
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">Style presets</span>
               <div className="ln-v-styles-row">
                 {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
                   <span key={p} className={`ln-v-style ${i === 1 ? 'ln-v-style-on' : ''}`}>{p}</span>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Studio — hero phone with grouped floating controls */}
-          <div className={`ln-fs-viz ln-fs-viz-studio ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-ft-hero-phone">
-              <StudioPreviewPhone videoRefOut={studioVideoRef} />
-              <PhoneMicButton videoRef={studioVideoRef} show={active === 1} />
-            </div>
-
-            {/* Voice group — top right */}
-            <div className="ln-grp ln-grp-voice">
-              <div className="ln-grp-label">Voice</div>
-              <div className="ln-grp-row">
-                <div className="ln-pill">Aria</div>
-                <div className="ln-pill ln-pill-sel">Laura</div>
-                <div className="ln-pill">Roger</div>
-              </div>
-              <div className="ln-grp-label">Style</div>
-              <div className="ln-grp-row">
-                <div className="ln-pill">Natural</div>
-                <div className="ln-pill ln-pill-sel">Dramatic</div>
-                <div className="ln-pill">Calm</div>
-              </div>
-            </div>
-
-            {/* Visual mode — right center */}
-            <div className="ln-grp ln-grp-mode">
-              <div className="ln-grp-label">Visual</div>
-              <div className="ln-grp-row">
-                <div className="ln-pill ln-pill-sel">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
-                  AI Backgrounds
+            {/* AI Music */}
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">AI Music</span>
+              <div className="ln-v-music-player">
+                <div className="ln-v-music-play">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 </div>
-                <div className="ln-pill">Split Screen</div>
+                <div className="ln-v-music-wave">
+                  {[...Array(40)].map((_, i) => (
+                    <div key={i} className="ln-v-music-bar" style={{
+                      height: `${20 + Math.sin(i * 0.5) * 30 + Math.random() * 25}%`,
+                      animationDelay: `${i * 0.06}s`,
+                    }} />
+                  ))}
+                </div>
+                <span className="ln-v-music-dur">0:45</span>
               </div>
-              <div className="ln-grp-row">
-                <div className="ln-pill">Video BG</div>
-                <div className="ln-pill">Karaoke</div>
+              <div className="ln-v-music-tracks">
+                {['Valley Sunset', 'Digital Clouds', 'Cyberpunk City', 'Forest Mist'].map((t, i) => (
+                  <span key={t} className={`ln-v-music-track ${i === 0 ? 'ln-v-music-track-on' : ''}`}>{t}</span>
+                ))}
+                <span className="ln-v-music-more">+16</span>
               </div>
             </div>
 
-            {/* Audio — bottom right */}
-            <div className="ln-grp ln-grp-audio">
-              <div className="ln-grp-label">Audio</div>
-              <div className="ln-grp-row">
-                <div className="ln-pill ln-pill-on">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                  AI Music
+            {/* Sound Effects */}
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">Sound Effects</span>
+              <div className="ln-v-sfx-row">
+                <div className="ln-v-sfx ln-v-sfx-on">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                  Cinematic Whoosh
                 </div>
-                <div className="ln-pill">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Captions
+                <div className="ln-v-sfx">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                  Bass Drop
+                </div>
+                <div className="ln-v-sfx">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+                  Riser
                 </div>
               </div>
-            </div>
-
-            {/* Flow: 3 config boxes → converge → Generate → arrow → video */}
-            <svg className="ln-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {/* Voice (left-center of voice box) → Generate */}
-              <path d="M79,16 C68,16 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
-              {/* Visual (left-center of visual box) → Generate */}
-              <path d="M79,48 C72,48 64,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
-              {/* Audio (left-center of audio box) → Generate */}
-              <path d="M79,80 C68,80 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
-              {/* Generate → Video phone */}
-              <path d="M52,48 L38,48" stroke="rgba(255,255,255,0.16)" strokeWidth="0.25" fill="none"/>
-              {/* Arrow tip */}
-              <polygon points="38,48 39.5,47 39.5,49" fill="rgba(255,255,255,0.35)"/>
-              {/* Pulse: Voice → Generate */}
-              <circle r="0.5" fill="rgba(255,255,255,0.6)">
-                <animateMotion dur="2.5s" repeatCount="indefinite" path="M79,16 C68,16 62,48 58,48"/>
-              </circle>
-              {/* Pulse: Visual → Generate */}
-              <circle r="0.5" fill="rgba(255,255,255,0.6)">
-                <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M79,48 C72,48 64,48 58,48"/>
-              </circle>
-              {/* Pulse: Audio → Generate */}
-              <circle r="0.5" fill="rgba(255,255,255,0.6)">
-                <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.4s" path="M79,80 C68,80 62,48 58,48"/>
-              </circle>
-              {/* Pulse: Generate → Video */}
-              <circle r="0.7" fill="rgba(255,255,255,0.8)">
-                <animateMotion dur="1.2s" repeatCount="indefinite" path="M58,48 L38,48"/>
-              </circle>
-            </svg>
-            <div className="ln-gen-btn">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Generate
-            </div>
-          </div>
-
-          {/* Music */}
-          <div className={`ln-fs-viz ${active === 2 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-ft-eq">
-              {[...Array(48)].map((_, i) => (
-                <div key={i} className="ln-ft-eq-bar" style={{ animationDelay: `${i * 0.05}s` }} />
-              ))}
-            </div>
-            <div className="ln-ft-eq-meta">
-              <span className="ln-ft-eq-tag">AI Generated</span>
-              <span className="ln-ft-eq-dur">0:45</span>
             </div>
           </div>
 
           {/* Research — Firecrawl branded */}
-          <div className={`ln-fs-viz ln-fs-viz-research ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
+          <div className={`ln-fs-viz ln-fs-viz-research ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
             {/* Firecrawl header */}
             <div className="ln-r-header">
               <div className="ln-r-brand">
@@ -516,6 +577,95 @@ function FeaturesSection() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Studio — hero phone with grouped floating controls */}
+          <div className={`ln-fs-viz ln-fs-viz-studio ${active === 2 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-hero-phone">
+              <StudioPreviewPhone videoRefOut={studioVideoRef} />
+              <PhoneMicButton videoRef={studioVideoRef} show={active === 2} />
+            </div>
+
+            {/* Voice group — top right */}
+            <div className="ln-grp ln-grp-voice">
+              <div className="ln-grp-label">Voice</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Aria</div>
+                <div className="ln-pill ln-pill-sel">Laura</div>
+                <div className="ln-pill">Roger</div>
+              </div>
+              <div className="ln-grp-label">Style</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Natural</div>
+                <div className="ln-pill ln-pill-sel">Dramatic</div>
+                <div className="ln-pill">Calm</div>
+              </div>
+            </div>
+
+            {/* Visual mode — right center */}
+            <div className="ln-grp ln-grp-mode">
+              <div className="ln-grp-label">Visual</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-sel">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                  AI Backgrounds
+                </div>
+                <div className="ln-pill">Split Screen</div>
+              </div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Video BG</div>
+                <div className="ln-pill">Karaoke</div>
+              </div>
+            </div>
+
+            {/* Audio — bottom right */}
+            <div className="ln-grp ln-grp-audio">
+              <div className="ln-grp-label">Audio</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-on">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  AI Music
+                </div>
+                <div className="ln-pill">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Captions
+                </div>
+              </div>
+            </div>
+
+            {/* Flow: 3 config boxes → converge → Generate → arrow → video */}
+            <svg className="ln-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M79,16 C68,16 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M79,48 C72,48 64,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M79,80 C68,80 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M52,48 L38,48" stroke="rgba(255,255,255,0.16)" strokeWidth="0.25" fill="none"/>
+              <polygon points="38,48 39.5,47 39.5,49" fill="rgba(255,255,255,0.35)"/>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" path="M79,16 C68,16 62,48 58,48"/>
+              </circle>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M79,48 C72,48 64,48 58,48"/>
+              </circle>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.4s" path="M79,80 C68,80 62,48 58,48"/>
+              </circle>
+              <circle r="0.7" fill="rgba(255,255,255,0.8)">
+                <animateMotion dur="1.2s" repeatCount="indefinite" path="M58,48 L38,48"/>
+              </circle>
+            </svg>
+            <div className="ln-gen-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Generate
+            </div>
+          </div>
+
+          {/* Viral Patterns */}
+          <div className={`ln-fs-viz ln-fs-viz-tiktok ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-tk-header">
+              <span className="ln-tk-title">Viral Formats</span>
+              <span className="ln-tk-badge">3 modes</span>
+            </div>
+            <ViralPatternsViz />
           </div>
 
           {/* Media Library */}
