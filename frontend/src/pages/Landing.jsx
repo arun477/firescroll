@@ -72,6 +72,9 @@ export default function Landing() {
           <span className="ln-nav-name">FireScroll</span>
         </div>
         <div className="ln-nav-right">
+          <a href="https://github.com/arun477/firescroll" target="_blank" rel="noopener" className="ln-nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
           <button className="ln-nav-btn" onClick={() => navigate('/dashboard')}>Dashboard</button>
           <button className="ln-nav-go" onClick={() => navigate('/create')}>
             Get Started <ArrowRight size={13} />
@@ -87,14 +90,35 @@ export default function Landing() {
         </div>
 
         <div className="ln-hero-content">
-        <p className="ln-eyebrow">AI Video Creation Platform</p>
+
+        {/* Partner branding */}
+        <div className="ln-partners">
+          <span className="ln-partners-built">Built with</span>
+          <div className="ln-partners-logos">
+            <a href="https://elevenlabs.io" target="_blank" rel="noopener" className="ln-partner">
+              <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+                <rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+                <rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+              </svg>
+              ElevenLabs
+            </a>
+            <span className="ln-partners-x">+</span>
+            <a href="https://firecrawl.dev" target="_blank" rel="noopener" className="ln-partner">
+              <img src="/firecrawl-light-logo.svg" alt="" className="ln-partner-img" />
+              Firecrawl
+            </a>
+          </div>
+        </div>
+
         <h1 className="ln-h1">
-          Topic in.<br />
-          <span className="ln-fire">Videos out.</span>
+          Brain rot,<br />
+          <span className="ln-fire">but educational.</span>
         </h1>
+        <p className="ln-tagline">Short video creation platform</p>
         <p className="ln-p">
-          FireScroll researches any subject, writes scripts, and renders
-          cinematic short-form videos with ElevenLabs voices and AI-generated music.
+          Type any topic. AI researches, writes, and renders addictive
+          short-form videos with ultra-realistic voices and custom music.
+          The scroll that actually teaches you something.
         </p>
         <div className="ln-actions">
           <button className="ln-go" onClick={() => navigate('/create')}>
@@ -107,60 +131,129 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Bento grid */}
-      <section className="ln-bento">
-        <div className="ln-bento-item ln-bento-wide">
-          <div className="ln-bento-label">Video Studio</div>
-          <p>Three-panel editor. Choose voice, visuals, music per segment. Upload custom backgrounds. AI or stock. Full creative control.</p>
-          <div className="ln-bento-art ln-bento-art-studio">
-            <div className="ln-art-panels">
-              <div className="ln-art-p ln-art-p1">
-                {[1,2,3,4,5].map(i=><div key={i} className="ln-art-seg"><div className="ln-art-dot"/><div className="ln-art-lines"><div/><div/></div></div>)}
+      {/* Features */}
+      <section className="ln-feat">
+        <h2 className="ln-h2">Everything under one roof</h2>
+
+        {/* Row 1: Two big cards */}
+        <div className="ln-feat-row ln-feat-row-2">
+          <div className="ln-card ln-card-voices">
+            <div className="ln-card-text">
+              <h3>ElevenLabs Voices</h3>
+              <p>50+ ultra-realistic AI voices with 5 style presets. Fine-tune stability, clarity, style, and speed per segment.</p>
+            </div>
+            <div className="ln-card-viz">
+              <div className="ln-viz-voices">
+                {['Bella', 'Roger', 'Sarah', 'Laura', 'Charlie', 'George', 'Callum'].map((n, i) => (
+                  <div key={n} className={`ln-viz-voice ${i === 3 ? 'ln-viz-voice-on' : ''}`}>
+                    <div className="ln-viz-voice-wave">
+                      {[...Array(8)].map((_,j) => <div key={j} style={{height: `${20+Math.random()*60}%`, animationDelay: `${j*0.1+i*0.05}s`}} />)}
+                    </div>
+                    <span>{n}</span>
+                  </div>
+                ))}
               </div>
-              <div className="ln-art-p ln-art-p2">
-                <div className="ln-art-screen" />
+              <div className="ln-viz-presets">
+                {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
+                  <span key={p} className={`ln-viz-preset ${i === 1 ? 'ln-viz-preset-on' : ''}`}>{p}</span>
+                ))}
               </div>
-              <div className="ln-art-p ln-art-p3">
-                <div className="ln-art-ctrl"/><div className="ln-art-ctrl"/><div className="ln-art-ctrl"/>
-                <div className="ln-art-btn" />
+            </div>
+          </div>
+
+          <div className="ln-card ln-card-music">
+            <div className="ln-card-text">
+              <h3>AI Music & SFX</h3>
+              <p>Generate custom instrumentals with ElevenLabs or pick from 20+ built-in ambient tracks. AI sound effects for intros.</p>
+            </div>
+            <div className="ln-card-viz">
+              <div className="ln-viz-eq-big">
+                {[...Array(40)].map((_,i) => <div key={i} className="ln-viz-eq-bar" style={{animationDelay: `${i*0.06}s`}} />)}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="ln-bento-item">
-          <div className="ln-bento-label">ElevenLabs Voices</div>
-          <p>50+ ultra-realistic voices. Style presets: dramatic, calm, energetic. Fine-tune stability and speed.</p>
-          <div className="ln-bento-art">
-            <div className="ln-art-wave">
-              {[...Array(32)].map((_,i)=><div key={i} className="ln-wave-bar" style={{animationDelay:`${i*0.06}s`}}/>)}
+        {/* Row 2: Full-width studio */}
+        <div className="ln-feat-row ln-feat-row-1">
+          <div className="ln-card ln-card-studio-full">
+            <div className="ln-studio-top">
+              <div>
+                <h3>Video Studio</h3>
+                <p>Pick voice, visuals, music, and captions for every segment. Preview in real-time. Generate with one click.</p>
+              </div>
+              <div className="ln-studio-modes">
+                <span className="ln-studio-mode ln-studio-mode-on">AI Backgrounds</span>
+                <span className="ln-studio-mode">Video BG</span>
+                <span className="ln-studio-mode">Split Screen</span>
+                <span className="ln-studio-mode">Karaoke</span>
+              </div>
+            </div>
+            <div className="ln-studio-mock">
+              <div className="ln-sm-left">
+                {['The Blueprint of Life', 'DNA Structure', 'Gene Expression', 'Protein Synthesis', 'Mutations'].map((t, i) => (
+                  <div key={i} className={`ln-sm-seg ${i===0 ? 'ln-sm-seg-on' : ''}`}>
+                    <div className="ln-sm-n">{i+1}</div>
+                    <div className="ln-sm-t">{t}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="ln-sm-center">
+                <div className="ln-sm-phone">
+                  <img className="ln-sm-phone-gif" src={gifUrl(ALL_GIFS[24])} alt="" loading="lazy" />
+                  <div className="ln-sm-phone-overlay">
+                    <div className="ln-sm-phone-title">DNA: The Blueprint</div>
+                    <div className="ln-sm-phone-sub">Part 1 of 5</div>
+                  </div>
+                </div>
+              </div>
+              <div className="ln-sm-right">
+                <div className="ln-sm-section">Voice</div>
+                <div className="ln-sm-row"><span className="ln-sm-chip ln-sm-chip-on">ElevenLabs</span><span className="ln-sm-chip">OpenAI</span></div>
+                <div className="ln-sm-section">Style</div>
+                <div className="ln-sm-row"><span className="ln-sm-chip">Natural</span><span className="ln-sm-chip ln-sm-chip-on">Dramatic</span><span className="ln-sm-chip">Calm</span></div>
+                <div className="ln-sm-section">Music</div>
+                <div className="ln-sm-row"><span className="ln-sm-chip ln-sm-chip-on">AI Generate</span><span className="ln-sm-chip">Library</span></div>
+                <div className="ln-sm-btn" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="ln-bento-item">
-          <div className="ln-bento-label">AI Music</div>
-          <p>Generate custom instrumentals with ElevenLabs. Or pick from 20+ built-in ambient tracks.</p>
-          <div className="ln-bento-art">
-            <div className="ln-art-music">
-              {[...Array(16)].map((_,i)=><div key={i} className="ln-music-dot" style={{animationDelay:`${i*0.15}s`}}/>)}
+        {/* Row 3: Two cards */}
+        <div className="ln-feat-row ln-feat-row-2">
+          <div className="ln-card">
+            <h3>Deep Research</h3>
+            <p>Firecrawl web scraping + AI synthesis. Accurate, sourced scripts generated automatically from the web.</p>
+            <div className="ln-card-viz">
+              <div className="ln-viz-research">
+                {['Scraping arxiv.org...', 'Found 12 sources', 'Synthesizing scripts...', 'Generated 6 segments'].map((t, i) => (
+                  <div key={i} className="ln-viz-step" style={{animationDelay: `${i*0.5}s`}}>
+                    <div className={`ln-viz-step-dot ${i===3 ? 'ln-viz-step-done' : ''}`} />
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="ln-bento-item">
-          <div className="ln-bento-label">Deep Research</div>
-          <p>Firecrawl web scraping + AI synthesis. Accurate, sourced scripts generated automatically.</p>
-        </div>
-
-        <div className="ln-bento-item">
-          <div className="ln-bento-label">Media Library</div>
-          <p>Upload your own videos. Audio stripped automatically. Canva-style library shared across all projects.</p>
-        </div>
-
-        <div className="ln-bento-item">
-          <div className="ln-bento-label">Sound Effects</div>
-          <p>AI-generated intro sounds. Describe what you want — cinematic whoosh, bass hit, ambient pad.</p>
+          <div className="ln-card">
+            <h3>Media Library</h3>
+            <p>Upload your own background videos. Audio stripped automatically. Canva-style shared library across all projects.</p>
+            <div className="ln-card-viz">
+              <div className="ln-viz-upload">
+                <div className="ln-viz-upload-zone">Drop video or click to upload</div>
+                <div className="ln-viz-upload-files">
+                  {['sunset_timelapse.mp4', 'ocean_waves.mp4', 'city_night.mp4'].map(f => (
+                    <div key={f} className="ln-viz-upload-file">
+                      <div className="ln-viz-upload-thumb" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
