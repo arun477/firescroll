@@ -1,5 +1,6 @@
-import { Routes, Route, NavLink } from 'react-router-dom'
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, PlusCircle, Flame, Key } from 'lucide-react'
+import Landing from './pages/Landing'
 import Feed from './pages/Feed'
 import Dashboard from './pages/Dashboard'
 import TopicDetail from './pages/TopicDetail'
@@ -33,15 +34,24 @@ function Logo() {
 }
 
 export default function App() {
+  const location = useLocation()
+  const isLanding = location.pathname === '/'
+
+  if (isLanding) {
+    return <Landing />
+  }
+
   return (
     <div className="app">
       <nav className="sidebar-nav">
         <div className="sidebar-logo">
-          <Logo />
-          <span className="logo-text">FireScroll</span>
+          <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
+            <Logo />
+            <span className="logo-text">FireScroll</span>
+          </NavLink>
         </div>
         <div className="sidebar-links">
-          <NavLink to="/" end><Flame size={18} />Feed</NavLink>
+          <NavLink to="/feed"><Flame size={18} />Feed</NavLink>
           <NavLink to="/dashboard"><LayoutDashboard size={18} />Dashboard</NavLink>
           <NavLink to="/create"><PlusCircle size={18} />Create</NavLink>
           <NavLink to="/settings"><Key size={18} />API Keys</NavLink>
@@ -49,7 +59,7 @@ export default function App() {
       </nav>
       <div className="main-content">
         <Routes>
-          <Route path="/" element={<Feed />} />
+          <Route path="/feed" element={<Feed />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/topic/:topicId" element={<TopicDetail />} />
           <Route path="/create" element={<CreateTopic />} />

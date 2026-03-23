@@ -101,7 +101,7 @@ export default function TopicDetail() {
               {doneJobs > 0 && <span className="td-tab-badge">{doneJobs}</span>}
             </button>
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/?topic=${topicId}`)}>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/feed?topic=${topicId}`)}>
             <Flame size={14} /> Feed
           </button>
         </div>
