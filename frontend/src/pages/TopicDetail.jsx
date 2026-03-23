@@ -142,6 +142,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [previewingVoice, setPreviewingVoice] = useState(null)
   const [mediaLibrary, setMediaLibrary] = useState([])
   const [uploading, setUploading] = useState(false)
+  const [mediaDrawerOpen, setMediaDrawerOpen] = useState(false)
   const previewAudioRef = useRef(null)
   const [provider, setProvider] = useState('')
   const [voiceId, setVoiceId] = useState('')
@@ -579,47 +580,17 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               </div>
             </div>
 
-            {/* Background video picker (for video/split modes) */}
+            {/* Background video (for video/split modes) */}
             {(mode === 'video' || mode === 'split') && (
-              <div className="ve-media-lib">
-                <div className="ve-media-lib-head">
-                  <span className="ve-media-lib-label">Background Video</span>
-                  <label className="ve-media-upload-btn">
-                    {uploading ? <Loader2 size={11} className="spin" /> : <Download size={11} style={{ transform: 'rotate(180deg)' }} />}
-                    {uploading ? 'Processing...' : 'Upload'}
-                    <input type="file" accept="video/*" onChange={handleUploadVideo}
-                      style={{ display: 'none' }} disabled={uploading} />
-                  </label>
-                </div>
-                <div className="ve-media-grid">
-                  <button className={`ve-media-item ${!settings.bg_video_id ? 've-media-on' : ''}`}
-                    onClick={() => setSetting(selectedSeg.id, 'bg_video_id', '')}>
-                    <Shuffle size={14} />
-                    <span>Random Stock</span>
-                  </button>
-                  {mediaLibrary.map(m => (
-                    <div key={m.id}
-                      className={`ve-media-item ${settings.bg_video_id === m.id ? 've-media-on' : ''} ${m.status !== 'ready' ? 've-media-processing' : ''}`}
-                      onClick={() => m.status === 'ready' && setSetting(selectedSeg.id, 'bg_video_id', m.id)}>
-                      {m.status === 'processing'
-                        ? <Loader2 size={14} className="spin" />
-                        : m.status === 'failed'
-                          ? <AlertCircle size={14} />
-                          : m.thumb_url
-                            ? <img className="ve-media-thumb" src={m.thumb_url} alt="" />
-                            : <Film size={14} />}
-                      <span className="ve-media-name">
-                        {m.original_name || m.filename}
-                        {m.status === 'processing' && <span className="ve-media-status"> Processing...</span>}
-                        {m.status === 'failed' && <span className="ve-media-status"> Failed</span>}
-                        {m.duration_seconds > 0 && <span className="ve-media-status"> {Math.round(m.duration_seconds)}s</span>}
-                      </span>
-                      <button className="ve-media-del" onClick={e => { e.stopPropagation(); handleDeleteMedia(m.id) }}>
-                        <X size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              <div className="ve-bg-pick">
+                <span className="ve-bg-pick-label">Background</span>
+                <button className="ve-bg-pick-btn"
+                  onClick={() => setMediaDrawerOpen(true)}>
+                  {settings.bg_video_id
+                    ? <><Film size={11} /> {mediaLibrary.find(m => m.id === settings.bg_video_id)?.original_name || 'Custom video'}</>
+                    : <><Shuffle size={11} /> Random stock</>}
+                  <ChevronRight size={12} />
+                </button>
               </div>
             )}
           </Section>
@@ -722,6 +693,87 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             </div>
           )}
         </div>
+      )}
+
+      {/* ══════ MEDIA LIBRARY DRAWER ══════ */}
+      {mediaDrawerOpen && (
+        <>
+          <div className="ml-overlay" onClick={() => setMediaDrawerOpen(false)} />
+          <div className="ml-drawer">
+            <div className="ml-head">
+              <h3 className="ml-title">Media Library</h3>
+              <button className="ml-close" onClick={() => setMediaDrawerOpen(false)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="ml-upload-zone">
+              <label className="ml-upload-label">
+                {uploading
+                  ? <><Loader2 size={18} className="spin" /><span>Processing upload...</span></>
+                  : <><Download size={18} style={{ transform: 'rotate(180deg)' }} /><span>Drop video or click to upload</span><span className="ml-upload-hint">MP4, MOV, AVI, MKV, WebM — max 500MB</span></>}
+                <input type="file" accept="video/*" onChange={handleUploadVideo}
+                  style={{ display: 'none' }} disabled={uploading} />
+              </label>
+            </div>
+
+            <div className="ml-items">
+              {/* Random stock option */}
+              <div className={`ml-item ${!settings.bg_video_id ? 'ml-item-on' : ''}`}
+                onClick={() => { setSetting(selectedSeg.id, 'bg_video_id', ''); setMediaDrawerOpen(false) }}>
+                <div className="ml-item-thumb ml-item-thumb-stock">
+                  <Shuffle size={20} />
+                </div>
+                <div className="ml-item-info">
+                  <div className="ml-item-name">Random Stock Video</div>
+                  <div className="ml-item-meta">From built-in library</div>
+                </div>
+              </div>
+
+              {mediaLibrary.map(m => (
+                <div key={m.id}
+                  className={`ml-item ${settings.bg_video_id === m.id ? 'ml-item-on' : ''} ${m.status !== 'ready' ? 'ml-item-disabled' : ''}`}
+                  onClick={() => {
+                    if (m.status === 'ready') {
+                      setSetting(selectedSeg.id, 'bg_video_id', m.id)
+                      setMediaDrawerOpen(false)
+                    }
+                  }}>
+                  <div className="ml-item-thumb">
+                    {m.status === 'processing'
+                      ? <Loader2 size={18} className="spin" />
+                      : m.status === 'failed'
+                        ? <AlertCircle size={18} />
+                        : m.thumb_url
+                          ? <img src={m.thumb_url} alt="" />
+                          : <Film size={18} />}
+                  </div>
+                  <div className="ml-item-info">
+                    <div className="ml-item-name">{m.original_name || m.filename}</div>
+                    <div className="ml-item-meta">
+                      {m.status === 'processing' && 'Processing...'}
+                      {m.status === 'failed' && 'Failed to process'}
+                      {m.status === 'ready' && <>
+                        {m.duration_seconds > 0 && `${Math.round(m.duration_seconds)}s`}
+                        {m.width > 0 && ` · ${m.width}×${m.height}`}
+                        {m.file_size > 0 && ` · ${(m.file_size / (1024*1024)).toFixed(1)}MB`}
+                      </>}
+                    </div>
+                  </div>
+                  <button className="ml-item-del" onClick={e => { e.stopPropagation(); handleDeleteMedia(m.id) }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+
+              {mediaLibrary.length === 0 && (
+                <div className="ml-empty">
+                  No uploaded videos yet. Upload your first video above.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
