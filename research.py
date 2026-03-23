@@ -169,15 +169,36 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         results = fc.search(query, limit=5,
                             scrape_options={"formats": ["markdown"]})
         src_count = 0
-        if results and hasattr(results, "data"):
-            for item in results.data:
-                url = getattr(item, "url", "")
-                title = getattr(item, "title", "")
-                markdown = getattr(item, "markdown", "")
+        result_data = None
+        if hasattr(results, "data"):
+            result_data = results.data
+        elif isinstance(results, dict) and "data" in results:
+            result_data = results["data"]
+        elif isinstance(results, list):
+            result_data = results
+
+        if result_data:
+            for item in result_data:
+                if isinstance(item, dict):
+                    url = item.get("url", "")
+                    title = item.get("title", "")
+                    markdown = item.get("markdown", "") or item.get("content", "") or item.get("description", "")
+                else:
+                    url = getattr(item, "url", "")
+                    title = getattr(item, "title", "")
+                    markdown = getattr(item, "markdown", "") or getattr(item, "content", "") or getattr(item, "description", "")
                 if markdown:
                     add_research_source(topic_id, url, title,
                                         markdown[:5000], "search")
                     src_count += 1
+                elif url:
+                    add_research_source(topic_id, url, title or url,
+                                        f"Source: {title} - {url}", "search")
+                    src_count += 1
+        else:
+            print(f"[FC] Raw result type: {type(results)}")
+            if hasattr(results, "__dict__"):
+                print(f"[FC] Result attrs: {list(results.__dict__.keys())}")
         print(f"[FC] Found {src_count} sources for: {segment_title}")
 
         update_research_task(task_id, status="processing")
