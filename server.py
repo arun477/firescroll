@@ -186,18 +186,25 @@ def generate_all(topic_id: str):
 
     def run():
         import random
+        from concurrent.futures import ThreadPoolExecutor
         from batch_generate import _generate_single
         from db import create_job
         segments = get_segments_for_topic(topic_id)
         gen_data = _segments_to_gen_data(topic, segments)
         modes = ["full", "video", "split"]
         captions = ["default", "karaoke"]
+
+        planned = []
         for seg in gen_data:
             mode = random.choice(modes)
             caption = random.choice(captions)
             job_id = create_job(topic_id, seg["id"], mode, caption)
             if job_id:
-                _generate_single(seg, mode, caption, OUTPUT_DIR, job_id)
+                planned.append((seg, mode, caption, job_id))
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for seg, mode, caption, job_id in planned:
+                pool.submit(_generate_single, seg, mode, caption, OUTPUT_DIR, job_id)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started"}
