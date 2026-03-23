@@ -39,8 +39,9 @@ start_tunnel() {
         echo "Tunnel started (PID: $PID)"
         echo ""
         echo "Access services at:"
-        echo "  Backend:  http://localhost:8000"
-        echo "  Frontend: http://localhost:3000"
+        echo "  Backend:  http://localhost:8500"
+        echo "  Frontend: http://localhost:3500 (docker)"
+        echo "  Frontend: http://localhost:3000 (dev)"
     else
         echo "Failed to start tunnel"
         return 1
