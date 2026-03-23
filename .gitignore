@@ -2,7 +2,7 @@ venv/
 output/
 __pycache__/
 .env
-*.db
+dbdata/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
