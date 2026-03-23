@@ -246,118 +246,99 @@ function ViralPatternsViz() {
     return () => clearInterval(id)
   }, [])
   const modes = [
-    { name: 'AI Backgrounds', key: 'full', desc: 'AI-generated scene per sentence' },
-    { name: 'Split Screen', key: 'split', desc: 'Top video + bottom captions' },
-    { name: 'Video Background', key: 'video', desc: 'Your own footage as backdrop' },
+    { name: 'AI Backgrounds', tag: 'FULL' },
+    { name: 'Split Screen', tag: 'SPLIT' },
+    { name: 'Video BG', tag: 'VIDEO' },
   ]
   return (
-    <>
-      {/* Visual Modes — cycling phone preview */}
-      <div className="ln-tk-sec">
-        <span className="ln-tk-sec-label">Visual modes</span>
-        <div className="ln-tk-modes">
-          <div className="ln-tk-preview">
-            {/* Full/AI BG */}
-            <div className={`ln-tk-scene ${activeMode === 0 ? 'ln-tk-scene-on' : ''}`}>
-              <div className="ln-tk-scene-bg ln-tk-scene-ai">
-                <div className="ln-tk-scene-shimmer" />
-              </div>
-              <div className="ln-tk-scene-caption">
-                <div className="ln-tk-scene-cap-line" />
-                <div className="ln-tk-scene-cap-line ln-tk-scene-cap-short" />
-              </div>
-            </div>
-            {/* Split */}
-            <div className={`ln-tk-scene ${activeMode === 1 ? 'ln-tk-scene-on' : ''}`}>
-              <div className="ln-tk-scene-split-top" />
-              <div className="ln-tk-scene-split-mid" />
-              <div className="ln-tk-scene-split-bot">
-                <div className="ln-tk-scene-cap-line" />
-                <div className="ln-tk-scene-cap-line ln-tk-scene-cap-short" />
-              </div>
-            </div>
-            {/* Video BG */}
-            <div className={`ln-tk-scene ${activeMode === 2 ? 'ln-tk-scene-on' : ''}`}>
-              <div className="ln-tk-scene-bg ln-tk-scene-vid">
-                <div className="ln-tk-scene-vid-play">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                </div>
-              </div>
-              <div className="ln-tk-scene-caption">
-                <div className="ln-tk-scene-cap-line" />
-              </div>
+    <div className="ln-vp">
+      {/* Big phone — center hero */}
+      <div className="ln-vp-phone">
+        {/* AI BG scene */}
+        <div className={`ln-vp-scene ${activeMode === 0 ? 'ln-vp-scene-on' : ''}`}>
+          <div className="ln-vp-scene-ai">
+            <div className="ln-vp-shimmer" />
+            <div className="ln-vp-ai-dots">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="ln-vp-ai-dot" style={{ animationDelay: `${i * 0.4}s` }} />
+              ))}
             </div>
           </div>
-          <div className="ln-tk-mode-pills">
-            {modes.map((m, i) => (
-              <div key={m.key} className={`ln-tk-mode ${i === activeMode ? 'ln-tk-mode-on' : ''}`}
-                style={{ opacity: i === activeMode ? 1 : 0.5, transition: 'all 0.6s cubic-bezier(0.4,0,0.2,1)' }}>
-                <span className="ln-tk-mode-name">{m.name}</span>
-                <span className="ln-tk-mode-desc">{m.desc}</span>
-              </div>
-            ))}
+          <div className="ln-vp-cap">
+            <div className="ln-vp-cap-line" />
+            <div className="ln-vp-cap-line ln-vp-cap-short" />
           </div>
         </div>
-      </div>
-
-      {/* Hook system */}
-      <div className="ln-tk-sec">
-        <span className="ln-tk-sec-label">Hook system</span>
-        <div className="ln-tk-hook">
-          <div className="ln-tk-hook-timeline">
-            <div className="ln-tk-hook-seg ln-tk-hook-seg-hook">
-              <span>Hook</span>
-              <span className="ln-tk-hook-dur">3s</span>
-            </div>
-            <div className="ln-tk-hook-seg ln-tk-hook-seg-sfx">
-              <span>SFX</span>
-            </div>
-            <div className="ln-tk-hook-seg ln-tk-hook-seg-script">
-              <span>Main Script</span>
-              <span className="ln-tk-hook-dur">42s</span>
+        {/* Split scene */}
+        <div className={`ln-vp-scene ${activeMode === 1 ? 'ln-vp-scene-on' : ''}`}>
+          <div className="ln-vp-split-top">
+            <div className="ln-vp-split-face" />
+          </div>
+          <div className="ln-vp-split-div" />
+          <div className="ln-vp-split-bot">
+            <div className="ln-vp-cap">
+              <div className="ln-vp-cap-line" />
+              <div className="ln-vp-cap-line ln-vp-cap-short" />
             </div>
           </div>
-          <div className="ln-tk-hook-scan" />
         </div>
+        {/* Video BG scene */}
+        <div className={`ln-vp-scene ${activeMode === 2 ? 'ln-vp-scene-on' : ''}`}>
+          <div className="ln-vp-vid-bg">
+            <div className="ln-vp-vid-grain" />
+          </div>
+          <div className="ln-vp-cap">
+            <div className="ln-vp-cap-line" />
+          </div>
+        </div>
+        {/* Progress bar at bottom */}
+        <div className="ln-vp-progress"><div className="ln-vp-progress-fill" /></div>
       </div>
 
-      {/* Captions */}
-      <div className="ln-tk-sec">
-        <span className="ln-tk-sec-label">Caption styles</span>
-        <div className="ln-tk-cap-row">
-          {[
-            { text: 'BOLD', cls: 'ln-tk-cap-bold', name: 'Impact', on: true },
-            { text: 'Glow', cls: 'ln-tk-cap-glow', name: 'Neon' },
-            { text: 'Type_', cls: 'ln-tk-cap-type', name: 'Reveal' },
-            { text: 'Outline', cls: 'ln-tk-cap-outline', name: 'Clean' },
-          ].map(c => (
-            <div key={c.name} className={`ln-tk-cap ${c.on ? 'ln-tk-cap-on' : ''}`}>
-              <span className={`ln-tk-cap-preview ${c.cls}`}>{c.text}</span>
-              <span className="ln-tk-cap-name">{c.name}</span>
-            </div>
-          ))}
-        </div>
+      {/* Floating mode tabs — left side */}
+      <div className="ln-vp-modes">
+        {modes.map((m, i) => (
+          <div key={m.tag} className={`ln-vp-mode ${i === activeMode ? 'ln-vp-mode-on' : ''}`}>
+            <span className="ln-vp-mode-tag">{m.tag}</span>
+            <span className="ln-vp-mode-name">{m.name}</span>
+          </div>
+        ))}
       </div>
 
-      {/* Engagement stats */}
-      <div className="ln-tk-sec ln-tk-stats">
-        <div className="ln-tk-stat">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span className="ln-tk-stat-val">94%</span>
-          <span className="ln-tk-stat-name">Watch rate</span>
+      {/* Hook badge — top right */}
+      <div className="ln-vp-hook-badge">
+        <div className="ln-vp-hook-bar">
+          <div className="ln-vp-hook-seg-h">Hook 3s</div>
+          <div className="ln-vp-hook-seg-s">SFX</div>
+          <div className="ln-vp-hook-seg-m">Script</div>
         </div>
-        <div className="ln-tk-stat">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg>
-          <span className="ln-tk-stat-val">2.4x</span>
-          <span className="ln-tk-stat-name">Retention</span>
+        <div className="ln-vp-hook-scan" />
+      </div>
+
+      {/* Caption styles — bottom left */}
+      <div className="ln-vp-caps">
+        <span className="ln-vp-cap-bold">IMPACT</span>
+        <span className="ln-vp-cap-glow">Neon</span>
+        <span className="ln-vp-cap-type">Type_</span>
+        <span className="ln-vp-cap-outline">Clean</span>
+      </div>
+
+      {/* Stats — bottom right */}
+      <div className="ln-vp-stats">
+        <div className="ln-vp-stat">
+          <span className="ln-vp-stat-num">94%</span>
+          <span className="ln-vp-stat-label">watch</span>
         </div>
-        <div className="ln-tk-stat">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-          <span className="ln-tk-stat-val">↑67%</span>
-          <span className="ln-tk-stat-name">Completion</span>
+        <div className="ln-vp-stat">
+          <span className="ln-vp-stat-num">2.4x</span>
+          <span className="ln-vp-stat-label">retain</span>
+        </div>
+        <div className="ln-vp-stat">
+          <span className="ln-vp-stat-num">↑67%</span>
+          <span className="ln-vp-stat-label">finish</span>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -659,12 +640,8 @@ function FeaturesSection() {
             </div>
           </div>
 
-          {/* Viral Patterns */}
-          <div className={`ln-fs-viz ln-fs-viz-tiktok ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-tk-header">
-              <span className="ln-tk-title">Viral Formats</span>
-              <span className="ln-tk-badge">3 modes</span>
-            </div>
+          {/* Viral Patterns — open layout */}
+          <div className={`ln-fs-viz ln-fs-viz-viral ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
             <ViralPatternsViz />
           </div>
 
