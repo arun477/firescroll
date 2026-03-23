@@ -3884,82 +3884,182 @@ a { color: var(--blue); text-decoration: none; }
   pointer-events: auto;
 }
 
-/* ── Feature 1: Voices ── */
-.ln-ft-voices-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-bottom: 16px;
+/* ── Feature 1: Voices (ElevenLabs — premium monochrome) ── */
+.ln-fs-viz-voices {
+  padding: 28px;
+  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.015);
 }
 
-.ln-ft-voice {
+/* Header */
+.ln-v-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.ln-v-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: all 0.15s;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fafafa;
+  letter-spacing: -0.4px;
 }
 
-.ln-ft-voice-active {
-  background: rgba(139,92,246,0.08);
+.ln-v-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #71717a;
 }
 
-.ln-ft-voice-bars {
+/* Voice card list */
+.ln-v-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ln-v-card {
   display: flex;
   align-items: center;
-  gap: 1.5px;
-  height: 20px;
-  width: 48px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  cursor: default;
+}
+
+.ln-v-card:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.ln-v-card-on {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* Play button */
+.ln-v-card-play {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3f3f46;
   flex-shrink: 0;
 }
 
-.ln-ft-voice-bar {
+.ln-v-card-on .ln-v-card-play {
+  background: #fafafa;
+  border-color: #fafafa;
+  color: #09090b;
+  box-shadow: 0 2px 12px rgba(255,255,255,0.1);
+}
+
+/* Waveform */
+.ln-v-card-wave {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+  height: 26px;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.ln-v-bar {
   flex: 1;
   border-radius: 1px;
-  background: rgba(139,92,246,0.25);
-  animation: ftWave 2s ease-in-out infinite;
+  background: rgba(255,255,255,0.08);
+  animation: vWave 2s ease-in-out infinite;
+  transform-origin: center;
 }
 
-.ln-ft-voice-active .ln-ft-voice-bar {
-  background: rgba(139,92,246,0.6);
+.ln-v-card-on .ln-v-bar {
+  background: rgba(255,255,255,0.35);
 }
 
-@keyframes ftWave {
-  0%, 100% { transform: scaleY(0.3); }
+@keyframes vWave {
+  0%, 100% { transform: scaleY(0.2); }
   50% { transform: scaleY(1); }
 }
 
-.ln-ft-voice-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #52525b;
-}
-.ln-ft-voice-active .ln-ft-voice-name {
-  color: #a78bfa;
+/* Voice info */
+.ln-v-card-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.ln-ft-presets {
+.ln-v-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #52525b;
+}
+
+.ln-v-card-on .ln-v-card-name {
+  color: #fafafa;
+}
+
+.ln-v-card-desc {
+  font-size: 10px;
+  color: #3f3f46;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ln-v-card-on .ln-v-card-desc {
+  color: #71717a;
+}
+
+/* Style presets */
+.ln-v-styles {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.ln-v-styles-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #3f3f46;
+}
+
+.ln-v-styles-row {
+  display: flex;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
-.ln-ft-preset {
+.ln-v-style {
   font-size: 11px;
   font-weight: 600;
   padding: 5px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
   color: #52525b;
-  transition: all 0.15s;
 }
 
-.ln-ft-preset-active {
-  background: rgba(139,92,246,0.1);
-  border-color: rgba(139,92,246,0.25);
-  color: #a78bfa;
+.ln-v-style-on {
+  background: #fafafa;
+  border-color: #fafafa;
+  color: #09090b;
+  box-shadow: 0 2px 10px rgba(255,255,255,0.08);
 }
 
 /* ── Feature 2: Studio mockup ── */

@@ -244,24 +244,55 @@ function FeaturesSection() {
       {/* Right: sticky visual that swaps */}
       <div className="ln-fs-sticky">
         <div className="ln-fs-visuals">
-          {/* Voices */}
-          <div className={`ln-fs-viz ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
-            <div className="ln-ft-voices-grid">
-              {['Aria', 'Roger', 'Sarah', 'Laura', 'Charlie', 'George', 'Lily', 'Chris'].map((name, i) => (
-                <div key={name} className={`ln-ft-voice ${i === 3 ? 'ln-ft-voice-active' : ''}`}>
-                  <div className="ln-ft-voice-bars">
-                    {[...Array(12)].map((_, j) => (
-                      <div key={j} className="ln-ft-voice-bar" style={{ height: `${15 + Math.random() * 70}%`, animationDelay: `${j * 0.08 + i * 0.04}s` }} />
+          {/* Voices — ElevenLabs branded */}
+          <div className={`ln-fs-viz ln-fs-viz-voices ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
+            {/* ElevenLabs header */}
+            <div className="ln-v-header">
+              <div className="ln-v-brand">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+                  <rect x="8" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
+                  <rect x="19" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
+                </svg>
+                <span>ElevenLabs</span>
+              </div>
+              <span className="ln-v-count">50+ voices</span>
+            </div>
+
+            {/* Voice cards */}
+            <div className="ln-v-list">
+              {[
+                { name: 'Laura', desc: 'Warm & expressive', active: true },
+                { name: 'Aria', desc: 'Clear & professional' },
+                { name: 'Roger', desc: 'Deep & authoritative' },
+                { name: 'Sarah', desc: 'Friendly & bright' },
+                { name: 'Charlie', desc: 'Calm & soothing' },
+                { name: 'George', desc: 'Bold & cinematic' },
+              ].map((v, i) => (
+                <div key={v.name} className={`ln-v-card ${v.active ? 'ln-v-card-on' : ''}`}>
+                  <div className="ln-v-card-play">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                  <div className="ln-v-card-wave">
+                    {[...Array(16)].map((_, j) => (
+                      <div key={j} className="ln-v-bar" style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${j * 0.07 + i * 0.05}s` }} />
                     ))}
                   </div>
-                  <span className="ln-ft-voice-name">{name}</span>
+                  <div className="ln-v-card-info">
+                    <span className="ln-v-card-name">{v.name}</span>
+                    <span className="ln-v-card-desc">{v.desc}</span>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="ln-ft-presets">
-              {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
-                <span key={p} className={`ln-ft-preset ${i === 1 ? 'ln-ft-preset-active' : ''}`}>{p}</span>
-              ))}
+
+            {/* Style presets */}
+            <div className="ln-v-styles">
+              <span className="ln-v-styles-label">Style presets</span>
+              <div className="ln-v-styles-row">
+                {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
+                  <span key={p} className={`ln-v-style ${i === 1 ? 'ln-v-style-on' : ''}`}>{p}</span>
+                ))}
+              </div>
             </div>
           </div>
 
