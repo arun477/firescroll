@@ -1,0 +1,41 @@
+{
+  "topic": "Black Hole",
+  "series_title": "Cosmic Mysteries Unveiled",
+  "total_parts": 3,
+  "target_audience": "curious learners",
+  "segments": [
+    {
+      "id": 1,
+      "title": "The Invisible Giant",
+      "hook": "Did you know that a black hole is like a cosmic vacuum cleaner sucking in everything around it?",
+      "script": "Black holes aren't like the monsters of sci-fi, but they do have an immense gravitational pull! Anything that gets too close, even light, can't escape. Imagine a massive void in space with a strong appetite!",
+      "visual_cue": "Show an animation of a swirling galaxy with a black hole at the center, pulling in stars and light.",
+      "duration": {
+        "min_seconds": 15,
+        "max_seconds": 45
+      }
+    },
+    {
+      "id": 2,
+      "title": "Journey to the Heart of Darkness",
+      "hook": "Ever wondered what you'd see if you fell into a black hole?",
+      "script": "Approaching a black hole would be a wild ride! As you get closer, time slows due to its intense gravity. Get too near and you'd experience 'spaghettification' – being stretched into thin strands! Yikes!",
+      "visual_cue": "Animate a character falling towards a black hole, showing time dilation effects and stretching as they get closer.",
+      "duration": {
+        "min_seconds": 15,
+        "max_seconds": 45
+      }
+    },
+    {
+      "id": 3,
+      "title": "Birth of a Black Hole",
+      "hook": "How does a black hole come into existence? It's more explosive than you think!",
+      "script": "Black holes are born from the ashes of massive stars. When these giants collapse under their gravity, they explode in a supernova. The core compresses into something so dense that it warps space and time!",
+      "visual_cue": "Show a massive star exploding into a supernova, then zoom into the collapsing core forming a black hole.",
+      "duration": {
+        "min_seconds": 15,
+        "max_seconds": 45
+      }
+    }
+  ]
+}

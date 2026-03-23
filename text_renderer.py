@@ -1,0 +1,233 @@
+from PIL import Image, ImageDraw
+
+from fonts import get_font
+
+WIDTH = 1080
+HEIGHT = 1920
+FPS = 30
+FADE_DUR = 0.3
+
+TITLE_COLOR = (255, 255, 255)
+TITLE_BG = (230, 50, 80, 230)
+BADGE_BG = (50, 50, 50, 200)
+HOOK_BG = (20, 120, 255, 210)
+SCRIPT_BG = (30, 30, 30, 200)
+CAPTION_TEXT = (255, 255, 255)
+TEXT_PAD_X = 28
+TEXT_PAD_Y = 14
+PILL_RADIUS = 20
+
+
+def center_x(draw, text, font):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return (WIDTH - (bbox[2] - bbox[0])) // 2
+
+
+def text_size(draw, text, font):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+
+def wrap_lines(draw, text, font, max_width):
+    words = text.split()
+    lines = []
+    current = ""
+    for word in words:
+        test = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
+def ease_out_back(t):
+    c1 = 1.70158
+    c3 = c1 + 1
+    return 1 + c3 * pow(t - 1, 3) + c1 * pow(t - 1, 2)
+
+
+def ease_out_cubic(t):
+    return 1 - pow(1 - t, 3)
+
+
+def draw_pill(draw, x, y, w, h, *, fill, radius=PILL_RADIUS):
+    draw.rounded_rectangle([(x, y), (x + w, y + h)], radius=radius, fill=fill)
+
+
+def draw_bold_text(draw, text, pos, font, *, fill=CAPTION_TEXT, stroke=5):
+    draw.text(pos, text, font=font, fill=fill,
+              stroke_width=stroke, stroke_fill=(0, 0, 0, 255))
+
+
+def _draw_series_badge(img, segment, t):
+    font = get_font("body", 30)
+    series = segment.get("series_title", "")
+    if not series:
+        return
+    draw = ImageDraw.Draw(img)
+    alpha = min(1.0, t / FADE_DUR)
+    a = int(255 * alpha)
+    tw, th = text_size(draw, series, font)
+    sx = (WIDTH - tw) // 2
+    y = 60
+    badge_bg = (*BADGE_BG[:3], int(BADGE_BG[3] * alpha))
+    draw_pill(draw, sx - 20, y - 10, tw + 40, th + 20, fill=badge_bg, radius=25)
+    draw_bold_text(draw, series, (sx, y), font,
+                   fill=(255, 255, 255, a), stroke=2)
+
+
+def _draw_title(img, segment, t):
+    font = get_font("title", 72)
+    title = segment["title"].upper()
+    draw = ImageDraw.Draw(img)
+    tw, th = text_size(draw, title, font)
+    tx = (WIDTH - tw) // 2
+
+    y_base = 130
+    if t < 0.4:
+        progress = ease_out_back(min(1.0, t / 0.4))
+        y_offset = int((1 - progress) * 80)
+        alpha = min(1.0, t / 0.2)
+        a = int(255 * alpha)
+        bg_a = int(TITLE_BG[3] * alpha)
+        draw_pill(draw, tx - TEXT_PAD_X, y_base + y_offset - TEXT_PAD_Y,
+                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2,
+                  fill=(*TITLE_BG[:3], bg_a))
+        draw_bold_text(draw, title, (tx, y_base + y_offset), font,
+                       fill=(*TITLE_COLOR, a), stroke=4)
+    else:
+        draw_pill(draw, tx - TEXT_PAD_X, y_base - TEXT_PAD_Y,
+                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=TITLE_BG)
+        draw_bold_text(draw, title, (tx, y_base), font,
+                       fill=TITLE_COLOR, stroke=4)
+
+
+def _draw_caption_block(img, lines, t_offset, duration, font, *,
+                        y_center, pill_fill, max_visible=2):
+    draw = ImageDraw.Draw(img)
+    if not lines:
+        return
+    time_per_line = duration / len(lines)
+    current_idx = min(int(t_offset / time_per_line), len(lines) - 1)
+
+    visible_start = max(0, current_idx - max_visible + 1)
+    visible_end = min(len(lines), current_idx + 1)
+    visible = list(range(visible_start, visible_end))
+
+    line_h = 85
+    block_h = len(visible) * line_h
+    y_start = y_center - (block_h // 2)
+
+    for vi, idx in enumerate(visible):
+        line = lines[idx]
+        line_start = idx * time_per_line
+        line_age = t_offset - line_start
+
+        if idx == current_idx:
+            pop = min(1.0, line_age / 0.15)
+            alpha = ease_out_cubic(pop)
+            scale = 0.9 + 0.1 * ease_out_back(min(1.0, line_age / 0.3))
+            y_slide = int((1 - ease_out_cubic(min(1.0, line_age / 0.15))) * 30)
+        else:
+            alpha = 0.6
+            scale = 1.0
+            y_slide = 0
+
+        a = int(255 * alpha)
+        y_pos = y_start + (vi * line_h) + y_slide
+
+        font_size = int(font.size * scale)
+        scaled_font = get_font("bold", font_size)
+        tw, th = text_size(draw, line, scaled_font)
+        lx = (WIDTH - tw) // 2
+
+        pill_a = int(pill_fill[3] * alpha)
+        draw_pill(draw, lx - TEXT_PAD_X, y_pos - TEXT_PAD_Y,
+                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2,
+                  fill=(*pill_fill[:3], pill_a))
+        draw_bold_text(draw, line, (lx, y_pos), scaled_font,
+                       fill=(255, 255, 255, a), stroke=5)
+
+
+def _draw_hook_lines(img, segment, t, hook_end):
+    if t >= hook_end:
+        return
+    font = get_font("bold", 50)
+    draw = ImageDraw.Draw(img)
+    lines = wrap_lines(draw, segment["hook"], font, WIDTH - 180)
+    _draw_caption_block(img, lines, t, hook_end, font,
+                        y_center=HEIGHT * 2 // 3, pill_fill=HOOK_BG)
+
+
+def _draw_script_lines(img, segment, t, hook_end, total_dur):
+    if t < hook_end:
+        return
+    font = get_font("bold", 44)
+    draw = ImageDraw.Draw(img)
+    lines = wrap_lines(draw, segment["script"], font, WIDTH - 160)
+    st = t - hook_end
+    script_dur = total_dur - hook_end
+    _draw_caption_block(img, lines, st, script_dur, font,
+                        y_center=HEIGHT * 2 // 3, pill_fill=SCRIPT_BG)
+
+
+def _draw_progress_bar(draw, progress):
+    bar_h = 8
+    y = HEIGHT - bar_h
+    draw.rectangle([(0, y), (WIDTH, HEIGHT)], fill=(50, 50, 50, 120))
+    bar_w = int(WIDTH * progress)
+    draw.rectangle([(0, y), (bar_w, HEIGHT)], fill=(230, 50, 80, 240))
+
+
+def render_frame(segment, frame_num, total_frames, timing):
+    img = Image.new("RGBA", (WIDTH, HEIGHT), color=(0, 0, 0, 0))
+    t = frame_num / FPS
+    hook_end = timing["hook_duration"]
+    total_dur = timing["total_duration"]
+
+    _draw_series_badge(img, segment, t)
+    _draw_title(img, segment, t)
+    _draw_hook_lines(img, segment, t, hook_end)
+    _draw_script_lines(img, segment, t, hook_end, total_dur)
+
+    draw = ImageDraw.Draw(img)
+    _draw_progress_bar(draw, frame_num / total_frames)
+
+    return img
+
+
+def render_thumbnail(segment):
+    img = Image.new("RGBA", (WIDTH, HEIGHT), color=(0, 0, 0, 0))
+
+    _draw_series_badge(img, segment, 1.0)
+
+    font_title = get_font("title", 80)
+    draw = ImageDraw.Draw(img)
+    title = segment["title"].upper()
+    tw, th = text_size(draw, title, font_title)
+    tx = (WIDTH - tw) // 2
+    draw_pill(draw, tx - TEXT_PAD_X, 140 - TEXT_PAD_Y,
+              tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=TITLE_BG)
+    draw_bold_text(draw, title, (tx, 140), font_title,
+                   fill=TITLE_COLOR, stroke=5)
+
+    font_hook = get_font("bold", 52)
+    lines = wrap_lines(draw, segment["hook"], font_hook, WIDTH - 180)
+    line_h = 85
+    total_h = len(lines) * line_h
+    y_start = (HEIGHT * 2 // 3) - (total_h // 2)
+    for i, line in enumerate(lines):
+        tw, th = text_size(draw, line, font_hook)
+        lx = (WIDTH - tw) // 2
+        y_pos = y_start + i * line_h
+        draw_pill(draw, lx - TEXT_PAD_X, y_pos - TEXT_PAD_Y,
+                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=HOOK_BG)
+        draw_bold_text(draw, line, (lx, y_pos), font_hook, stroke=5)
+
+    return img
