@@ -342,18 +342,19 @@ def fc_crawl(topic_id, segment_id, url, limit=10, max_depth=2):
                           scrape_options={"formats": ["markdown"]})
         new_count = 0
         total = 0
-        if hasattr(result, "data"):
-            for doc in result.data:
-                meta = doc.metadata if hasattr(doc, "metadata") else None
-                page_url = getattr(meta, "source_url", url) if meta else url
-                page_title = getattr(meta, "title", "") if meta else ""
-                md = getattr(doc, "markdown", "") or ""
-                if md:
-                    was_new = add_research_source(
-                        topic_id, page_url, page_title, md[:5000], "crawl")
-                    if was_new:
-                        new_count += 1
-                    total += 1
+        docs = getattr(result, "data", []) or []
+        for doc in docs:
+            meta = getattr(doc, "metadata", None)
+            page_url = (getattr(meta, "source_url", "") or
+                        getattr(meta, "url", "") or url) if meta else url
+            page_title = getattr(meta, "title", "") if meta else ""
+            md = getattr(doc, "markdown", "") or ""
+            if md:
+                was_new = add_research_source(
+                    topic_id, page_url, page_title, md[:5000], "crawl")
+                if was_new:
+                    new_count += 1
+                total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
             result_preview=f"Crawled {total} pages, {new_count} new")
@@ -370,11 +371,20 @@ def fc_map(topic_id, url):
     try:
         fc = _get_firecrawl()
         result = fc.map(url, limit=200)
-        links = getattr(result, "links", []) or []
+        raw_links = getattr(result, "links", []) or []
+        urls = []
+        for link in raw_links:
+            if isinstance(link, str):
+                urls.append(link)
+            elif hasattr(link, "url"):
+                urls.append(link.url)
+            elif isinstance(link, dict):
+                urls.append(link.get("url", ""))
+        urls = [u for u in urls if u]
         update_firecrawl_job(
-            job_id, status="done", pages_found=len(links),
-            result_preview=json.dumps(links[:30], ensure_ascii=False))
-        return {"links": links, "total": len(links)}
+            job_id, status="done", pages_found=len(urls),
+            result_preview=json.dumps(urls[:30], ensure_ascii=False))
+        return {"links": urls, "total": len(urls)}
     except Exception as exc:  # pylint: disable=broad-exception-caught
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
@@ -415,18 +425,19 @@ def fc_batch_scrape(topic_id, urls):
         result = fc.batch_scrape(urls[:20], formats=["markdown"])
         new_count = 0
         total = 0
-        if hasattr(result, "data"):
-            for doc in result.data:
-                meta = doc.metadata if hasattr(doc, "metadata") else None
-                page_url = getattr(meta, "source_url", "") if meta else ""
-                page_title = getattr(meta, "title", "") if meta else ""
-                md = getattr(doc, "markdown", "") or ""
-                if md and page_url:
-                    was_new = add_research_source(
-                        topic_id, page_url, page_title, md[:5000], "scrape")
-                    if was_new:
-                        new_count += 1
-                    total += 1
+        docs = getattr(result, "data", []) or []
+        for doc in docs:
+            meta = getattr(doc, "metadata", None)
+            page_url = (getattr(meta, "source_url", "") or
+                        getattr(meta, "url", "")) if meta else ""
+            page_title = getattr(meta, "title", "") if meta else ""
+            md = getattr(doc, "markdown", "") or ""
+            if md and page_url:
+                was_new = add_research_source(
+                    topic_id, page_url, page_title, md[:5000], "scrape")
+                if was_new:
+                    new_count += 1
+                total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
             result_preview=f"Batch: {total} pages, {new_count} new")
