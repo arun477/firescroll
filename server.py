@@ -639,7 +639,7 @@ def _process_uploaded_video(media_id, file_path):
         result = subprocess.run([
             "ffmpeg", "-y", "-i", file_path,
             "-an", "-c:v", "copy", silent_path,
-            "-ss", "1", "-vframes", "1", "-vf", "scale=320:-1", thumb_path,
+            "-ss", "2", "-vframes", "1", "-vf", "scale=480:-1:flags=lanczos", thumb_path,
         ], capture_output=True, check=False)
 
         if os.path.exists(silent_path):

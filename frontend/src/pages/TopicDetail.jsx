@@ -62,7 +62,10 @@ export default function TopicDetail() {
     if (!data) return
     const running = data.jobs?.some(j => isActive(j.status))
     const researching = data.research?.some(r => !['done','failed'].includes(r.status))
-    if (running || researching) {
+    const segBusy = data.segments?.some(s => s.status === 'researching')
+    const fcBusy = data.fc_jobs?.some(j => j.status === 'running')
+    const topicBusy = data.topic?.research_status === 'generating'
+    if (running || researching || segBusy || fcBusy || topicBusy) {
       const iv = setInterval(load, 2500)
       return () => clearInterval(iv)
     }

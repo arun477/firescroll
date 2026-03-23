@@ -3384,10 +3384,11 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .ml-item-thumb {
-  width: 64px;
-  height: 40px;
-  border-radius: 5px;
-  background: rgba(255,255,255,0.04);
+  width: 80px;
+  height: 50px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
