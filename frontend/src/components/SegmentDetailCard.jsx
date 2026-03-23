@@ -159,7 +159,7 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
                 </div>
               )}
               <div className="seg-detail-actions">
-                {isReady && <button className="seg-mini-btn" onClick={startEdit}><Save size={12} /> Edit</button>}
+                {isReady && <button className="seg-mini-btn" onClick={startEdit}><Pencil size={12} /> Edit</button>}
                 <button className="seg-mini-btn" onClick={() => handleResearch(seg.source || 'ai')}>
                   <RefreshCw size={12} /> Regenerate
                 </button>
