@@ -832,21 +832,24 @@ function SfxPreviewButton({ prompt }) {
 }
 
 function MediaItem({ media: m, selected, onSelect, onDelete }) {
+  const [playing, setPlaying] = useState(false)
   const videoRef = useRef(null)
-  const [hovering, setHovering] = useState(false)
+
+  const handlePlay = (e) => {
+    e.stopPropagation()
+    if (playing) {
+      videoRef.current?.pause()
+      setPlaying(false)
+    } else {
+      videoRef.current?.play().catch(() => {})
+      setPlaying(true)
+    }
+  }
 
   return (
     <div
       className={`ml-item ${selected ? 'ml-item-on' : ''} ${m.status !== 'ready' ? 'ml-item-disabled' : ''}`}
       onClick={onSelect}
-      onMouseEnter={() => {
-        setHovering(true)
-        if (videoRef.current && m.status === 'ready') videoRef.current.play().catch(() => {})
-      }}
-      onMouseLeave={() => {
-        setHovering(false)
-        if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0 }
-      }}
     >
       <div className="ml-item-thumb">
         {m.status === 'processing'
@@ -854,8 +857,15 @@ function MediaItem({ media: m, selected, onSelect, onDelete }) {
           : m.status === 'failed'
             ? <AlertCircle size={18} />
             : m.video_url
-              ? <video ref={videoRef} src={m.video_url} muted loop
-                  preload="metadata" className="ml-item-video" />
+              ? <>
+                  <video ref={videoRef} src={m.video_url} muted loop
+                    poster={m.thumb_url || ''} preload="none"
+                    className="ml-item-video"
+                    onEnded={() => setPlaying(false)} />
+                  <button className="ml-item-play" onClick={handlePlay}>
+                    {playing ? <Square size={10} /> : <Play size={10} />}
+                  </button>
+                </>
               : <Film size={18} />}
       </div>
       <div className="ml-item-info">

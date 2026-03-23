@@ -3409,6 +3409,28 @@ a { color: var(--blue); text-decoration: none; }
   pointer-events: none;
 }
 
+.ml-item-thumb {
+  position: relative;
+}
+
+.ml-item-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.4);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ml-item:hover .ml-item-play { opacity: 1; }
+.ml-item-play:hover { background: rgba(0,0,0,0.6); }
+
 .ml-item-thumb-stock {
   border: 1px dashed var(--border);
 }
