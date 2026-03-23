@@ -2316,7 +2316,7 @@ a { color: var(--blue); text-decoration: none; }
   margin-bottom: 1px;
 }
 .ve-seg:hover { background: rgba(255,255,255,0.04); }
-.ve-seg-sel { background: rgba(59,130,246,0.08) !important; border-color: rgba(59,130,246,0.2); }
+.ve-seg-sel { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1); }
 .ve-seg-act { border-color: rgba(59,130,246,0.12); }
 
 .ve-seg-n {
@@ -2335,9 +2335,9 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .ve-seg-sel .ve-seg-n {
-  background: rgba(59,130,246,0.15);
-  border-color: rgba(59,130,246,0.3);
-  color: var(--blue);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text);
 }
 
 .ve-seg-info { flex: 1; min-width: 0; }
@@ -2375,9 +2375,9 @@ a { color: var(--blue); text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 
-.c-green { color: var(--green); }
-.c-red { color: #f87171; }
-.c-blue { color: var(--blue); }
+.c-green { color: rgba(34,197,94,0.7); }
+.c-red { color: rgba(248,113,113,0.7); }
+.c-blue { color: rgba(59,130,246,0.7); }
 .c-muted { color: var(--text-muted); }
 
 /* Active jobs mini at bottom of left */
@@ -2452,17 +2452,17 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .ve-c-head-num {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.12));
-  border: 1px solid rgba(59,130,246,0.2);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--blue);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -2583,25 +2583,25 @@ a { color: var(--blue); text-decoration: none; }
 .ve-c-script {
   padding: 10px 16px;
   border-top: 1px solid var(--border-subtle);
-  max-height: 100px;
+  max-height: 80px;
   overflow-y: auto;
   flex-shrink: 0;
 }
 
 .ve-c-script-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.6;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.55;
 }
 
 .ve-c-cue {
-  font-size: 11px;
-  color: var(--blue);
+  font-size: 10px;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 6px;
-  opacity: 0.8;
+  margin-top: 5px;
+  opacity: 0.6;
 }
 
 .ve-c-error {
@@ -2758,17 +2758,16 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
 }
 
-/* Voice grid */
+/* Voice list */
 .ve-voices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   max-height: 200px;
   overflow-y: auto;
 }
 
 .ve-voices-load {
-  grid-column: 1/-1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2779,29 +2778,31 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .ve-vc {
+  display: flex;
+  align-items: center;
   padding: 6px 8px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
   transition: all 0.08s;
   font-family: inherit;
 }
-.ve-vc:hover { background: rgba(255,255,255,0.05); border-color: var(--border); }
+.ve-vc:hover { background: rgba(255,255,255,0.04); }
 
 .ve-vc-on {
-  background: rgba(59,130,246,0.08) !important;
-  border-color: rgba(59,130,246,0.25) !important;
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }
 
 .ve-vc-name {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.ve-vc-on .ve-vc-name { color: var(--blue); }
+.ve-vc-on .ve-vc-name { color: var(--text); font-weight: 600; }
 
 /* Mode cards */
 .ve-modes {
@@ -2949,7 +2950,8 @@ a { color: var(--blue); text-decoration: none; }
   padding: 4px 6px;
   border-radius: 4px;
   margin-bottom: 1px;
-  font-size: 11px;
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .ve-hist-l {

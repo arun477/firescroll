@@ -183,7 +183,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         video_path = os.path.join(seg_dir, f"part{sid}{suffix}.mp4")
         thumb_path = os.path.join(seg_dir, f"part{sid}{suffix}_thumb.png")
 
-        update_job(job_id, status=STATUS_AUDIO)
+        update_job(job_id, status=STATUS_AUDIO, progress=5)
         print(f"  [Seg {sid}] Audio...")
         audio_result = _phase_audio(segment, seg_dir,
                                     voice_provider=voice_provider,
@@ -191,13 +191,14 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                                     music_track=music_track)
         timing = audio_result["timing"]
         update_job(job_id, audio_path=audio_result["audio_path"],
-                   duration_seconds=timing["total_duration"])
+                   duration_seconds=timing["total_duration"], progress=15)
 
         word_ts = None
         if caption == "karaoke":
-            update_job(job_id, status=STATUS_TRANSCRIBING)
+            update_job(job_id, status=STATUS_TRANSCRIBING, progress=20)
             print(f"  [Seg {sid}] Transcribing...")
             word_ts = _phase_transcribe(audio_result["voice_path"])
+            update_job(job_id, progress=25)
 
         total_frames = math.ceil(timing["total_duration"] * FPS)
         extra = {"word_ts": word_ts}
@@ -206,9 +207,10 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         needs_vid = mode in ("video", "split")
 
         if needs_bg:
-            update_job(job_id, status=STATUS_BACKGROUNDS)
+            update_job(job_id, status=STATUS_BACKGROUNDS, progress=30)
             print(f"  [Seg {sid}] Backgrounds...")
             extra["bg_images"] = _phase_backgrounds(segment, seg_dir)
+            update_job(job_id, progress=45)
 
         if needs_vid:
             print(f"  [Seg {sid}] Extracting video frames...")
@@ -220,7 +222,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                            target_h=target_h, total_frames=total_frames)
             extra["vid_dir"] = vid_dir
 
-        update_job(job_id, status=STATUS_RENDERING, progress=0)
+        update_job(job_id, status=STATUS_RENDERING, progress=45)
         print(f"  [Seg {sid}] Rendering {total_frames} frames...")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -236,11 +238,11 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                 done = 0
                 for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
                     done += 1
-                    if done % (FPS * 2) == 0 or done == total_frames:
-                        pct = int(done / total_frames * 100)
+                    if done % FPS == 0 or done == total_frames:
+                        pct = 45 + int(done / total_frames * 45)
                         update_job(job_id, progress=pct)
 
-            update_job(job_id, status=STATUS_ENCODING, progress=95)
+            update_job(job_id, status=STATUS_ENCODING, progress=92)
             print(f"  [Seg {sid}] Encoding...")
             _run_ffmpeg([
                 "ffmpeg", "-y",

@@ -203,6 +203,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
   const mode = settings.mode || 'full'
   const caption = settings.caption || 'default'
   const localVoice = settings.voice_id || voiceId
+  const localMusic = settings.music_track || music
 
   return (
     <div className="ve">
@@ -243,19 +244,6 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
           })}
         </div>
 
-        {/* Active jobs mini-monitor */}
-        {jobs.filter(j => isActive(j.status)).length > 0 && (
-          <div className="ve-jobs-mini">
-            <div className="ve-jm-title"><Loader2 size={11} className="spin" /> Active</div>
-            {jobs.filter(j => isActive(j.status)).map(j => (
-              <div key={j.id} className="ve-jm-row">
-                <span className="ve-jm-seg">Seg {j.segment_id}</span>
-                <div className="ve-jm-bar"><div className="ve-jm-fill" style={{ width: `${j.progress}%` }} /></div>
-                <button className="ve-jm-x" onClick={() => handleCancel(j.id)}><X size={10} /></button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ══════ CENTER: Preview ══════ */}
@@ -315,7 +303,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
             <div className="ve-c-script">
               <div className="ve-c-script-text">{selectedSeg.script}</div>
               {selectedSeg.visual_cue && (
-                <div className="ve-c-cue"><Eye size={11} /> {selectedSeg.visual_cue}</div>
+                <div className="ve-c-cue">{selectedSeg.visual_cue}</div>
               )}
             </div>
 
@@ -359,12 +347,12 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
                 <div className="ve-voices-load"><Loader2 size={14} className="spin" /> Loading...</div>
               ) : (<>
                 <button className={`ve-vc ${!localVoice ? 've-vc-on' : ''}`}
-                  onClick={() => { setSetting(selectedSeg.id, 'voice_id', ''); setVoiceId('') }}>
+                  onClick={() => { setSetting(selectedSeg.id, 'voice_id', '') }}>
                   <span className="ve-vc-name">Default</span>
                 </button>
                 {voices.filter(v => !voiceSearch || v.name.toLowerCase().includes(voiceSearch.toLowerCase())).map(v => (
                   <button key={v.id} className={`ve-vc ${localVoice === v.id ? 've-vc-on' : ''}`}
-                    onClick={() => { setSetting(selectedSeg.id, 'voice_id', v.id); setVoiceId(v.id) }}>
+                    onClick={() => { setSetting(selectedSeg.id, 'voice_id', v.id) }}>
                     <span className="ve-vc-name">{v.name}</span>
                   </button>
                 ))}
@@ -405,15 +393,15 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
 
           {/* ── Music ── */}
           <Section icon={Music} title="Music"
-            value={(settings.music_track || music) ? fmtTrack(settings.music_track || music) : 'Random'}>
+            value={localMusic ? fmtTrack(localMusic) : 'Random'}>
             <div className="ve-music">
-              <button className={`ve-mu ${!(settings.music_track || music) ? 've-mu-on' : ''}`}
-                onClick={() => { setSetting(selectedSeg.id, 'music_track', ''); setMusic('') }}>
+              <button className={`ve-mu ${!localMusic ? 've-mu-on' : ''}`}
+                onClick={() => setSetting(selectedSeg.id, 'music_track', '')}>
                 <Shuffle size={12} /> Random
               </button>
               {musicTracks.map(t => (
-                <button key={t} className={`ve-mu ${(settings.music_track || music) === t ? 've-mu-on' : ''}`}
-                  onClick={() => { setSetting(selectedSeg.id, 'music_track', t); setMusic(t) }}>
+                <button key={t} className={`ve-mu ${localMusic === t ? 've-mu-on' : ''}`}
+                  onClick={() => setSetting(selectedSeg.id, 'music_track', t)}>
                   <Music size={12} /> {fmtTrack(t)}
                 </button>
               ))}
@@ -433,19 +421,18 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh }) {
             </div>
           </div>
 
-          {/* ── History ── */}
-          {segJobs.length > 0 && (
+          {/* ── History (completed only) ── */}
+          {segJobs.filter(j => j.status === 'done' || j.status === 'failed').length > 0 && (
             <div className="ve-hist">
               <div className="ve-hist-title">History</div>
-              {[...segJobs].reverse().map(j => (
-                <div key={j.id} className={`ve-hist-row ${j.status === 'done' ? 'c-green' : j.status === 'failed' ? 'c-red' : isActive(j.status) ? 'c-blue' : 'c-muted'}`}>
+              {[...segJobs].filter(j => j.status === 'done' || j.status === 'failed').reverse().map(j => (
+                <div key={j.id} className={`ve-hist-row ${j.status === 'done' ? 'c-green' : 'c-red'}`}>
                   <div className="ve-hist-l">
-                    {isActive(j.status) ? <Loader2 size={11} className="spin" /> : j.status === 'done' ? <CheckCircle2 size={11} /> : j.status === 'failed' ? <AlertCircle size={11} /> : <Clock size={11} />}
+                    {j.status === 'done' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
                     <span>{j.mode}/{j.caption}</span>
                   </div>
                   <div className="ve-hist-r">
                     {j.duration_seconds && <span>{Math.round(j.duration_seconds)}s</span>}
-                    {isActive(j.status) && <button className="ve-hist-x" onClick={() => handleCancel(j.id)}><X size={10} /></button>}
                   </div>
                 </div>
               ))}
