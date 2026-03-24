@@ -32,6 +32,16 @@ export default function ResearchPanel({
 
   useEffect(() => { fetchSegments() }, [topicId, searchQuery, page])
 
+  // Poll segments when research is active
+  useEffect(() => {
+    const isBusy = topic?.research_status === 'generating' ||
+      segments.some(s => s.status === 'researching') ||
+      fcJobs?.some(j => j.status === 'running')
+    if (!isBusy) return
+    const iv = setInterval(() => { fetchSegments(); onRefresh() }, 3000)
+    return () => clearInterval(iv)
+  }, [topic?.research_status, segments, fcJobs])
+
   const refresh = () => { onRefresh(); fetchSegments() }
 
   const handleGenerateAll = async (method) => {

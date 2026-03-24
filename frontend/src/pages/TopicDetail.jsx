@@ -48,11 +48,6 @@ export default function TopicDetail() {
   const load = useCallback(() => {
     fetch(`/api/topics/${topicId}`).then(r => r.json()).then(d => {
       setData(d)
-      if (!searchParams.get('tab')) {
-        const segs = d.segments || []
-        if (segs.length > 0 && segs.every(s => s.status === 'ready'))
-          setSearchParams({ tab: 'generate' })
-      }
     })
   }, [topicId])
 
