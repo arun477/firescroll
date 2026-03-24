@@ -165,7 +165,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
       const p = d.providers || []
       setVoiceProviders(p)
       if (!provider) {
-        const def = p.find(x => x.default) || p[0]
+        const eleven = p.find(x => x.id === 'elevenlabs')
+        const def = eleven || p.find(x => x.default) || p[0]
         if (def) setProvider(def.id)
       }
     })
@@ -348,16 +349,12 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
           {/* ── Voice ── */}
           <Section icon={Volume2} title="Voice" defaultOpen
             value={voices.find(v => v.id === localVoice)?.name || 'Default'}>
-            <div className="ve-toggles">
-              {voiceProviders.map(p => (
-                <button key={p.id}
-                  className={`ve-tog ${(settings.voice_provider || provider) === p.id ? 've-tog-on' : ''}`}
-                  onClick={() => { setSetting(selectedSeg.id, 'voice_provider', p.id); setProvider(p.id) }}>
-                  {p.id === 'elevenlabs' && <Zap size={11} />}
-                  {p.name}
-                  {p.default && <span className="ve-tag">default</span>}
-                </button>
-              ))}
+            <div className="ve-provider-brand">
+              <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+                <rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+                <rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+              </svg>
+              <span>ElevenLabs</span>
             </div>
             <div className="ve-search">
               <Search size={12} className="ve-search-i" />
@@ -507,7 +504,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               </button>
               <button className={`ve-tog ${settings.music_source === 'elevenlabs' ? 've-tog-on' : ''}`}
                 onClick={() => setSetting(selectedSeg.id, 'music_source', 'elevenlabs')}>
-                <Zap size={11} /> AI Generate
+                <svg width="11" height="11" viewBox="0 0 32 32" fill="none"><rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/><rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/></svg>
+                ElevenLabs
               </button>
             </div>
 

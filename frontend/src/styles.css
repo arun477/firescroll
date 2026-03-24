@@ -5085,6 +5085,20 @@ a { color: var(--blue); text-decoration: none; }
 
 .ve-right::-webkit-scrollbar { width: 3px; }
 
+/* ElevenLabs brand in Voice section */
+.ve-provider-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* Accordion sections */
 .ve-sec {
   border-bottom: 1px solid var(--border-subtle);
