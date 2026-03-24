@@ -801,18 +801,18 @@ a { color: var(--blue); text-decoration: none; }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 
 .btn-secondary {
-  background: var(--glass);
-  color: var(--text);
-  border-color: var(--border);
-  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.04);
+  color: #a1a1aa;
+  border-color: rgba(255,255,255,0.06);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--glass-hover);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.07);
+  color: #fafafa;
+  border-color: rgba(255,255,255,0.1);
 }
 
-.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
 
 /* =================== CARDS =================== */
 .card {
@@ -1222,13 +1222,13 @@ a { color: var(--blue); text-decoration: none; }
 .td-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .td-tabs-inline {
   display: flex;
-  gap: 2px;
+  gap: 1px;
   background: rgba(255,255,255,0.03);
   border-radius: 8px;
   padding: 2px;
@@ -1343,11 +1343,11 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: #52525b;
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
@@ -1356,17 +1356,16 @@ a { color: var(--blue); text-decoration: none; }
   white-space: nowrap;
 }
 
-.td-tab:hover { color: var(--text-secondary); }
+.td-tab:hover { color: #a1a1aa; }
 
 .td-tab.active {
-  background: var(--glass);
-  color: var(--text);
-  box-shadow: var(--shadow);
+  background: rgba(255,255,255,0.07);
+  color: #fafafa;
 }
 
 .td-tab-badge {
-  background: var(--accent);
-  color: white;
+  background: rgba(255,255,255,0.1);
+  color: #a1a1aa;
   font-size: 9px;
   padding: 1px 6px;
   border-radius: 8px;
@@ -1380,13 +1379,15 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .rp-header h2 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.3px;
+  color: #fafafa;
+  display: none;
 }
 
 .rp-stats {
