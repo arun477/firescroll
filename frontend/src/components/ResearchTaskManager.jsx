@@ -128,16 +128,9 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
       )}
 
       {alwaysOpen && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.05)',
-          marginBottom: 8,
-        }}>
-          <span style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '1.2px',
-            textTransform: 'uppercase', color: 'var(--text-muted)', flex: 1,
-          }}>Activity</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+        <div className="tm-header">
+          <span className="tm-header-title">Activity</span>
+          <span className="tm-header-count">
             {allItems.length}
             {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
           </span>

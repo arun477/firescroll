@@ -156,7 +156,10 @@ export default function SourcesPanel({ topicId, onRefresh, alwaysOpen = false })
       {/* Action bar for selected */}
       {selected.size > 0 && (
         <div className="sp-action-bar">
-          <span className="sp-action-count">{selected.size} selected</span>
+          <span className="sp-action-count">
+            {selected.size} selected
+            <button className="sp-action-clear" onClick={() => setSelected(new Set())}>×</button>
+          </span>
           <button className="sp-gen-btn" onClick={handleGenerate} disabled={generating}>
             {generating
               ? <><Loader2 size={11} className="spin" /> Creating...</>

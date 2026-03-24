@@ -3179,7 +3179,24 @@ a { color: var(--blue); text-decoration: none; }
   font-size: 10px;
   color: #52525b;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.sp-action-clear {
+  background: none;
+  border: none;
+  color: #3f3f46;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.sp-action-clear:hover { color: #a1a1aa; }
 
 .sp-gen-btn {
   display: flex;
@@ -4065,7 +4082,7 @@ a { color: var(--blue); text-decoration: none; }
   position: sticky;
   top: 0;
   align-self: start;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 90px);
   overflow-y: auto;
   padding: 0 20px 20px 16px;
   display: flex;
@@ -4086,10 +4103,9 @@ a { color: var(--blue); text-decoration: none; }
   position: sticky;
   top: 0;
   align-self: start;
-  height: calc(100vh - 120px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 0 16px 20px 20px;
+  height: calc(100vh - 90px);
+  overflow: hidden;
+  padding: 0 16px 0 20px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -4114,10 +4130,10 @@ a { color: var(--blue); text-decoration: none; }
   margin-bottom: 12px;
 }
 
-/* Sources panel in right column — constrain height */
+/* Sources panel in right column — share space equally */
 .rp-col-right .sources-panel {
   margin-bottom: 0;
-  flex-shrink: 1;
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -4132,16 +4148,54 @@ a { color: var(--blue); text-decoration: none; }
 
 .rp-col-right .sp-cards::-webkit-scrollbar { width: 3px; }
 
-/* Activity in right column — separator + own scroll */
+/* Activity in right column — share space equally, fill to bottom */
 .rp-col-right .task-manager {
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  flex-shrink: 0;
-  max-height: 40%;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: -20px;
+  margin-right: -16px;
+  padding: 0 16px 0 20px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.rp-col-right .task-content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
-.rp-col-right .task-manager::-webkit-scrollbar { width: 3px; }
+.rp-col-right .task-content::-webkit-scrollbar { width: 3px; }
+
+/* Activity header for always-open mode */
+.tm-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 8px;
+  margin-left: -20px;
+  margin-right: -16px;
+  padding-left: 20px;
+  padding-right: 16px;
+  flex-shrink: 0;
+}
+
+.tm-header-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.tm-header-count {
+  font-size: 10px;
+  color: var(--text-muted);
+}
 
 .rp-col-header-title {
   font-size: 11px;
