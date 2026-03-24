@@ -337,6 +337,7 @@ def get_segments_for_topic(topic_id):
 
 def delete_segment(seg_id):
     conn = get_conn()
+    conn.execute("DELETE FROM segment_config WHERE segment_id = ?", (seg_id,))
     conn.execute("DELETE FROM segments WHERE id = ?", (seg_id,))
     conn.commit()
     conn.close()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Sparkles, Loader2, CheckCircle2, Database,
   Search, Plus, ChevronLeft, ChevronRight,
@@ -32,14 +32,25 @@ export default function ResearchPanel({
 
   useEffect(() => { fetchSegments() }, [topicId, searchQuery, page])
 
-  // Poll segments when research is active
+  // Poll when anything is busy — check broadly, keep polling until truly idle
+  const wasBusy = useRef(false)
   useEffect(() => {
     const isBusy = topic?.research_status === 'generating' ||
       segments.some(s => s.status === 'researching') ||
       fcJobs?.some(j => j.status === 'running')
-    if (!isBusy) return
-    const iv = setInterval(() => { fetchSegments(); onRefresh() }, 3000)
-    return () => clearInterval(iv)
+
+    if (isBusy) {
+      wasBusy.current = true
+      const iv = setInterval(() => { fetchSegments(); onRefresh() }, 2500)
+      return () => clearInterval(iv)
+    }
+
+    // Just finished — do a final refresh to catch the last state
+    if (wasBusy.current) {
+      wasBusy.current = false
+      setTimeout(() => { fetchSegments(); onRefresh() }, 1000)
+      setTimeout(() => { fetchSegments(); onRefresh() }, 3000)
+    }
   }, [topic?.research_status, segments, fcJobs])
 
   const refresh = () => { onRefresh(); fetchSegments() }

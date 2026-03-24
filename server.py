@@ -390,6 +390,19 @@ def get_sources_ep(topic_id: str):
     return {"sources": _get_src(topic_id), "stats": _get_stats(topic_id)}
 
 
+@app.get("/api/topics/{topic_id}/sources/{source_id}")
+def get_source_ep(topic_id: str, source_id: str):  # noqa: ARG001
+    from db import get_conn
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM research_sources WHERE id = ?", (source_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return dict(row)
+
+
 @app.delete("/api/topics/{topic_id}/sources/{source_id}")
 def delete_source_ep(topic_id: str, source_id: str):  # noqa: ARG001
     from db import delete_research_source
