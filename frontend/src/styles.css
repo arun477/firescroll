@@ -4639,40 +4639,71 @@ a { color: var(--blue); text-decoration: none; }
 
 .ve {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
-  gap: 10px;
-  height: calc(100vh - 120px);
+  grid-template-columns: 320px 1fr 344px;
+  gap: 0;
+  min-height: calc(100vh - 90px);
+  align-items: stretch;
   animation: fadeUp 0.25s ease both;
+  position: relative;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-left: -36px;
+  margin-right: -36px;
 }
 
-/* ─── LEFT: Collapsible Segment Bin ─── */
+/* Horizontal line under headers */
+.ve::after {
+  content: '';
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Left vertical divider */
+.ve::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -200px;
+  left: 320px;
+  width: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── LEFT: Controls ─── */
 
 .ve-left {
   display: flex;
   flex-direction: column;
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-y: auto;
   position: sticky;
   top: 0;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 90px);
+  padding: 0 20px 20px 16px;
 }
+
+.ve-left::-webkit-scrollbar { width: 3px; }
 
 .ve-left-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  height: 44px;
   flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .ve-left-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.7px;
+  letter-spacing: 1.2px;
   color: var(--text-muted);
 }
 
@@ -4821,11 +4852,23 @@ a { color: var(--blue); text-decoration: none; }
 .ve-center {
   display: flex;
   flex-direction: column;
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 90px);
+  padding: 0 24px;
+  position: relative;
+}
+
+/* Right vertical divider on center */
+.ve-center::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -200px;
+  right: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .ve-c-head {
@@ -5035,12 +5078,12 @@ a { color: var(--blue); text-decoration: none; }
 .ve-right {
   position: sticky;
   top: 0;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 90px);
   overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
+  padding: 0 16px 20px 20px;
 }
+
+.ve-right::-webkit-scrollbar { width: 3px; }
 
 /* Accordion sections */
 .ve-sec {

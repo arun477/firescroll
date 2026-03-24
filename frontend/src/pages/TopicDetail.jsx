@@ -338,46 +338,12 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   return (
     <div className="ve">
 
-      {/* ══════ LEFT: Segment Bin ══════ */}
-      <div className="ve-left">
-        <div className="ve-left-head">
-          <span className="ve-left-label">Segments</span>
-          <div className="ve-left-head-actions">
-            <button className="btn btn-primary btn-xs" onClick={handleGenerateAll}>
-              <Sparkles size={11} /> All
-            </button>
+      {/* ══════ LEFT: Controls ══════ */}
+      {selectedSeg && (
+        <div className="ve-left">
+          <div className="ve-left-head">
+            <span className="ve-left-label">Studio Controls</span>
           </div>
-        </div>
-        <div className="ve-seg-list">
-          {readySegs.map(seg => {
-            const sj = jobMap[seg.segment_num] || []
-            const latest = sj[sj.length - 1]
-            const act = latest && isActive(latest.status)
-            const done = sj.find(j => j.status === 'done')
-            const sel = seg.id === selectedSeg?.id
-            return (
-              <div key={seg.id}
-                className={`ve-seg ${sel ? 've-seg-sel' : ''} ${act ? 've-seg-act' : ''}`}
-                onClick={() => setSelectedSegId(seg.id)}>
-                <div className="ve-seg-n">{seg.segment_num}</div>
-                <div className="ve-seg-info">
-                  <div className="ve-seg-t">{seg.title}</div>
-                  <div className="ve-seg-h">{seg.hook}</div>
-                </div>
-                <div className="ve-seg-st">
-                  {act && <><Loader2 size={13} className="spin" /><span className="ve-seg-pct">{latest.progress}%</span></>}
-                  {!act && done && <CheckCircle2 size={14} className="c-green" />}
-                  {!act && !done && <ChevronRight size={13} className="c-muted" />}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-      </div>
-
-      {/* ══════ CENTER: Preview ══════ */}
-      <div className="ve-center">
         {selectedSeg && (
           <>
             {/* Header */}
