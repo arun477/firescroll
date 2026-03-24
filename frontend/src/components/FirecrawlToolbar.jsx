@@ -34,17 +34,17 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
     let body = {}
 
     if (active === 'search') {
-      body = { query: form.query, limit: parseInt(form.limit || '5'), segment_id: form.segment_id || null }
+      body = { query: form.query, limit: parseInt(form.limit || '5') }
     } else if (active === 'scrape') {
-      body = { url: form.url, segment_id: form.segment_id || null }
+      body = { url: form.url }
     } else if (active === 'extract') {
-      body = { url: form.url, prompt: form.prompt, segment_id: form.segment_id || null }
+      body = { url: form.url, prompt: form.prompt }
     } else if (active === 'crawl') {
-      body = { url: form.url, limit: parseInt(form.limit || '10'), max_depth: parseInt(form.depth || '2'), segment_id: form.segment_id || null }
+      body = { url: form.url, limit: parseInt(form.limit || '10'), max_depth: parseInt(form.depth || '2') }
     } else if (active === 'map') {
       body = { url: form.url }
     } else if (active === 'agent') {
-      body = { prompt: form.prompt, segment_id: form.segment_id || null }
+      body = { prompt: form.prompt }
     }
 
     try {
@@ -115,24 +115,12 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
                 <option value="5">5 results</option>
                 <option value="10">10 results</option>
               </select>
-              {segments?.length > 0 && (
-                <select value={form.segment_id || ''} onChange={e => update('segment_id', e.target.value)} className="fc-select">
-                  <option value="">Topic-wide</option>
-                  {segments.map(s => <option key={s.id} value={s.id}>Seg {s.segment_num}: {s.title}</option>)}
-                </select>
-              )}
             </div>
           )}
 
           {(active === 'scrape') && (
             <div className="fc-form-fields">
               <input placeholder="https://..." value={form.url || ''} onChange={e => update('url', e.target.value)} className="fc-input" autoFocus />
-              {segments?.length > 0 && (
-                <select value={form.segment_id || ''} onChange={e => update('segment_id', e.target.value)} className="fc-select">
-                  <option value="">Topic-wide</option>
-                  {segments.map(s => <option key={s.id} value={s.id}>Seg {s.segment_num}: {s.title}</option>)}
-                </select>
-              )}
             </div>
           )}
 
@@ -140,12 +128,6 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
             <div className="fc-form-fields">
               <input placeholder="https://..." value={form.url || ''} onChange={e => update('url', e.target.value)} className="fc-input" autoFocus />
               <input placeholder="What to extract... e.g. key facts and statistics" value={form.prompt || ''} onChange={e => update('prompt', e.target.value)} className="fc-input" />
-              {segments?.length > 0 && (
-                <select value={form.segment_id || ''} onChange={e => update('segment_id', e.target.value)} className="fc-select">
-                  <option value="">Topic-wide</option>
-                  {segments.map(s => <option key={s.id} value={s.id}>Seg {s.segment_num}: {s.title}</option>)}
-                </select>
-              )}
             </div>
           )}
 
@@ -156,12 +138,6 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
                 <label>Pages: <input type="range" min="1" max="50" value={form.limit || 10} onChange={e => update('limit', e.target.value)} /> {form.limit || 10}</label>
                 <label>Depth: <input type="range" min="1" max="5" value={form.depth || 2} onChange={e => update('depth', e.target.value)} /> {form.depth || 2}</label>
               </div>
-              {segments?.length > 0 && (
-                <select value={form.segment_id || ''} onChange={e => update('segment_id', e.target.value)} className="fc-select">
-                  <option value="">Topic-wide</option>
-                  {segments.map(s => <option key={s.id} value={s.id}>Seg {s.segment_num}: {s.title}</option>)}
-                </select>
-              )}
             </div>
           )}
 
@@ -174,12 +150,6 @@ export default function FirecrawlToolbar({ topicId, segments, onRefresh }) {
           {(active === 'agent') && (
             <div className="fc-form-fields">
               <textarea placeholder="Describe what you want to find... e.g. 'Find the latest breakthroughs in quantum computing from 2025'" value={form.prompt || ''} onChange={e => update('prompt', e.target.value)} className="fc-textarea" rows={3} autoFocus />
-              {segments?.length > 0 && (
-                <select value={form.segment_id || ''} onChange={e => update('segment_id', e.target.value)} className="fc-select">
-                  <option value="">Topic-wide</option>
-                  {segments.map(s => <option key={s.id} value={s.id}>Seg {s.segment_num}: {s.title}</option>)}
-                </select>
-              )}
             </div>
           )}
 
