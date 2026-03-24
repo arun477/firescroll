@@ -1852,20 +1852,26 @@ a { color: var(--blue); text-decoration: none; }
   flex-wrap: wrap;
 }
 
-.seg-source-link {
+.seg-sources-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 11px;
-  color: var(--blue);
-  background: rgba(59,130,246,0.06);
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(59,130,246,0.1);
+  font-weight: 600;
+  font-family: inherit;
+  color: #71717a;
+  background: rgba(255,255,255,0.03);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.seg-source-link:hover {
-  background: rgba(59,130,246,0.12);
+.seg-sources-btn:hover {
+  color: #fafafa;
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
 }
 
 /* Research log */
