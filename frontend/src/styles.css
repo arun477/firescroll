@@ -3133,14 +3133,18 @@ a { color: var(--blue); text-decoration: none; }
 /* Topic description */
 .rp-desc {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   padding: 8px 12px;
   margin-bottom: 10px;
   border-radius: 8px;
   background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
+
+.rp-desc:hover { border-color: rgba(255,255,255,0.08); }
 
 .rp-desc-text {
   font-size: 12px;
@@ -3149,17 +3153,19 @@ a { color: var(--blue); text-decoration: none; }
   flex: 1;
 }
 
-.rp-desc-edit {
-  background: none;
-  border: none;
+.rp-desc-placeholder {
+  font-size: 12px;
   color: #27272a;
-  cursor: pointer;
-  padding: 2px;
+  flex: 1;
+}
+
+.rp-desc-icon {
+  color: #27272a;
   flex-shrink: 0;
   transition: color 0.15s;
 }
 
-.rp-desc-edit:hover { color: #71717a; }
+.rp-desc:hover .rp-desc-icon { color: #71717a; }
 
 .rp-desc-form {
   display: flex;

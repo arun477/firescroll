@@ -109,17 +109,19 @@ export default function ResearchPanel({
     <div className="rp-split">
       <div className="rp-left">
         {/* Topic description */}
-        {topic.description && descDraft === null && (
-          <div className="rp-desc">
-            <span className="rp-desc-text">{topic.description}</span>
-            <button className="rp-desc-edit" onClick={() => setDescDraft(topic.description)}>
-              <Pencil size={11} />
-            </button>
+        {descDraft === null && (
+          <div className="rp-desc" onClick={() => setDescDraft(topic.description || '')}>
+            {topic.description
+              ? <span className="rp-desc-text">{topic.description}</span>
+              : <span className="rp-desc-placeholder">Add a description to guide research...</span>
+            }
+            <Pencil size={11} className="rp-desc-icon" />
           </div>
         )}
         {descDraft !== null && (
           <div className="rp-desc-form">
-            <textarea className="rp-desc-input" value={descDraft} onChange={e => setDescDraft(e.target.value)} rows={2} autoFocus />
+            <textarea className="rp-desc-input" value={descDraft} onChange={e => setDescDraft(e.target.value)} rows={2} autoFocus
+              placeholder="Describe what the video series should cover, the angle, target audience..." />
             <button className="rp-desc-save" onClick={handleSaveDesc}><Check size={12} /></button>
           </div>
         )}
