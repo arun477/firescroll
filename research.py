@@ -89,9 +89,14 @@ def _desc_line(description):
 
 
 def _synthesize_segment(topic_id, segment_id, source="firecrawl",
-                         description=""):
-    """Synthesize a segment using ALL topic sources. Links sources via join table."""
-    context, source_ids = _build_source_context(topic_id)
+                         description="", specific_source_ids=None):
+    """Synthesize a segment. Uses specific sources if provided, else all topic sources."""
+    if specific_source_ids:
+        context, source_ids = _build_source_context(
+            topic_id, source_ids_filter=specific_source_ids)
+    else:
+        context, source_ids = _build_source_context(topic_id)
+
     if not context:
         print("[FC] No sources to synthesize from, resetting to draft")
         update_segment(segment_id, status="draft")
@@ -279,7 +284,8 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title,
         update_research_task(task_id, status="processing")
         print(f"[FC] Synthesizing segment: {segment_title}")
         _synthesize_segment(topic_id, segment_id, "firecrawl",
-                           description=description)
+                           description=description,
+                           specific_source_ids=source_ids or None)
         update_research_task(task_id, status="done")
         print(f"[FC] Done: {segment_title}")
     except Exception as exc:
@@ -358,6 +364,8 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
                             description=""):
     """Multi-step deep research for a single segment using full Firecrawl pipeline."""
     fc = _get_firecrawl()
+    collected_source_ids = []  # Track all sources for this segment
+    search_sources = []
 
     # Step 1: Search
     search_job = create_firecrawl_job(topic_id, "deep_search",
@@ -372,7 +380,6 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
 
         results = fc.search(query, limit=3,
                             scrape_options={"formats": ["markdown"]})
-        search_sources = []
         items = getattr(results, "web", None) or getattr(results, "data", None) or []
         if isinstance(results, list):
             items = results
@@ -389,6 +396,7 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
                 sid = add_research_source(topic_id, url, title or url,
                                           content[:5000] if content else f"Source: {url}",
                                           "search")
+                collected_source_ids.append(sid)
                 search_sources.append({"url": url, "title": title,
                                        "snippet": desc_text[:200], "id": sid})
 
@@ -399,9 +407,9 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
     except Exception as exc:
         update_firecrawl_job(search_job, status="failed", error=str(exc))
         print(f"[Deep] Search failed: {segment_title}: {exc}")
-        # Continue with what we have
 
     # Step 2: Pick best URLs
+    best_urls = []
     try:
         best_urls = _pick_best_urls(search_sources, segment_title, limit=2)
         print(f"[Deep] Picked URLs: {best_urls}")
@@ -425,8 +433,9 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
                     if hasattr(result, "metadata") and result.metadata:
                         title = getattr(result.metadata, "title", "") or ""
                     if md:
-                        add_research_source(topic_id, url, title or url,
-                                            md[:5000], "scrape")
+                        sid = add_research_source(topic_id, url, title or url,
+                                                  md[:5000], "scrape")
+                        collected_source_ids.append(sid)
                         scraped += 1
                 except Exception as e:
                     print(f"[Deep] Scrape failed for {url}: {e}")
@@ -455,10 +464,11 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
                     json_data = getattr(result, "json", None) or {}
                     if json_data:
                         content = json.dumps(json_data, ensure_ascii=False, indent=2)
-                        add_research_source(
+                        sid = add_research_source(
                             topic_id, url,
                             f"Facts: {segment_title[:60]}", content[:5000],
                             "extract")
+                        collected_source_ids.append(sid)
                         extracted += 1
                 except Exception as e:
                     print(f"[Deep] Extract failed for {url}: {e}")
@@ -468,14 +478,15 @@ def _deep_research_segment(topic_id, segment_id, topic_title, segment_title,
         except Exception as exc:
             update_firecrawl_job(extract_job, status="failed", error=str(exc))
 
-    # Step 5: Synthesize
+    # Step 5: Synthesize using only this segment's sources
     synth_job = create_firecrawl_job(topic_id, "deep_synthesize",
                                       segment_title,
                                       segment_id=segment_id)
     try:
         update_firecrawl_job(synth_job, status="running")
         _synthesize_segment(topic_id, segment_id, "deep",
-                           description=description)
+                           description=description,
+                           specific_source_ids=collected_source_ids or None)
         update_firecrawl_job(synth_job, status="done",
                              result_preview="Segment synthesized")
         print(f"[Deep] Synthesize done: {segment_title}")
@@ -528,6 +539,7 @@ def _agent_research_segment(topic_id, segment_id, topic_title, segment_title,
                              description=""):
     """Use Firecrawl Agent for autonomous segment research."""
     fc = _get_firecrawl()
+    collected_source_ids = []
 
     # Step 1: Agent research
     agent_job = create_firecrawl_job(topic_id, "agent_research",
@@ -550,9 +562,10 @@ def _agent_research_segment(topic_id, segment_id, topic_title, segment_title,
                 content = str(result.data)
 
         if content:
-            add_research_source(
+            sid = add_research_source(
                 topic_id, f"agent://{segment_title[:50]}",
                 f"Agent: {segment_title[:80]}", content[:5000], "agent")
+            collected_source_ids.append(sid)
 
         update_firecrawl_job(agent_job, status="done",
                              result_preview=content[:300] if content else "No data")
@@ -561,14 +574,15 @@ def _agent_research_segment(topic_id, segment_id, topic_title, segment_title,
         update_firecrawl_job(agent_job, status="failed", error=str(exc))
         print(f"[Agent] Research failed: {segment_title}: {exc}")
 
-    # Step 2: Synthesize
+    # Step 2: Synthesize using only this segment's sources
     synth_job = create_firecrawl_job(topic_id, "agent_synthesize",
                                       segment_title,
                                       segment_id=segment_id)
     try:
         update_firecrawl_job(synth_job, status="running")
         _synthesize_segment(topic_id, segment_id, "agent",
-                           description=description)
+                           description=description,
+                           specific_source_ids=collected_source_ids or None)
         update_firecrawl_job(synth_job, status="done",
                              result_preview="Segment synthesized")
         print(f"[Agent] Synthesize done: {segment_title}")
