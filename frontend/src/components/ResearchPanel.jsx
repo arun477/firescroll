@@ -310,8 +310,6 @@ export default function ResearchPanel({
         </div>
 
         <SourcesPanel
-          sources={sources || []}
-          stats={sourceStats}
           topicId={topicId}
           onRefresh={refresh}
           alwaysOpen

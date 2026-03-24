@@ -78,6 +78,8 @@ function normalizeItems(tasks, fcJobs) {
 export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh, alwaysOpen = false }) {
   const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [showAll, setShowAll] = useState(false)
+  const VISIBLE_LIMIT = 8
 
   const isOpen = alwaysOpen || expanded
   const allItems = normalizeItems(tasks, fcJobs)
@@ -157,17 +159,18 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
           <div className="task-list">
             {(() => {
               // Group pipeline items by segment_id
+              const visible = showAll ? filtered : filtered.slice(0, VISIBLE_LIMIT)
               const groups = []
               let i = 0
-              while (i < filtered.length) {
+              while (i < visible.length) {
                 const item = filtered[i]
                 if (PIPELINE_TYPES.has(item.type) && item.segment_id) {
                   // Collect all pipeline items for this segment
                   const segId = item.segment_id
                   const steps = [item]
                   let j = i + 1
-                  while (j < filtered.length && filtered[j].segment_id === segId && PIPELINE_TYPES.has(filtered[j].type)) {
-                    steps.push(filtered[j])
+                  while (j < visible.length && visible[j].segment_id === segId && PIPELINE_TYPES.has(visible[j].type)) {
+                    steps.push(visible[j])
                     j++
                   }
                   if (steps.length > 1) {
@@ -233,6 +236,16 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
               })
             })()}
             {filtered.length === 0 && <div className="task-empty">No tasks</div>}
+            {!showAll && filtered.length > VISIBLE_LIMIT && (
+              <button className="tm-show-more" onClick={() => setShowAll(true)}>
+                Show all ({filtered.length})
+              </button>
+            )}
+            {showAll && filtered.length > VISIBLE_LIMIT && (
+              <button className="tm-show-more" onClick={() => setShowAll(false)}>
+                Show less
+              </button>
+            )}
           </div>
         </div>
       )}
