@@ -347,8 +347,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               <rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
               <rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
             </svg>
-            <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, color: '#a1a1aa' }}>
-              ElevenLabs <span style={{ fontWeight: 800 }}>Studio</span>
+            <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, fontWeight: 700, color: '#a1a1aa', flex: 1 }}>
+              ElevenLabs Studio
             </span>
           </div>
 
