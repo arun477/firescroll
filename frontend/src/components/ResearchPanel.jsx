@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  Sparkles, Loader2, CheckCircle2, Database,
+  Sparkles, Loader2, CheckCircle2, Database, Bot, Layers,
   Search, Plus, ChevronLeft, ChevronRight, Pencil, Check,
 } from 'lucide-react'
 import FirecrawlStatus from './FirecrawlStatus'
@@ -132,29 +132,33 @@ export default function ResearchPanel({
             </div>
           )}
 
-          {/* Quick Actions */}
-          <div className="fc-quick-actions">
-            <button className="fc-quick-btn"
-              onClick={() => setResearchForm(researchForm === 'ai' ? null : 'ai')}
-              disabled={isRunning || generating}>
-              {generating === 'ai'
-                ? <Loader2 size={13} className="spin" />
-                : <Sparkles size={13} />}
-              AI All
-            </button>
-            <button className="fc-quick-btn fc-quick-btn-fc"
-              onClick={() => setResearchForm(researchForm === 'firecrawl' ? null : 'firecrawl')}
-              disabled={isRunning || generating}>
-              {generating === 'firecrawl'
-                ? <Loader2 size={13} className="spin" />
-                : <img src="/firecrawl-logo.svg" alt="" width="13" height="13" />}
-              Web All
-            </button>
+          {/* Research Modes */}
+          <div className="fc-quick-actions" style={{ flexWrap: 'wrap' }}>
+            {[
+              { id: 'ai', icon: <Sparkles size={12} />, label: 'AI' },
+              { id: 'firecrawl', icon: <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />, label: 'Web', cls: 'fc-quick-btn-fc' },
+              { id: 'deep', icon: <Layers size={12} />, label: 'Deep', cls: 'fc-quick-btn-deep' },
+              { id: 'agent', icon: <Bot size={12} />, label: 'Agent', cls: 'fc-quick-btn-agent' },
+            ].map(m => (
+              <button key={m.id}
+                className={`fc-quick-btn ${m.cls || ''} ${researchForm === m.id ? 'fc-quick-btn-on' : ''}`}
+                onClick={() => setResearchForm(researchForm === m.id ? null : m.id)}
+                disabled={isRunning || generating}>
+                {generating === m.id ? <Loader2 size={12} className="spin" /> : m.icon}
+                {m.label}
+              </button>
+            ))}
           </div>
 
           {/* Research form expand */}
           {researchForm && (
             <div className="fc-research-form">
+              <div className="fc-mode-desc">
+                {researchForm === 'ai' && 'Pure AI generation — no web search'}
+                {researchForm === 'firecrawl' && 'Web search per segment + synthesize'}
+                {researchForm === 'deep' && 'Search → Scrape → Extract → Synthesize (full Firecrawl pipeline)'}
+                {researchForm === 'agent' && 'Firecrawl Agent autonomously researches each segment'}
+              </div>
               <div className="fc-research-form-row">
                 <span className="fc-research-form-label">Segments</span>
                 <div className="fc-research-form-pills">
@@ -173,11 +177,13 @@ export default function ResearchPanel({
                 onKeyDown={e => e.key === 'Enter' && handleGenerateAll(researchForm)}
               />
               <div className="fc-research-form-actions">
-                <button className="fc-tool-form-submit" style={{ flex: 1 }}
+                <button className={`fc-tool-form-submit ${researchForm === 'deep' ? 'fc-submit-deep' : ''} ${researchForm === 'agent' ? 'fc-submit-agent' : ''}`}
+                  style={{ flex: 1 }}
                   onClick={() => handleGenerateAll(researchForm)}>
-                  {researchForm === 'firecrawl'
-                    ? <><img src="/firecrawl-logo.svg" alt="" width="12" height="12" /> Run Web Research</>
-                    : <><Sparkles size={12} /> Run AI Generation</>}
+                  {researchForm === 'ai' && <><Sparkles size={12} /> Run AI Generation</>}
+                  {researchForm === 'firecrawl' && <><img src="/firecrawl-logo.svg" alt="" width="12" height="12" /> Run Web Research</>}
+                  {researchForm === 'deep' && <><Layers size={12} /> Run Deep Research</>}
+                  {researchForm === 'agent' && <><Bot size={12} /> Run Agent Research</>}
                 </button>
                 <button className="fc-quick-btn" style={{ flex: 0, padding: '6px 10px', fontSize: 11 }}
                   onClick={() => setResearchForm(null)}>Cancel</button>

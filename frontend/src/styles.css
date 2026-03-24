@@ -818,6 +818,16 @@ a { color: var(--blue); text-decoration: none; }
   color: #27272a;
 }
 
+.srcpv-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 /* =================== CREATE PAGE =================== */
 .create-page {
   display: flex;
@@ -2138,10 +2148,43 @@ a { color: var(--blue); text-decoration: none; }
 
 .fc-quick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.fc-quick-btn-on {
+  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--text) !important;
+}
+
 .fc-quick-btn-fc:hover {
   border-color: rgba(250,93,25,0.3);
   background: var(--fc-heat-bg);
 }
+
+.fc-quick-btn-deep:hover {
+  border-color: rgba(168,85,247,0.3);
+  background: rgba(168,85,247,0.08);
+}
+
+.fc-quick-btn-agent:hover {
+  border-color: rgba(139,92,246,0.3);
+  background: rgba(139,92,246,0.08);
+}
+
+.fc-mode-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  padding: 0 2px;
+}
+
+.fc-submit-deep {
+  background: #a855f7 !important;
+}
+.fc-submit-deep:hover { background: #9333ea !important; }
+
+.fc-submit-agent {
+  background: #8b5cf6 !important;
+}
+.fc-submit-agent:hover { background: #7c3aed !important; }
 
 /* Tool Cards Grid */
 .fc-tool-grid {

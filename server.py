@@ -150,11 +150,20 @@ def start_research(topic_id: str, req: ResearchRequest):
     description = topic.get("description", "")
 
     def run():
-        from research import generate_all_ai, research_all_firecrawl
+        from research import (generate_all_ai, research_all_firecrawl,
+                              research_deep_firecrawl, research_agent_firecrawl)
         if req.method == "firecrawl":
             research_all_firecrawl(topic_id, topic["title"], req.num_segments,
                                    description=description,
                                    instruction=req.instruction)
+        elif req.method == "deep":
+            research_deep_firecrawl(topic_id, topic["title"], req.num_segments,
+                                    description=description,
+                                    instruction=req.instruction)
+        elif req.method == "agent":
+            research_agent_firecrawl(topic_id, topic["title"], req.num_segments,
+                                     description=description,
+                                     instruction=req.instruction)
         else:
             generate_all_ai(topic_id, topic["title"], req.num_segments,
                            description=description,
@@ -184,9 +193,14 @@ def research_single_segment(topic_id: str, req: SegmentResearchRequest):
         return {"status": "already_running"}
 
     def run():
-        from research import generate_segment_content, research_with_firecrawl
+        from research import (generate_segment_content, research_with_firecrawl,
+                              research_segment_deep, research_segment_agent)
         if req.method == "firecrawl":
             research_with_firecrawl(topic_id, req.segment_id, topic["title"], seg["title"])
+        elif req.method == "deep":
+            research_segment_deep(topic_id, req.segment_id, topic["title"], seg["title"])
+        elif req.method == "agent":
+            research_segment_agent(topic_id, req.segment_id, topic["title"], seg["title"])
         else:
             generate_segment_content(topic_id, req.segment_id, topic["title"], seg["title"])
 
