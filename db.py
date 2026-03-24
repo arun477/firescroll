@@ -417,7 +417,8 @@ def get_research_sources(topic_id):
     conn = get_conn()
     rows = conn.execute(
         "SELECT id, topic_id, url, title, source_type, screenshot_url, "
-        "word_count, created_at FROM research_sources "
+        "word_count, created_at, substr(content, 1, 200) as content_preview "
+        "FROM research_sources "
         "WHERE topic_id = ? ORDER BY created_at DESC",
         (topic_id,),
     ).fetchall()

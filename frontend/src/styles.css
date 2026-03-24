@@ -1207,17 +1207,18 @@ a { color: var(--blue); text-decoration: none; }
   letter-spacing: -0.6px;
   text-transform: capitalize;
   white-space: nowrap;
+  color: #fafafa;
 }
 
 .td-subtitle {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #3f3f46;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.td-done-count { color: var(--green); font-weight: 600; }
+.td-done-count { color: #22c55e; font-weight: 600; }
 
 .td-header-actions {
   display: flex;
@@ -1735,16 +1736,14 @@ a { color: var(--blue); text-decoration: none; }
 
 /* =================== FIRECRAWL BUTTON =================== */
 .btn-firecrawl {
-  background: var(--fc-heat);
-  color: white;
-  border: 1px solid var(--fc-heat);
-  box-shadow: 0 0 0 0 var(--fc-heat-glow);
+  background: rgba(250,93,25,0.12);
+  color: #FA5D19;
+  border: 1px solid rgba(250,93,25,0.2);
 }
 
 .btn-firecrawl:hover:not(:disabled) {
-  background: var(--fc-heat-hover);
-  box-shadow: 0 0 20px var(--fc-heat-glow);
-  transform: translateY(-1px);
+  background: rgba(250,93,25,0.18);
+  border-color: rgba(250,93,25,0.3);
 }
 
 .btn-firecrawl img { filter: brightness(10); }
@@ -1753,10 +1752,10 @@ a { color: var(--blue); text-decoration: none; }
 .fc-status-widget {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
   border-radius: 8px;
   font-size: 12px;
   backdrop-filter: blur(12px);
@@ -1834,12 +1833,12 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 12px;
-  height: 30px;
+  padding: 0 10px;
+  height: 28px;
   border-radius: 6px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass);
-  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.02);
+  color: #52525b;
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
@@ -1849,15 +1848,15 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .fc-toolbar-btn:hover {
-  color: var(--text);
-  border-color: var(--border);
-  background: var(--glass-hover);
+  color: #a1a1aa;
+  border-color: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
 }
 
 .fc-toolbar-btn.active {
-  color: var(--fc-heat);
-  border-color: rgba(250,93,25,0.3);
-  background: var(--fc-heat-bg);
+  color: #fafafa;
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
 }
 
 .fc-agent-btn {
@@ -1872,10 +1871,10 @@ a { color: var(--blue); text-decoration: none; }
 .fc-toolbar-form {
   margin-top: 8px;
   padding: 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   animation: fadeUp 0.15s ease;
   position: relative;
   z-index: 5;
