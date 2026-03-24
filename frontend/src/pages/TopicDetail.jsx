@@ -344,85 +344,6 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
           <div className="ve-left-head">
             <span className="ve-left-label">Studio Controls</span>
           </div>
-        {selectedSeg && (
-          <>
-            {/* Header */}
-            <div className="ve-c-head">
-              <div className="ve-c-head-num">{selectedSeg.segment_num}</div>
-              <div className="ve-c-head-info">
-                <div className="ve-c-head-title">{selectedSeg.title}</div>
-                <div className="ve-c-head-hook">{selectedSeg.hook}</div>
-              </div>
-            </div>
-
-            {/* Preview area */}
-            <div className="ve-c-preview">
-              {activeJob && (
-                <div className="ve-c-rendering">
-                  <div className="ve-c-render-inner">
-                    <Loader2 size={32} className="spin" />
-                    <div className="ve-c-render-status">{activeJob.status}</div>
-                    <div className="ve-c-render-pct">{activeJob.progress}%</div>
-                    <div className="ve-c-render-bar">
-                      <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%` }} />
-                    </div>
-                    <button className="ve-c-render-cancel" onClick={() => handleCancel(activeJob.id)}>
-                      <Square size={12} /> Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!activeJob && doneJob && (
-                <div className="ve-c-video-wrap">
-                  <video
-                    key={doneJob.id}
-                    className="ve-c-video"
-                    src={doneJob.video_url}
-                    controls
-                    preload="metadata"
-                  />
-                  <a className="ve-c-download" href={doneJob.video_url}
-                    download={`segment_${selectedSeg.segment_num}.mp4`} title="Download video">
-                    <Download size={16} />
-                  </a>
-                </div>
-              )}
-
-              {!activeJob && !doneJob && (
-                <div className="ve-c-empty">
-                  <Film size={40} />
-                  <p>No video yet</p>
-                  <button className="btn btn-primary btn-sm"
-                    onClick={() => handleGenerate(selectedSeg)}>
-                    <Play size={14} /> Generate
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Script */}
-            <div className="ve-c-script">
-              <div className="ve-c-script-text">{selectedSeg.script}</div>
-              {selectedSeg.visual_cue && (
-                <div className="ve-c-cue">{selectedSeg.visual_cue}</div>
-              )}
-            </div>
-
-            {/* Failed error */}
-            {!activeJob && segJobs.find(j => j.status === 'failed') && (
-              <div className="ve-c-error">
-                <AlertCircle size={12} />
-                {fmtError(segJobs.find(j => j.status === 'failed').error)}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* ══════ RIGHT: Sticky Controls ══════ */}
-      {selectedSeg && (
-        <div className="ve-right">
 
           {/* ── Voice ── */}
           <Section icon={Volume2} title="Voice" defaultOpen
@@ -654,25 +575,126 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             </div>
           </div>
 
-          {/* ── History (completed only) ── */}
-          {segJobs.filter(j => j.status === 'done' || j.status === 'failed').length > 0 && (
-            <div className="ve-hist">
-              <div className="ve-hist-title">History</div>
-              {[...segJobs].filter(j => j.status === 'done' || j.status === 'failed').reverse().map(j => (
-                <div key={j.id} className={`ve-hist-row ${j.status === 'done' ? 'c-green' : 'c-red'}`}>
-                  <div className="ve-hist-l">
-                    {j.status === 'done' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
-                    <span>{j.mode}/{j.caption}</span>
-                  </div>
-                  <div className="ve-hist-r">
-                    {j.duration_seconds && <span>{Math.round(j.duration_seconds)}s</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
+
+      {/* ══════ CENTER: Preview ══════ */}
+      <div className="ve-center">
+        {selectedSeg && (
+          <>
+            <div className="ve-c-head">
+              <div className="ve-c-head-num">{selectedSeg.segment_num}</div>
+              <div className="ve-c-head-info">
+                <div className="ve-c-head-title">{selectedSeg.title}</div>
+                <div className="ve-c-head-hook">{selectedSeg.hook}</div>
+              </div>
+            </div>
+
+            <div className="ve-c-preview">
+              {activeJob && (
+                <div className="ve-c-rendering">
+                  <div className="ve-c-render-inner">
+                    <Loader2 size={32} className="spin" />
+                    <div className="ve-c-render-status">{activeJob.status}</div>
+                    <div className="ve-c-render-pct">{activeJob.progress}%</div>
+                    <div className="ve-c-render-bar">
+                      <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%` }} />
+                    </div>
+                    <button className="ve-c-render-cancel" onClick={() => handleCancel(activeJob.id)}>
+                      <Square size={12} /> Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!activeJob && doneJob && (
+                <div className="ve-c-video-wrap">
+                  <video key={doneJob.id} className="ve-c-video" src={doneJob.video_url} controls preload="metadata" />
+                  <a className="ve-c-download" href={doneJob.video_url}
+                    download={`segment_${selectedSeg.segment_num}.mp4`} title="Download video">
+                    <Download size={16} />
+                  </a>
+                </div>
+              )}
+              {!activeJob && !doneJob && (
+                <div className="ve-c-empty">
+                  <Film size={40} />
+                  <p>No video yet</p>
+                  <button className="btn btn-primary btn-sm" onClick={() => handleGenerate(selectedSeg)}>
+                    <Play size={14} /> Generate
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="ve-c-script">
+              <div className="ve-c-script-text">{selectedSeg.script}</div>
+              {selectedSeg.visual_cue && <div className="ve-c-cue">{selectedSeg.visual_cue}</div>}
+            </div>
+
+            {!activeJob && segJobs.find(j => j.status === 'failed') && (
+              <div className="ve-c-error">
+                <AlertCircle size={12} />
+                {fmtError(segJobs.find(j => j.status === 'failed').error)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ══════ RIGHT: Segments + History ══════ */}
+      <div className="ve-right">
+        <div className="ve-left-head">
+          <span className="ve-left-label">Segments</span>
+          <div className="ve-left-head-actions">
+            <button className="btn btn-primary btn-xs" onClick={handleGenerateAll}>
+              <Sparkles size={11} /> All
+            </button>
+          </div>
+        </div>
+        <div className="ve-seg-list">
+          {readySegs.map(seg => {
+            const sj = jobMap[seg.segment_num] || []
+            const latest = sj[sj.length - 1]
+            const act = latest && isActive(latest.status)
+            const done = sj.find(j => j.status === 'done')
+            const sel = seg.id === selectedSeg?.id
+            return (
+              <div key={seg.id}
+                className={`ve-seg ${sel ? 've-seg-sel' : ''} ${act ? 've-seg-act' : ''}`}
+                onClick={() => setSelectedSegId(seg.id)}>
+                <div className="ve-seg-n">{seg.segment_num}</div>
+                <div className="ve-seg-info">
+                  <div className="ve-seg-t">{seg.title}</div>
+                  <div className="ve-seg-h">{seg.hook}</div>
+                </div>
+                <div className="ve-seg-st">
+                  {act && <><Loader2 size={13} className="spin" /><span className="ve-seg-pct">{latest.progress}%</span></>}
+                  {!act && done && <CheckCircle2 size={14} className="c-green" />}
+                  {!act && !done && <ChevronRight size={13} className="c-muted" />}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* History */}
+        {selectedSeg && segJobs.filter(j => j.status === 'done' || j.status === 'failed').length > 0 && (
+          <div className="ve-hist">
+            <div className="ve-hist-title">History</div>
+            {[...segJobs].filter(j => j.status === 'done' || j.status === 'failed').reverse().map(j => (
+              <div key={j.id} className={`ve-hist-row ${j.status === 'done' ? 'c-green' : 'c-red'}`}>
+                <div className="ve-hist-l">
+                  {j.status === 'done' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
+                  <span>{j.mode}/{j.caption}</span>
+                </div>
+                <div className="ve-hist-r">
+                  {j.duration_seconds && <span>{Math.round(j.duration_seconds)}s</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ══════ MEDIA LIBRARY DRAWER ══════ */}
       {mediaDrawerOpen && (
