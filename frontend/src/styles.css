@@ -4234,24 +4234,49 @@ a { color: var(--blue); text-decoration: none; }
 
 .rp-add-segment {
   display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
   animation: fadeUp 0.15s ease;
 }
 
 .rp-add-input {
   flex: 1;
-  padding: 7px 10px;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
   outline: none;
+  transition: border-color 0.15s;
 }
 
-.rp-add-input:focus { border-color: var(--blue); }
+.rp-add-input:focus { border-color: rgba(255,255,255,0.15); }
+.rp-add-input::placeholder { color: #3f3f46; }
+
+/* Glassy buttons inside add segment */
+.rp-add-segment .btn-primary {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #e4e4e7 !important;
+}
+.rp-add-segment .btn-primary:hover {
+  background: rgba(255,255,255,0.1) !important;
+}
+.rp-add-segment .btn-secondary {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.05) !important;
+  color: #52525b !important;
+}
+.rp-add-segment .btn-secondary:hover {
+  color: #a1a1aa !important;
+  background: rgba(255,255,255,0.06) !important;
+}
 
 .rp-pagination {
   display: flex;
