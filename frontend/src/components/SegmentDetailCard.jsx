@@ -49,8 +49,16 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
     onRefresh()
   }
 
+  const [deleteError, setDeleteError] = useState(null)
   const handleDelete = async () => {
-    await fetch(`/api/topics/${topicId}/segments/${seg.id}`, { method: 'DELETE' })
+    setDeleteError(null)
+    const res = await fetch(`/api/topics/${topicId}/segments/${seg.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setDeleteError(data.detail || 'Cannot delete — videos may reference this segment. Delete those first.')
+      setConfirmDelete(false)
+      return
+    }
     onRefresh()
   }
 
@@ -178,6 +186,12 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
                 )}
               </div>
             </>
+          )}
+
+          {deleteError && (
+            <div className="seg-failed-msg" style={{ marginTop: 8 }}>
+              <AlertCircle size={12} /> {deleteError}
+            </div>
           )}
 
           {seg.status === 'failed' && (

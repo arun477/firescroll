@@ -430,8 +430,25 @@ def edit_segment_ep(topic_id: str, segment_id: str,  # noqa: ARG001
 
 @app.delete("/api/topics/{topic_id}/segments/{segment_id}")
 def delete_segment_ep(topic_id: str, segment_id: str):  # noqa: ARG001
-    from db import delete_segment
-    delete_segment(segment_id)
+    from db import delete_segment, get_conn
+    # Check if videos reference this segment
+    conn = get_conn()
+    job_count = conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE segment_id = ?", (segment_id,)
+    ).fetchone()[0]
+    conn.close()
+    if job_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This segment has {job_count} generated video(s). Delete those from the Studio tab first."
+        )
+    try:
+        delete_segment(segment_id)
+    except Exception:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete — other data references this segment. Try deleting associated videos first."
+        )
     return {"status": "deleted"}
 
 
