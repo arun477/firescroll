@@ -1,33 +1,20 @@
 import { useState, useEffect } from 'react'
 import { X, ExternalLink, FileText, Loader2 } from 'lucide-react'
 
-export default function SourcePreview({ topicId, sourceUrls, onClose }) {
-  const [sources, setSources] = useState([])
-  const [loading, setLoading] = useState(true)
+function getHost(url) {
+  try { return new URL(url).hostname } catch { return url || 'source' }
+}
+
+export default function SourcePreview({ topicId, sources, onClose }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [content, setContent] = useState(null)
   const [contentLoading, setContentLoading] = useState(false)
 
-  useEffect(() => {
-    if (!sourceUrls?.length) return
-    fetch(`/api/topics/${topicId}/sources`)
-      .then(r => r.json())
-      .then(data => {
-        const allSources = data.sources || []
-        // Match by ID or by URL
-        const matched = allSources.filter(s =>
-          sourceUrls.some(ref => s.id === ref || s.url === ref)
-        )
-        setSources(matched)
-        if (matched.length > 0) loadContent(matched[0])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [topicId, sourceUrls])
-
-  const loadContent = (src) => {
+  const loadContent = (idx) => {
+    setActiveIdx(idx)
     setContentLoading(true)
     setContent(null)
+    const src = sources[idx]
     fetch(`/api/topics/${topicId}/sources/${src.id}`)
       .then(r => r.json())
       .then(data => {
@@ -37,52 +24,39 @@ export default function SourcePreview({ topicId, sourceUrls, onClose }) {
       .catch(() => { setContent('Failed to load'); setContentLoading(false) })
   }
 
-  const selectSource = (idx) => {
-    setActiveIdx(idx)
-    loadContent(sources[idx])
-  }
+  useEffect(() => {
+    if (sources.length > 0) loadContent(0)
+  }, [])
 
   const activeSrc = sources[activeIdx] || null
-  let hostname = ''
-  if (activeSrc?.url) {
-    try { hostname = new URL(activeSrc.url).hostname } catch { hostname = activeSrc.url }
-  }
+  const hostname = activeSrc ? getHost(activeSrc.url) : ''
 
   return (
     <div className="srcpv-overlay" onClick={onClose}>
       <div className="srcpv-panel" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="srcpv-header">
-          <span className="srcpv-title">Sources</span>
+          <span className="srcpv-title">Sources ({sources.length})</span>
           <button className="srcpv-close" onClick={onClose}><X size={16} /></button>
         </div>
 
-        {loading ? (
-          <div className="srcpv-loading"><Loader2 size={16} className="spin" /></div>
-        ) : sources.length === 0 ? (
-          <div className="srcpv-empty">No matching sources found in knowledge base.</div>
+        {sources.length === 0 ? (
+          <div className="srcpv-empty">No sources linked to this segment.</div>
         ) : (
           <>
-            {/* Tab list if multiple */}
             {sources.length > 1 && (
               <div className="srcpv-tabs">
-                {sources.map((src, i) => {
-                  let host = ''
-                  try { host = new URL(src.url).hostname } catch { host = 'source' }
-                  return (
+                {sources.map((src, i) => (
                     <button key={src.id}
                       className={`srcpv-tab ${i === activeIdx ? 'srcpv-tab-on' : ''}`}
-                      onClick={() => selectSource(i)}>
+                      onClick={() => loadContent(i)}>
                       <FileText size={11} />
-                      {host}
+                      {getHost(src.url)}
                       {src.word_count > 0 && <span className="srcpv-tab-w">{src.word_count.toLocaleString()}w</span>}
                     </button>
-                  )
-                })}
+                  ))}
               </div>
             )}
 
-            {/* Content */}
             {activeSrc && (
               <div className="srcpv-content">
                 <div className="srcpv-meta">

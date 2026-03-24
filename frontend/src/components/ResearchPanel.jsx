@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import {
   Sparkles, Loader2, CheckCircle2, Database,
-  Search, Plus, ChevronLeft, ChevronRight,
+  Search, Plus, ChevronLeft, ChevronRight, Pencil, Check,
 } from 'lucide-react'
 import FirecrawlBadge from './FirecrawlBadge'
 import FirecrawlStatus from './FirecrawlStatus'
@@ -18,6 +18,10 @@ export default function ResearchPanel({
   const [page, setPage] = useState(1)
   const [addingSegment, setAddingSegment] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [numSegments, setNumSegments] = useState(6)
+  const [instruction, setInstruction] = useState('')
+  const [researchForm, setResearchForm] = useState(null) // null | 'ai' | 'firecrawl'
+  const [descDraft, setDescDraft] = useState(null) // null = not editing
 
   const [segData, setSegData] = useState(null)
   const perPage = 10
@@ -32,7 +36,7 @@ export default function ResearchPanel({
 
   useEffect(() => { fetchSegments() }, [topicId, searchQuery, page])
 
-  // Poll when anything is busy — check broadly, keep polling until truly idle
+  // Poll when anything is busy — clean up on unmount or state change
   const wasBusy = useRef(false)
   useEffect(() => {
     const isBusy = topic?.research_status === 'generating' ||
@@ -45,11 +49,12 @@ export default function ResearchPanel({
       return () => clearInterval(iv)
     }
 
-    // Just finished — do a final refresh to catch the last state
+    // Just finished — final refresh with cleanup
     if (wasBusy.current) {
       wasBusy.current = false
-      setTimeout(() => { fetchSegments(); onRefresh() }, 1000)
-      setTimeout(() => { fetchSegments(); onRefresh() }, 3000)
+      const t1 = setTimeout(() => { fetchSegments(); onRefresh() }, 1000)
+      const t2 = setTimeout(() => { fetchSegments(); onRefresh() }, 3000)
+      return () => { clearTimeout(t1); clearTimeout(t2) }
     }
   }, [topic?.research_status, segments, fcJobs])
 
@@ -57,12 +62,24 @@ export default function ResearchPanel({
 
   const handleGenerateAll = async (method) => {
     setGenerating(method)
+    setResearchForm(null)
     await fetch(`/api/topics/${topicId}/research`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ method, num_segments: topic.total_segments }),
+      body: JSON.stringify({ method, num_segments: numSegments, instruction }),
     })
+    setInstruction('')
     setTimeout(() => { setGenerating(null); refresh() }, 1500)
+  }
+
+  const handleSaveDesc = async () => {
+    await fetch(`/api/topics/${topicId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: descDraft }),
+    })
+    setDescDraft(null)
+    onRefresh()
   }
 
   const handleAddSegment = async () => {
@@ -91,12 +108,28 @@ export default function ResearchPanel({
   return (
     <div className="rp-split">
       <div className="rp-left">
+        {/* Topic description */}
+        {topic.description && descDraft === null && (
+          <div className="rp-desc">
+            <span className="rp-desc-text">{topic.description}</span>
+            <button className="rp-desc-edit" onClick={() => setDescDraft(topic.description)}>
+              <Pencil size={11} />
+            </button>
+          </div>
+        )}
+        {descDraft !== null && (
+          <div className="rp-desc-form">
+            <textarea className="rp-desc-input" value={descDraft} onChange={e => setDescDraft(e.target.value)} rows={2} autoFocus />
+            <button className="rp-desc-save" onClick={handleSaveDesc}><Check size={12} /></button>
+          </div>
+        )}
+
         <div className="rp-controls">
           <div className="rp-controls-left">
             <div className="rp-chips">
               <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
                 <CheckCircle2 size={12} />
-                {readyCount}/{segments.length || topic.total_segments}
+                {readyCount}/{segments.length || 0}
               </span>
               {srcCount > 0 && (
                 <span className="rp-chip">
@@ -111,14 +144,14 @@ export default function ResearchPanel({
             </div>
             <div className="rp-divider" />
             <button className="btn btn-secondary btn-sm"
-              onClick={() => handleGenerateAll('ai')}
+              onClick={() => setResearchForm('ai')}
               disabled={isRunning || generating}>
               {generating === 'ai'
                 ? <Loader2 size={13} className="spin" />
                 : <><Sparkles size={13} /> AI All</>}
             </button>
             <button className="btn btn-firecrawl btn-sm"
-              onClick={() => handleGenerateAll('firecrawl')}
+              onClick={() => setResearchForm('firecrawl')}
               disabled={isRunning || generating}>
               {generating === 'firecrawl'
                 ? <Loader2 size={13} className="spin" />
@@ -127,6 +160,38 @@ export default function ResearchPanel({
           </div>
           <FirecrawlStatus />
         </div>
+
+        {/* Research form — segments + instruction */}
+        {researchForm && (
+          <div className="rp-research-form">
+            <div className="rp-rf-row">
+              <span className="rp-rf-label">Segments</span>
+              <div className="rp-rf-pills">
+                {[3, 4, 5, 6, 8, 10].map(n => (
+                  <button key={n} type="button"
+                    className={`rp-rf-pill ${n === numSegments ? 'rp-rf-pill-on' : ''}`}
+                    onClick={() => setNumSegments(n)}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <input
+              className="rp-rf-input"
+              placeholder="Optional instruction: e.g. Focus on recent discoveries, keep it beginner-friendly..."
+              value={instruction}
+              onChange={e => setInstruction(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleGenerateAll(researchForm)}
+            />
+            <div className="rp-rf-actions">
+              <button className={researchForm === 'firecrawl' ? 'btn btn-firecrawl btn-sm' : 'btn btn-secondary btn-sm'}
+                onClick={() => handleGenerateAll(researchForm)}>
+                {researchForm === 'firecrawl'
+                  ? <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Run Web Research</>
+                  : <><Sparkles size={13} /> Run AI Generation</>}
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setResearchForm(null)}>Cancel</button>
+            </div>
+          </div>
+        )}
 
         <div className="rp-tools-row">
           <FirecrawlToolbar

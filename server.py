@@ -40,7 +40,7 @@ app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
 
 class CreateTopicRequest(BaseModel):
     topic: str
-    segments: int = 6
+    description: str = ""
 
 
 class GenerateRequest(BaseModel):
@@ -109,17 +109,33 @@ def topic_detail(topic_id: str):
 def create_topic_endpoint(req: CreateTopicRequest):
     topic_id = create_topic(
         title=req.topic,
-        series_title="",
-        json_path="",
-        total_segments=req.segments,
+        description=req.description,
     )
     update_topic(topic_id, research_status="pending")
     return {"topic_id": topic_id}
 
 
+class UpdateTopicRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+@app.put("/api/topics/{topic_id}")
+def update_topic_ep(topic_id: str, req: UpdateTopicRequest):
+    updates = {}
+    if req.title is not None:
+        updates["title"] = req.title
+    if req.description is not None:
+        updates["description"] = req.description
+    if updates:
+        update_topic(topic_id, **updates)
+    return {"status": "updated"}
+
+
 class ResearchRequest(BaseModel):
     method: str = "ai"
     num_segments: int = 6
+    instruction: str = ""
 
 
 @app.post("/api/topics/{topic_id}/research")
@@ -131,12 +147,18 @@ def start_research(topic_id: str, req: ResearchRequest):
     if topic.get("research_status") == "generating":
         return {"status": "already_running"}
 
+    description = topic.get("description", "")
+
     def run():
         from research import generate_all_ai, research_all_firecrawl
         if req.method == "firecrawl":
-            research_all_firecrawl(topic_id, topic["title"], req.num_segments)
+            research_all_firecrawl(topic_id, topic["title"], req.num_segments,
+                                   description=description,
+                                   instruction=req.instruction)
         else:
-            generate_all_ai(topic_id, topic["title"], req.num_segments)
+            generate_all_ai(topic_id, topic["title"], req.num_segments,
+                           description=description,
+                           instruction=req.instruction)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started", "method": req.method}
@@ -401,6 +423,13 @@ def get_source_ep(topic_id: str, source_id: str):  # noqa: ARG001
     if not row:
         raise HTTPException(status_code=404, detail="Source not found")
     return dict(row)
+
+
+@app.get("/api/topics/{topic_id}/segments/{segment_id}/sources")
+def get_segment_sources_ep(topic_id: str, segment_id: str):  # noqa: ARG001
+    from db import get_sources_for_segment
+    sources = get_sources_for_segment(segment_id)
+    return {"sources": sources}
 
 
 @app.delete("/api/topics/{topic_id}/sources/{source_id}")

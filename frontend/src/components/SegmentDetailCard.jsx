@@ -25,7 +25,14 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
   const StIcon = st.icon
   const isReady = seg.status === 'ready'
   const isBusy = seg.status === 'researching' || loading
-  const sources = seg.source_urls ? JSON.parse(seg.source_urls) : []
+  const [segSources, setSegSources] = useState(null)
+
+  const loadSegSources = () => {
+    fetch(`/api/topics/${topicId}/segments/${seg.id}/sources`)
+      .then(r => r.json())
+      .then(d => setSegSources(d.sources || []))
+      .catch(() => setSegSources([]))
+  }
 
   const handleResearch = async (method) => {
     if (isBusy) return
@@ -150,19 +157,17 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
                       <p className="seg-visual-text">{seg.visual_cue}</p>
                     </div>
                   )}
-                  {sources.length > 0 && (
-                    <div className="seg-field">
-                      <button className="seg-sources-btn" onClick={() => setShowSources(true)}>
-                        <Database size={11} />
-                        <span>View {sources.length} {sources.length === 1 ? 'source' : 'sources'}</span>
-                        <ChevronRight size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {showSources && (
+                  <div className="seg-field">
+                    <button className="seg-sources-btn" onClick={() => { loadSegSources(); setShowSources(true) }}>
+                      <Database size={11} />
+                      <span>View sources</span>
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                  {showSources && segSources !== null && (
                     <SourcePreview
                       topicId={topicId}
-                      sourceUrls={sources}
+                      sources={segSources}
                       onClose={() => setShowSources(false)}
                     />
                   )}

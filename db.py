@@ -41,6 +41,7 @@ def init_db(db_path=DB_PATH):
         CREATE TABLE IF NOT EXISTS topics (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
+            description TEXT DEFAULT '',
             series_title TEXT,
             json_path TEXT DEFAULT '',
             total_segments INTEGER DEFAULT 0,
@@ -126,9 +127,18 @@ def init_db(db_path=DB_PATH):
             created_at TEXT NOT NULL,
             FOREIGN KEY (topic_id) REFERENCES topics(id)
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_src_dedup
-            ON research_sources(topic_id, content_hash);
         CREATE INDEX IF NOT EXISTS idx_sources_topic ON research_sources(topic_id);
+
+        CREATE TABLE IF NOT EXISTS segment_source_links (
+            segment_id TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (segment_id, source_id),
+            FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE,
+            FOREIGN KEY (source_id) REFERENCES research_sources(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_ssl_segment ON segment_source_links(segment_id);
+        CREATE INDEX IF NOT EXISTS idx_ssl_source ON segment_source_links(source_id);
 
         CREATE TABLE IF NOT EXISTS firecrawl_jobs (
             id TEXT PRIMARY KEY,
@@ -189,7 +199,8 @@ def find_topic_by_json(json_path):
     return dict(row) if row else None
 
 
-def create_topic(title, series_title, json_path, total_segments):
+def create_topic(title, series_title="", json_path="", total_segments=0,
+                  description=""):
     if json_path:
         existing = find_topic_by_json(json_path)
         if existing:
@@ -198,9 +209,9 @@ def create_topic(title, series_title, json_path, total_segments):
     conn = get_conn()
     topic_id = uuid.uuid4().hex[:12]
     conn.execute(
-        "INSERT INTO topics (id, title, series_title, json_path, "
-        "total_segments, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (topic_id, title, series_title, json_path, total_segments, _now()),
+        "INSERT INTO topics (id, title, description, series_title, json_path, "
+        "total_segments, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (topic_id, title, description, series_title, json_path, total_segments, _now()),
     )
     conn.commit()
     conn.close()
@@ -337,6 +348,7 @@ def get_segments_for_topic(topic_id):
 
 def delete_segment(seg_id):
     conn = get_conn()
+    conn.execute("DELETE FROM segment_source_links WHERE segment_id = ?", (seg_id,))
     conn.execute("DELETE FROM segment_config WHERE segment_id = ?", (seg_id,))
     conn.execute("DELETE FROM segments WHERE id = ?", (seg_id,))
     conn.commit()
@@ -397,21 +409,19 @@ def add_research_source(topic_id, url, title, content, source_type, *,
                          screenshot_url=""):
     content_hash = hashlib.sha256((content or "").encode()).hexdigest()
     word_count = len((content or "").split())
+    source_id = uuid.uuid4().hex[:12]
     conn = get_conn()
-    try:
-        conn.execute(
-            "INSERT OR IGNORE INTO research_sources "
-            "(id, topic_id, url, title, content, content_hash, source_type, "
-            "screenshot_url, word_count, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (uuid.uuid4().hex[:12], topic_id, url, title, content,
-             content_hash, source_type, screenshot_url, word_count, _now()),
-        )
-        conn.commit()
-        inserted = conn.execute("SELECT changes()").fetchone()[0]
-    finally:
-        conn.close()
-    return inserted > 0
+    conn.execute(
+        "INSERT INTO research_sources "
+        "(id, topic_id, url, title, content, content_hash, source_type, "
+        "screenshot_url, word_count, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (source_id, topic_id, url, title, content,
+         content_hash, source_type, screenshot_url, word_count, _now()),
+    )
+    conn.commit()
+    conn.close()
+    return source_id
 
 
 def get_research_sources(topic_id):
@@ -422,6 +432,34 @@ def get_research_sources(topic_id):
         "FROM research_sources "
         "WHERE topic_id = ? ORDER BY created_at DESC",
         (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def link_segment_sources(segment_id, source_ids):
+    if not source_ids:
+        return
+    conn = get_conn()
+    now = _now()
+    conn.executemany(
+        "INSERT OR IGNORE INTO segment_source_links "
+        "(segment_id, source_id, created_at) VALUES (?, ?, ?)",
+        [(segment_id, sid, now) for sid in source_ids],
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_sources_for_segment(segment_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT rs.id, rs.url, rs.title, rs.source_type, rs.word_count, "
+        "rs.created_at, substr(rs.content, 1, 200) as content_preview "
+        "FROM segment_source_links ssl "
+        "JOIN research_sources rs ON ssl.source_id = rs.id "
+        "WHERE ssl.segment_id = ? ORDER BY rs.created_at",
+        (segment_id,),
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]

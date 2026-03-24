@@ -5,18 +5,18 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 export default function CreateTopic() {
   const navigate = useNavigate()
   const [topic, setTopic] = useState('')
+  const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
-  const [segments, setSegments] = useState(6)
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!topic.trim()) return
+    if (!topic.trim() || !description.trim()) return
 
     setLoading(true)
     const res = await fetch('/api/topics/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic: topic.trim(), segments }),
+      body: JSON.stringify({ topic: topic.trim(), description: description.trim() }),
     })
     const data = await res.json()
     setLoading(false)
@@ -46,29 +46,19 @@ export default function CreateTopic() {
             <button
               type="submit"
               className="create-submit"
-              disabled={loading || !topic.trim()}
+              disabled={loading || !topic.trim() || !description.trim()}
             >
               {loading ? <Loader2 size={16} className="spin" /> : <ArrowRight size={16} />}
             </button>
           </div>
 
-          <div className="create-options">
-            <div className="create-seg">
-              <span className="create-seg-label">Segments</span>
-              <div className="create-seg-pills">
-                {[3, 4, 5, 6, 7, 8].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`create-seg-pill ${n === segments ? 'create-seg-pill-on' : ''}`}
-                    onClick={() => setSegments(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <textarea
+            className="create-desc"
+            placeholder="Describe what the video series should cover, the angle, target audience..."
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={3}
+          />
         </form>
 
         <div className="create-suggestions">

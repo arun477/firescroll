@@ -8,14 +8,22 @@ from db import (
     create_firecrawl_job,
     create_research_task,
     create_segment,
-    get_research_sources,
     get_segments_for_topic,
     get_topic,
+    link_segment_sources,
     update_firecrawl_job,
     update_research_task,
     update_segment,
     update_topic,
 )
+
+
+def get_segment(seg_id):
+    from db import get_conn
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM segments WHERE id = ?", (seg_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 from keystore import get_key
 
 load_dotenv()
@@ -41,43 +49,67 @@ def _is_segment_busy(seg):
     return seg["status"] in BUSY_STATUSES
 
 
-def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
+def _build_source_context(topic_id, per_source_limit=600, total_limit=8000,
+                           source_ids_filter=None):
+    """Fetch sources and build a context string. Returns (context, source_ids_used)."""
     from db import get_conn
-    sources = get_research_sources(topic_id)
-    print(f"[FC] Synthesize: {len(sources)} sources available")
-    if not sources:
+    conn = get_conn()
+    if source_ids_filter:
+        placeholders = ",".join("?" for _ in source_ids_filter)
+        rows = conn.execute(
+            f"SELECT id, url, title, content FROM research_sources "
+            f"WHERE id IN ({placeholders}) ORDER BY created_at",
+            source_ids_filter,
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, url, title, content FROM research_sources "
+            "WHERE topic_id = ? ORDER BY created_at DESC",
+            (topic_id,),
+        ).fetchall()
+    conn.close()
+
+    context = ""
+    source_ids_used = []
+    for row in rows:
+        text = (row["content"] or "")[:per_source_limit]
+        title = row["title"] or ""
+        url = row["url"] or ""
+        context += f"\n--- {title} ({url}) ---\n{text}\n"
+        source_ids_used.append(row["id"])
+        if len(context) > total_limit:
+            break
+    return context, source_ids_used
+
+
+def _desc_line(description):
+    if description:
+        return f'\nTopic description: "{description}"\n'
+    return ""
+
+
+def _synthesize_segment(topic_id, segment_id, source="firecrawl",
+                         description=""):
+    """Synthesize a segment using ALL topic sources. Links sources via join table."""
+    context, source_ids = _build_source_context(topic_id)
+    if not context:
         print("[FC] No sources to synthesize from, resetting to draft")
         update_segment(segment_id, status="draft")
         return
-    segments = get_segments_for_topic(topic_id)
-    seg = next((s for s in segments if s["id"] == segment_id), None)
+
+    topic = get_topic(topic_id)
+    seg = get_segment(segment_id)
     if not seg:
         return
 
-    context = ""
-    conn = get_conn()
-    for src in sources[:15]:
-        title = src.get("title", "")
-        url = src.get("url", "")
-        row = conn.execute(
-            "SELECT content FROM research_sources WHERE id = ?",
-            (src["id"],)
-        ).fetchone()
-        content = (row["content"] if row else "")[:500]
-        context += f"\n--- {title} ({url}) ---\n{content}\n"
-        if len(context) > 6000:
-            break
-    conn.close()
-
-    topic = get_topic(topic_id)
     update_segment(segment_id, status="researching")
-
     client = _get_openai()
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": (
             f'Using this researched information, write one short-form video segment.\n'
-            f'Series: "{topic["title"]}"\nSegment: "{seg["title"]}"\n\n'
+            f'Series: "{topic["title"]}"\nSegment: "{seg["title"]}"\n'
+            f'{_desc_line(description or topic.get("description", ""))}\n'
             f'Research:\n{context}\n\n'
             f'Return JSON: {{"hook": "1-2 sentence attention grabber", '
             f'"script": "3-5 sentence educational content", '
@@ -86,59 +118,86 @@ def _synthesize_segment(topic_id, segment_id, source="firecrawl"):
         response_format={"type": "json_object"},
     )
     data = json.loads(response.choices[0].message.content)
-    source_urls = [s["url"] for s in sources[:10]]
     update_segment(segment_id, hook=data["hook"], script=data["script"],
                    visual_cue=data.get("visual_cue", ""), source=source,
-                   source_urls=json.dumps(source_urls, ensure_ascii=False),
                    status="ready")
+    link_segment_sources(segment_id, source_ids)
 
 
-def generate_series_outline(topic_id, topic_title, num_segments=6):
+def generate_series_outline(topic_id, topic_title, num_segments=6,
+                             description="", instruction=""):
+    """Create new segments with titles. Always appends — never skips existing."""
     existing = get_segments_for_topic(topic_id)
-    if existing:
-        return {"segments": [{"num": s["segment_num"], "title": s["title"]}
-                             for s in existing]}
+    next_num = max((s["segment_num"] for s in existing), default=0) + 1
 
     task_id = create_research_task(topic_id, "outline", topic_title)
     try:
         update_research_task(task_id, status="running")
         client = _get_openai()
+
+        desc_line = ""
+        if description:
+            desc_line = f'\nTopic description: "{description}"\n'
+        instr_line = ""
+        if instruction:
+            instr_line = f'\nSpecific instruction: "{instruction}"\n'
+
+        existing_titles = [s["title"] for s in existing if s.get("title")]
+        existing_note = ""
+        if existing_titles:
+            existing_note = (f'\nExisting segments (create NEW ones, avoid overlap): '
+                           f'{existing_titles}\n')
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
                 f'Create a {num_segments}-part short-form video series outline '
-                f'about "{topic_title}". Return JSON: '
+                f'about "{topic_title}".\n'
+                f'{desc_line}{instr_line}{existing_note}\n'
+                f'Return JSON: '
                 f'{{"series_title": "...", "segments": '
                 f'[{{"num": 1, "title": "catchy title"}}]}}'
             )}],
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
+
+        if not existing:
+            update_topic(topic_id,
+                         series_title=data.get("series_title", topic_title),
+                         research_status="outline_done")
+
+        for i, seg in enumerate(data["segments"]):
+            create_segment(topic_id, next_num + i, title=seg["title"])
+
         update_topic(topic_id,
-                     series_title=data.get("series_title", topic_title),
-                     total_segments=len(data["segments"]),
-                     research_status="outline_done")
-        for seg in data["segments"]:
-            create_segment(topic_id, seg["num"], title=seg["title"])
+                     total_segments=next_num + len(data["segments"]) - 1)
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         update_research_task(task_id, status="failed", error=str(exc))
         raise
 
 
-def generate_segment_content(topic_id, segment_id, topic_title, segment_title):
+def generate_segment_content(topic_id, segment_id, topic_title, segment_title,
+                              description=""):
+    """Generate AI content for a single segment, using all topic sources as context."""
     task_id = create_research_task(topic_id, "ai_generate", segment_title)
     try:
         update_segment(segment_id, status="researching")
         update_research_task(task_id, status="running")
+
+        context, source_ids = _build_source_context(topic_id)
+        research_block = f"\nAvailable research:\n{context}\n" if context else ""
+
         client = _get_openai()
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
                 f'Write content for one short-form educational video.\n'
-                f'Series: "{topic_title}"\nSegment: "{segment_title}"\n\n'
+                f'Series: "{topic_title}"\nSegment: "{segment_title}"\n'
+                f'{_desc_line(description)}{research_block}\n'
                 f'Return JSON: {{"hook": "1-2 sentence attention grabber", '
                 f'"script": "3-5 sentence educational content", '
                 f'"visual_cue": "what should be shown on screen"}}'
@@ -149,16 +208,19 @@ def generate_segment_content(topic_id, segment_id, topic_title, segment_title):
         update_segment(segment_id, hook=data["hook"], script=data["script"],
                        visual_cue=data.get("visual_cue", ""),
                        source="ai", status="ready")
+        if source_ids:
+            link_segment_sources(segment_id, source_ids)
         update_research_task(task_id, status="done",
                              result=json.dumps(data, ensure_ascii=False))
         return data
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         update_segment(segment_id, status="failed")
         update_research_task(task_id, status="failed", error=str(exc))
         raise
 
 
-def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
+def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title,
+                             description=""):
     task_id = create_research_task(topic_id, "web_search",
                                    f"{topic_title}: {segment_title}")
     try:
@@ -166,10 +228,17 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         update_research_task(task_id, status="searching")
         print(f"[FC] Searching: {topic_title} - {segment_title}")
         fc = _get_firecrawl()
-        query = f"{topic_title} {segment_title} educational facts"
+
+        # Use description in query if available
+        query_parts = [topic_title, segment_title, "educational facts"]
+        if description:
+            query_parts.insert(1, description[:60])
+        query = " ".join(query_parts)
+
         results = fc.search(query, limit=5,
                             scrape_options={"formats": ["markdown"]})
         src_count = 0
+        source_ids = []
         items = []
         if hasattr(results, "web") and results.web:
             items = results.web
@@ -192,25 +261,28 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
                 try:
                     from urllib.parse import urlparse
                     title = urlparse(url).netloc
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     title = url[:60]
             content = markdown or desc
             if content:
-                add_research_source(topic_id, url, title,
-                                    content[:5000], "search")
+                sid = add_research_source(topic_id, url, title,
+                                          content[:5000], "search")
+                source_ids.append(sid)
                 src_count += 1
             elif url:
-                add_research_source(topic_id, url, title or url,
-                                    desc or f"Source: {url}", "search")
+                sid = add_research_source(topic_id, url, title or url,
+                                          desc or f"Source: {url}", "search")
+                source_ids.append(sid)
                 src_count += 1
         print(f"[FC] Found {src_count} sources for: {segment_title}")
 
         update_research_task(task_id, status="processing")
         print(f"[FC] Synthesizing segment: {segment_title}")
-        _synthesize_segment(topic_id, segment_id, "firecrawl")
+        _synthesize_segment(topic_id, segment_id, "firecrawl",
+                           description=description)
         update_research_task(task_id, status="done")
         print(f"[FC] Done: {segment_title}")
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         print(f"[FC] ERROR: {segment_title}: {exc}")
         traceback.print_exc()
         update_segment(segment_id, status="failed")
@@ -218,25 +290,30 @@ def research_with_firecrawl(topic_id, segment_id, topic_title, segment_title):
         raise
 
 
-def generate_all_ai(topic_id, topic_title, num_segments=6):
+def generate_all_ai(topic_id, topic_title, num_segments=6,
+                     description="", instruction=""):
     update_topic(topic_id, research_status="generating")
-    generate_series_outline(topic_id, topic_title, num_segments)
+    generate_series_outline(topic_id, topic_title, num_segments,
+                           description=description, instruction=instruction)
     segments = get_segments_for_topic(topic_id)
+    # Only process the newly created segments (not already ready/researching)
     for seg in segments:
         if _is_segment_busy(seg):
             continue
         try:
             generate_segment_content(topic_id, seg["id"], topic_title,
-                                     seg["title"])
-        except Exception:  # pylint: disable=broad-exception-caught
+                                     seg["title"], description=description)
+        except Exception:
             pass
     _check_all_done(topic_id)
 
 
-def research_all_firecrawl(topic_id, topic_title, num_segments=6):
+def research_all_firecrawl(topic_id, topic_title, num_segments=6,
+                            description="", instruction=""):
     print(f"[FC] Starting research_all for: {topic_title}")
     update_topic(topic_id, research_status="generating")
-    generate_series_outline(topic_id, topic_title, num_segments)
+    generate_series_outline(topic_id, topic_title, num_segments,
+                           description=description, instruction=instruction)
     segments = get_segments_for_topic(topic_id)
     print(f"[FC] Got {len(segments)} segments")
     for seg in segments:
@@ -245,8 +322,8 @@ def research_all_firecrawl(topic_id, topic_title, num_segments=6):
             continue
         try:
             research_with_firecrawl(topic_id, seg["id"], topic_title,
-                                     seg["title"])
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+                                     seg["title"], description=description)
+        except Exception as exc:
             print(f"[FC] Segment failed: {seg['title']}: {exc}")
     _check_all_done(topic_id)
     print(f"[FC] All done for: {topic_title}")
@@ -254,47 +331,35 @@ def research_all_firecrawl(topic_id, topic_title, num_segments=6):
 
 def generate_segments_from_sources(topic_id, topic_title, source_ids,
                                     num_segments=0):
-    from db import get_conn
     task_id = create_research_task(topic_id, "source_to_segments",
                                    f"{len(source_ids)} sources")
     try:
         update_research_task(task_id, status="running")
-        conn = get_conn()
-        content_parts = []
-        for sid in source_ids:
-            row = conn.execute(
-                "SELECT url, title, content FROM research_sources WHERE id = ?",
-                (sid,),
-            ).fetchone()
-            if row:
-                text = (row["content"] or "")[:1500]
-                content_parts.append(
-                    f"--- {row['title']} ({row['url']}) ---\n{text}"
-                )
-        conn.close()
+        combined, _ = _build_source_context(
+            topic_id, per_source_limit=1500,
+            source_ids_filter=source_ids)
 
-        if not content_parts:
+        if not combined.strip():
             update_research_task(task_id, status="failed",
                                  error="No source content found")
             return
 
-        combined = "\n\n".join(content_parts)[:8000]
-
         existing = get_segments_for_topic(topic_id)
         existing_titles = [s["title"].lower() for s in existing if s.get("title")]
 
-        auto_count = ""
-        if num_segments > 0:
-            auto_count = f"Create exactly {num_segments} segments."
-        else:
-            auto_count = "Create an appropriate number of segments (3-8)."
+        topic = get_topic(topic_id)
+
+        auto_count = (f"Create exactly {num_segments} segments."
+                      if num_segments > 0
+                      else "Create an appropriate number of segments (3-8).")
 
         client = _get_openai()
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": (
                 f'Using these research sources, create video segments for '
-                f'a series about "{topic_title}".\n\n'
+                f'a series about "{topic_title}".\n'
+                f'{_desc_line(topic.get("description", ""))}\n'
                 f'Existing segment titles (DO NOT duplicate): '
                 f'{existing_titles}\n\n'
                 f'{auto_count} Each segment must have a unique angle.\n\n'
@@ -310,8 +375,6 @@ def generate_segments_from_sources(topic_id, topic_title, source_ids,
 
         next_num = max((s["segment_num"] for s in existing), default=0) + 1
         created = 0
-        source_url_list = json.dumps(
-            [sid for sid in source_ids[:10]], ensure_ascii=False)
 
         for seg_data in data.get("segments", []):
             title = seg_data.get("title", "")
@@ -326,9 +389,10 @@ def generate_segments_from_sources(topic_id, topic_title, source_ids,
                 script=seg_data.get("script", ""),
                 visual_cue=seg_data.get("visual_cue", ""),
                 source="firecrawl",
-                source_urls=source_url_list,
                 status="ready",
             )
+            # Link sources to this segment
+            link_segment_sources(seg_id, source_ids)
             created += 1
             existing_titles.append(title.lower())
 
@@ -338,7 +402,7 @@ def generate_segments_from_sources(topic_id, topic_title, source_ids,
             result=f"Created {created} segments from {len(source_ids)} sources")
         print(f"[FC] Created {created} segments from {len(source_ids)} sources")
 
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         print(f"[FC] generate_from_sources ERROR: {exc}")
         update_research_task(task_id, status="failed", error=str(exc))
 
@@ -361,7 +425,6 @@ def fc_search(topic_id, segment_id, query, limit=5):
         fc = _get_firecrawl()
         results = fc.search(query, limit=limit,
                             scrape_options={"formats": ["markdown"]})
-        new_count = 0
         total = 0
         items = getattr(results, "web", None) or getattr(results, "data", None) or []
         for item in items:
@@ -369,18 +432,13 @@ def fc_search(topic_id, segment_id, query, limit=5):
             title = getattr(item, "title", "") or ""
             md = getattr(item, "markdown", "") or getattr(item, "description", "") or ""
             if md:
-                was_new = add_research_source(
-                    topic_id, url, title, md[:5000], "search")
-                if was_new:
-                    new_count += 1
+                add_research_source(topic_id, url, title, md[:5000], "search")
                 total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
-            result_preview=f"Found {total} results, {new_count} new")
-        if segment_id:
-            _synthesize_segment(topic_id, segment_id, "firecrawl")
-        return {"total": total, "new": new_count}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+            result_preview=f"Found {total} results")
+        return {"total": total}
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -395,15 +453,12 @@ def fc_scrape(topic_id, segment_id, url):
         title = ""
         if hasattr(result, "metadata") and result.metadata:
             title = getattr(result.metadata, "title", "") or ""
-        was_new = add_research_source(topic_id, url, title, md[:5000],
-                                       "scrape")
+        add_research_source(topic_id, url, title, md[:5000], "scrape")
         preview = f"Scraped: {title[:80]}" if title else f"Scraped {url[:80]}"
         update_firecrawl_job(job_id, status="done", pages_found=1,
                              result_preview=preview)
-        if segment_id:
-            _synthesize_segment(topic_id, segment_id, "firecrawl")
-        return {"url": url, "title": title, "new": was_new}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+        return {"url": url, "title": title}
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -422,10 +477,8 @@ def fc_extract(topic_id, segment_id, url, extract_prompt):
         add_research_source(topic_id, url, title, content, "extract")
         update_firecrawl_job(job_id, status="done", pages_found=1,
                              result_preview=content[:500])
-        if segment_id:
-            _synthesize_segment(topic_id, segment_id, "firecrawl")
         return {"url": url, "data": json_data}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -439,7 +492,6 @@ def fc_crawl(topic_id, segment_id, url, limit=10, max_depth=2):
         result = fc.crawl(url, limit=limit,
                           max_discovery_depth=max_depth,
                           scrape_options={"formats": ["markdown"]})
-        new_count = 0
         total = 0
         docs = getattr(result, "data", []) or []
         for doc in docs:
@@ -449,18 +501,14 @@ def fc_crawl(topic_id, segment_id, url, limit=10, max_depth=2):
             page_title = getattr(meta, "title", "") if meta else ""
             md = getattr(doc, "markdown", "") or ""
             if md:
-                was_new = add_research_source(
+                add_research_source(
                     topic_id, page_url, page_title, md[:5000], "crawl")
-                if was_new:
-                    new_count += 1
                 total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
-            result_preview=f"Crawled {total} pages, {new_count} new")
-        if segment_id:
-            _synthesize_segment(topic_id, segment_id, "firecrawl")
-        return {"total": total, "new": new_count}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+            result_preview=f"Crawled {total} pages")
+        return {"total": total}
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -484,7 +532,7 @@ def fc_map(topic_id, url):
             job_id, status="done", pages_found=len(urls),
             result_preview=json.dumps(urls[:30], ensure_ascii=False))
         return {"links": urls, "total": len(urls)}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -508,10 +556,8 @@ def fc_agent(topic_id, segment_id, prompt):
         update_firecrawl_job(
             job_id, status="done",
             result_preview=content[:500] if content else "No data")
-        if segment_id:
-            _synthesize_segment(topic_id, segment_id, "firecrawl")
         return {"result": content[:2000]}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -522,7 +568,6 @@ def fc_batch_scrape(topic_id, urls):
     try:
         fc = _get_firecrawl()
         result = fc.batch_scrape(urls[:20], formats=["markdown"])
-        new_count = 0
         total = 0
         docs = getattr(result, "data", []) or []
         for doc in docs:
@@ -532,16 +577,14 @@ def fc_batch_scrape(topic_id, urls):
             page_title = getattr(meta, "title", "") if meta else ""
             md = getattr(doc, "markdown", "") or ""
             if md and page_url:
-                was_new = add_research_source(
+                add_research_source(
                     topic_id, page_url, page_title, md[:5000], "scrape")
-                if was_new:
-                    new_count += 1
                 total += 1
         update_firecrawl_job(
             job_id, status="done", pages_found=total,
-            result_preview=f"Batch: {total} pages, {new_count} new")
-        return {"total": total, "new": new_count}
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+            result_preview=f"Batch: {total} pages")
+        return {"total": total}
+    except Exception as exc:
         update_firecrawl_job(job_id, status="failed", error=str(exc))
         raise
 
@@ -562,5 +605,5 @@ def fc_status():
                 "max": getattr(concurrency, "max", 0),
             },
         }
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception:
         return {"connected": False, "credits": {}, "concurrency": {}}
