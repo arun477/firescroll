@@ -339,7 +339,7 @@ def update_segment(seg_id, **kwargs):
 def get_segments_for_topic(topic_id):
     conn = get_conn()
     rows = conn.execute(
-        "SELECT * FROM segments WHERE topic_id = ? ORDER BY segment_num",
+        "SELECT * FROM segments WHERE topic_id = ? ORDER BY segment_num DESC",
         (topic_id,),
     ).fetchall()
     conn.close()
