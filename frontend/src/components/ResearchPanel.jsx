@@ -106,14 +106,14 @@ export default function ResearchPanel({
     <div className="rp-platform">
       {/* ═══ LEFT: Firecrawl Command Center ═══ */}
       <div className="rp-col-left">
+        <div className="rp-col-header">
+          <img src="/firecrawl-logo.svg" alt="" width="14" height="14" />
+          <span className="rp-col-header-title" style={{ color: '#a1a1aa', letterSpacing: '-0.1px', textTransform: 'none', fontSize: 12, fontWeight: 700 }}>
+            Research <span style={{ background: 'linear-gradient(135deg, #FA5D19 0%, #fbbf24 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Tools</span>
+          </span>
+          <FirecrawlStatus />
+        </div>
         <div className="fc-cmd">
-          {/* Header */}
-          <div className="fc-cmd-header">
-            <img src="/firecrawl-logo.svg" alt="" />
-            <span className="fc-cmd-title">Research <span>Tools</span></span>
-            <FirecrawlStatus />
-          </div>
-
           {/* Topic description */}
           {descDraft === null && (
             <div className="rp-desc" onClick={() => setDescDraft(topic.description || '')}>

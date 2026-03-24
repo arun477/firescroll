@@ -2162,38 +2162,9 @@ a { color: var(--blue); text-decoration: none; }
   gap: 14px;
 }
 
+/* fc-cmd-header kept for backwards compat but no longer primary */
 .fc-cmd-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  line-height: 1;
-}
-
-.fc-cmd-header img {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  vertical-align: middle;
-}
-
-.fc-cmd-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: -0.1px;
-  color: #a1a1aa;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  margin-top: 3px;
-}
-
-.fc-cmd-title span {
-  background: linear-gradient(135deg, var(--fc-heat) 0%, #fbbf24 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: none;
 }
 
 /* Quick Actions */
@@ -3814,15 +3785,60 @@ a { color: var(--blue); text-decoration: none; }
   position: relative;
   min-height: calc(100vh - 120px);
   align-items: stretch;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Horizontal line under headers */
+.rp-platform::after {
+  content: '';
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Vertical dividers — absolute within grid, extended with large bottom */
+.rp-platform::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: -200px;
+  left: 300px;
+  width: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rp-col-center {
+  position: relative;
+}
+
+.rp-col-center::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: -200px;
+  right: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+  z-index: 1;
 }
 
 @media (max-width: 1400px) {
   .rp-platform { grid-template-columns: 280px 1fr 300px; }
+  .rp-platform::before { left: 280px; }
 }
 
 @media (max-width: 1100px) {
   .rp-platform { grid-template-columns: 1fr; }
   .rp-col-left, .rp-col-right { display: none; }
+  .rp-platform::before, .rp-col-center::after { display: none; }
 }
 
 /* Left Column — Command Center */
@@ -3833,7 +3849,6 @@ a { color: var(--blue); text-decoration: none; }
   height: calc(100vh - 120px);
   overflow-y: auto;
   padding: 0 20px 20px 0;
-  border-right: 1px solid rgba(255,255,255,0.05);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -3856,7 +3871,6 @@ a { color: var(--blue); text-decoration: none; }
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 0 20px 20px;
-  border-left: 1px solid rgba(255,255,255,0.05);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -3869,8 +3883,9 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  height: 44px;
+  padding: 0;
+  border-bottom: none;
   margin-bottom: 12px;
   flex-shrink: 0;
 }
