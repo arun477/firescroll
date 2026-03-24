@@ -420,10 +420,13 @@ def fc_status_ep():
 
 
 @app.get("/api/topics/{topic_id}/sources")
-def get_sources_ep(topic_id: str):
-    from db import get_research_sources as _get_src
-    from db import get_source_stats as _get_stats
-    return {"sources": _get_src(topic_id), "stats": _get_stats(topic_id)}
+def get_sources_ep(topic_id: str, page: int = 1, per_page: int = 8,
+                   type: str = "all"):
+    from db import get_research_sources_paginated, get_source_stats
+    source_type = type if type != "all" else None
+    data = get_research_sources_paginated(topic_id, page, per_page, source_type)
+    stats = get_source_stats(topic_id)
+    return {**data, "stats": stats}
 
 
 @app.get("/api/topics/{topic_id}/sources/{source_id}")

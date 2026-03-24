@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  ChevronDown, ChevronRight, Trash2, Globe, Search,
+  ChevronLeft, ChevronRight, Trash2, Globe, Search,
   FileText, Bot, Database, ExternalLink, Sparkles, Loader2,
-  CheckSquare, Square,
+  CheckSquare, Square, Eye,
 } from 'lucide-react'
+import SourcePreview from './SourcePreview'
 
 const TYPE_ICONS = {
   search: Search,
@@ -32,24 +33,47 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-export default function SourcesPanel({ sources, stats, topicId, onRefresh, alwaysOpen = false }) {
-  const [expanded, setExpanded] = useState(true)
+function getHost(url) {
+  if (!url) return 'source'
+  if (url.startsWith('agent://')) return 'Firecrawl Agent'
+  try { return new URL(url).hostname } catch { return url.slice(0, 30) }
+}
+
+export default function SourcesPanel({ topicId, onRefresh, alwaysOpen = false }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('all')
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState(new Set())
   const [generating, setGenerating] = useState(false)
-  const [expandedSrc, setExpandedSrc] = useState(null)
+  const [previewSources, setPreviewSources] = useState(null)
+  const perPage = 8
 
-  const isOpen = alwaysOpen || expanded
+  const fetchSources = async (p = page, f = filter) => {
+    setLoading(true)
+    try {
+      const typeParam = f === 'all' ? 'all' : f
+      const res = await fetch(
+        `/api/topics/${topicId}/sources?page=${p}&per_page=${perPage}&type=${typeParam}`
+      )
+      const d = await res.json()
+      setData(d)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
 
-  const filtered = filter === 'all'
-    ? sources
-    : sources.filter(s => s.source_type === filter)
+  useEffect(() => { fetchSources() }, [topicId, page, filter])
 
-  const handleDelete = async (sourceId) => {
-    await fetch(`/api/topics/${topicId}/sources/${sourceId}`, { method: 'DELETE' })
-    selected.delete(sourceId)
-    setSelected(new Set(selected))
-    onRefresh()
+  // Poll when parent refreshes
+  const prevRefresh = useRef(0)
+  useEffect(() => {
+    prevRefresh.current++
+    if (prevRefresh.current > 1) fetchSources()
+  }, [onRefresh])
+
+  const handleFilterChange = (f) => {
+    setFilter(f)
+    setPage(1)
   }
 
   const toggleSelect = (id) => {
@@ -59,9 +83,12 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh, alway
     setSelected(next)
   }
 
-  const selectAll = () => {
-    if (selected.size === filtered.length) setSelected(new Set())
-    else setSelected(new Set(filtered.map(s => s.id)))
+  const handleDelete = async (sourceId) => {
+    await fetch(`/api/topics/${topicId}/sources/${sourceId}`, { method: 'DELETE' })
+    selected.delete(sourceId)
+    setSelected(new Set(selected))
+    fetchSources()
+    onRefresh()
   }
 
   const handleGenerate = async () => {
@@ -74,141 +101,150 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh, alway
     })
     setSelected(new Set())
     setGenerating(false)
+    fetchSources()
     onRefresh()
-    setTimeout(onRefresh, 3000)
   }
 
-  const typeCounts = {}
-  sources.forEach(s => { typeCounts[s.source_type] = (typeCounts[s.source_type] || 0) + 1 })
-  const totalWords = sources.reduce((sum, s) => sum + (s.word_count || 0), 0)
+  const handleViewSource = (src) => {
+    setPreviewSources([src])
+  }
 
-  const types = ['all', 'search', 'scrape', 'crawl', 'agent', 'extract']
-  const allSelected = filtered.length > 0 && selected.size === filtered.length
+  const stats = data?.stats || {}
+  const sources = data?.sources || []
+  const totalPages = data?.pages || 1
+  const totalSources = data?.total || 0
+  const typeCounts = stats.type_counts || {}
+  const totalWords = stats.total_words || 0
+
+  const types = ['all', ...Object.keys(typeCounts).sort()]
 
   return (
     <div className={`sources-panel ${alwaysOpen ? 'sp-always-open' : ''}`}>
-      {!alwaysOpen && (
-        <button className="sp-header" onClick={() => setExpanded(!expanded)}>
-          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />
-          <span className="sp-header-title">Knowledge Base</span>
-          <span className="sp-header-count">{stats?.total || 0}</span>
-        </button>
+      {/* Stats */}
+      {stats.total > 0 && (
+        <div className="sp-stats">
+          <span className="sp-stat">{stats.total} sources</span>
+          <span className="sp-stat-dot" />
+          <span className="sp-stat">{totalWords.toLocaleString()} words</span>
+          {Object.entries(typeCounts).map(([type, count]) => (
+            <span key={type} className="sp-type-count" style={{ color: TYPE_COLORS[type] || '#52525b' }}>
+              {count} {type}
+            </span>
+          ))}
+        </div>
       )}
 
-      {isOpen && (
-        <div className="sp-body">
-          {sources.length > 0 && (
-            <div className="sp-stats">
-              <span className="sp-stat">{sources.length} sources</span>
-              <span className="sp-stat-dot" />
-              <span className="sp-stat">{totalWords.toLocaleString()} words</span>
-              {Object.entries(typeCounts).map(([type, count]) => (
-                <span key={type} className="sp-type-count" style={{ color: TYPE_COLORS[type] || '#52525b' }}>
-                  {count} {type}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="sp-filters">
-            <div className="sp-filter-row">
-              {types.map(t => {
-                const count = t === 'all' ? sources.length : (typeCounts[t] || 0)
-                if (t !== 'all' && count === 0) return null
-                return (
-                  <button key={t} className={`sp-filter ${filter === t ? 'sp-filter-on' : ''}`}
-                    onClick={() => setFilter(t)}>
-                    {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-                    {count > 0 && <span className="sp-filter-count">{count}</span>}
-                  </button>
-                )
-              })}
-            </div>
-            {filtered.length > 0 && (
-              <button className="sp-select-all" onClick={selectAll}>
-                {allSelected ? <CheckSquare size={12} /> : <Square size={12} />}
-              </button>
-            )}
-          </div>
-
-          {selected.size > 0 && (
-            <div className="sp-action-bar">
-              <span className="sp-action-count">{selected.size} selected</span>
-              <button className="sp-gen-btn" onClick={handleGenerate} disabled={generating}>
-                {generating
-                  ? <><Loader2 size={11} className="spin" /> Creating...</>
-                  : <><Sparkles size={11} /> Generate Segments</>}
-              </button>
-            </div>
-          )}
-
-          <div className="sp-list">
-            {filtered.length === 0 && (
-              <div className="sp-empty">
-                {alwaysOpen
-                  ? 'Use the research tools on the left to gather sources.'
-                  : 'No sources yet'}
-              </div>
-            )}
-            {filtered.map(src => {
-              const TypeIcon = TYPE_ICONS[src.source_type] || FileText
-              const isSelected = selected.has(src.id)
-              const isExpanded = expandedSrc === src.id
-              let hostname = ''
-              try { hostname = new URL(src.url).hostname } catch { hostname = src.url?.slice(0, 30) || '' }
-
+      {/* Filters */}
+      {stats.total > 0 && (
+        <div className="sp-filters">
+          <div className="sp-filter-row">
+            {types.map(t => {
+              const count = t === 'all' ? stats.total : (typeCounts[t] || 0)
+              if (t !== 'all' && !count) return null
               return (
-                <div key={src.id} className={`sp-src ${isSelected ? 'sp-src-sel' : ''}`}>
-                  <div className="sp-src-row" onClick={() => toggleSelect(src.id)}>
-                    <span className="sp-src-check">
-                      {isSelected ? <CheckSquare size={12} /> : <Square size={12} />}
-                    </span>
-                    <span className="sp-src-icon" style={{ color: TYPE_COLORS[src.source_type] || '#52525b' }}>
-                      <TypeIcon size={12} />
-                    </span>
-                    <div className="sp-src-info">
-                      <span className="sp-src-host">{hostname}</span>
-                      {src.title && src.title !== 'Untitled' && (
-                        <span className="sp-src-title">{src.title}</span>
-                      )}
-                      {src.content_preview && (
-                        <span className="sp-src-snippet">{src.content_preview.slice(0, 100)}</span>
-                      )}
-                    </div>
-                    <div className="sp-src-meta">
-                      {src.word_count > 0 && (
-                        <span className="sp-src-words">{src.word_count.toLocaleString()}w</span>
-                      )}
-                      <span className="sp-src-time">{timeAgo(src.created_at)}</span>
-                    </div>
-                    <div className="sp-src-actions" onClick={e => e.stopPropagation()}>
-                      {src.content_preview && (
-                        <button className="sp-src-btn" onClick={() => setExpandedSrc(isExpanded ? null : src.id)}>
-                          {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                        </button>
-                      )}
-                      {src.url && !src.url.startsWith('agent://') && (
-                        <a href={src.url} target="_blank" rel="noreferrer" className="sp-src-btn">
-                          <ExternalLink size={10} />
-                        </a>
-                      )}
-                      <button className="sp-src-btn sp-src-del" onClick={() => handleDelete(src.id)}>
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  </div>
-                  {isExpanded && src.content_preview && (
-                    <div className="sp-src-preview">
-                      {src.content_preview}
-                      {src.content_preview.length >= 200 && '...'}
-                    </div>
-                  )}
-                </div>
+                <button key={t} className={`sp-filter ${filter === t ? 'sp-filter-on' : ''}`}
+                  onClick={() => handleFilterChange(t)}>
+                  {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                  {count > 0 && <span className="sp-filter-count">{count}</span>}
+                </button>
               )
             })}
           </div>
         </div>
+      )}
+
+      {/* Action bar for selected */}
+      {selected.size > 0 && (
+        <div className="sp-action-bar">
+          <span className="sp-action-count">{selected.size} selected</span>
+          <button className="sp-gen-btn" onClick={handleGenerate} disabled={generating}>
+            {generating
+              ? <><Loader2 size={11} className="spin" /> Creating...</>
+              : <><Sparkles size={11} /> Generate Segments</>}
+          </button>
+        </div>
+      )}
+
+      {/* Source cards */}
+      <div className="sp-cards">
+        {loading && sources.length === 0 && (
+          <div className="sp-loading"><Loader2 size={14} className="spin" /></div>
+        )}
+        {!loading && sources.length === 0 && (
+          <div className="sp-empty">
+            {filter !== 'all'
+              ? `No ${filter} sources yet.`
+              : 'Use the research tools to gather sources.'}
+          </div>
+        )}
+        {sources.map(src => {
+          const TypeIcon = TYPE_ICONS[src.source_type] || FileText
+          const isSelected = selected.has(src.id)
+          const hostname = getHost(src.url)
+
+          return (
+            <div key={src.id} className={`sp-card ${isSelected ? 'sp-card-sel' : ''}`}>
+              <div className="sp-card-main" onClick={() => handleViewSource(src)}>
+                <div className="sp-card-icon" style={{ color: TYPE_COLORS[src.source_type] || '#52525b' }}>
+                  <TypeIcon size={13} />
+                </div>
+                <div className="sp-card-body">
+                  <span className="sp-card-host">{hostname}</span>
+                  {src.title && src.title !== 'Untitled' && (
+                    <span className="sp-card-title">{src.title}</span>
+                  )}
+                  {src.content_preview && (
+                    <span className="sp-card-snippet">{src.content_preview.slice(0, 80)}</span>
+                  )}
+                </div>
+                <div className="sp-card-meta">
+                  {src.word_count > 0 && <span className="sp-card-words">{src.word_count.toLocaleString()}w</span>}
+                  <span className="sp-card-time">{timeAgo(src.created_at)}</span>
+                </div>
+              </div>
+              <div className="sp-card-actions">
+                <button className="sp-card-btn sp-card-check"
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(src.id) }}>
+                  {isSelected ? <CheckSquare size={12} /> : <Square size={12} />}
+                </button>
+                {src.url && !src.url.startsWith('agent://') && (
+                  <a href={src.url} target="_blank" rel="noreferrer" className="sp-card-btn"
+                    onClick={e => e.stopPropagation()}>
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+                <button className="sp-card-btn sp-card-del"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(src.id) }}>
+                  <Trash2 size={10} />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="sp-pagination">
+          <button className="sp-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}>
+            <ChevronLeft size={12} />
+          </button>
+          <span className="sp-page-info">{page} / {totalPages}</span>
+          <button className="sp-page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}>
+            <ChevronRight size={12} />
+          </button>
+        </div>
+      )}
+
+      {/* Source Preview Slide-out */}
+      {previewSources && (
+        <SourcePreview
+          topicId={topicId}
+          sources={previewSources}
+          onClose={() => setPreviewSources(null)}
+        />
       )}
     </div>
   )

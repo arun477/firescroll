@@ -477,8 +477,44 @@ def get_source_stats(topic_id):
     total = conn.execute(
         "SELECT COUNT(*) FROM research_sources WHERE topic_id = ?", (topic_id,)
     ).fetchone()[0]
+    total_words = conn.execute(
+        "SELECT COALESCE(SUM(word_count),0) FROM research_sources WHERE topic_id = ?",
+        (topic_id,)
+    ).fetchone()[0]
+    type_rows = conn.execute(
+        "SELECT source_type, COUNT(*) as cnt FROM research_sources "
+        "WHERE topic_id = ? GROUP BY source_type",
+        (topic_id,),
+    ).fetchall()
     conn.close()
-    return {"total": total}
+    type_counts = {r["source_type"]: r["cnt"] for r in type_rows}
+    return {"total": total, "total_words": total_words, "type_counts": type_counts}
+
+
+def get_research_sources_paginated(topic_id, page=1, per_page=8, source_type=None):
+    conn = get_conn()
+    where = "WHERE topic_id = ?"
+    params = [topic_id]
+    if source_type:
+        where += " AND source_type = ?"
+        params.append(source_type)
+
+    total = conn.execute(
+        f"SELECT COUNT(*) FROM research_sources {where}", params
+    ).fetchone()[0]
+
+    offset = (page - 1) * per_page
+    rows = conn.execute(
+        f"SELECT id, topic_id, url, title, source_type, word_count, created_at, "
+        f"substr(content, 1, 200) as content_preview "
+        f"FROM research_sources {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        params + [per_page, offset],
+    ).fetchall()
+    conn.close()
+
+    pages = max(1, (total + per_page - 1) // per_page)
+    return {"sources": [dict(r) for r in rows], "total": total,
+            "page": page, "pages": pages}
 
 
 def create_firecrawl_job(topic_id, job_type, target, *,
