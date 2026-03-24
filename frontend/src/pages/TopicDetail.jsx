@@ -343,19 +343,19 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
       {selectedSeg && (
         <div className="ve-left">
           <div className="ve-left-head">
-            <span className="ve-left-label">Studio Controls</span>
+            <svg width="14" height="14" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+              <rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+              <rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
+            </svg>
+            <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, color: '#a1a1aa' }}>
+              Studio <span style={{ fontWeight: 800 }}>Controls</span>
+            </span>
+            <span className="ve-elevenlabs-badge">ElevenLabs</span>
           </div>
 
           {/* ── Voice ── */}
           <Section icon={Volume2} title="Voice" defaultOpen
             value={voices.find(v => v.id === localVoice)?.name || 'Default'}>
-            <div className="ve-provider-brand">
-              <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
-                <rect x="8" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
-                <rect x="19" y="2" width="5" height="28" rx="2.5" fill="currentColor"/>
-              </svg>
-              <span>ElevenLabs</span>
-            </div>
             <div className="ve-search">
               <Search size={12} className="ve-search-i" />
               <input className="ve-search-in" placeholder={`Search ${voices.length} voices...`}
