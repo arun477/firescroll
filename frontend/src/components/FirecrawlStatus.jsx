@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2, Wifi, WifiOff } from 'lucide-react'
+import { Loader2, WifiOff } from 'lucide-react'
 
 export default function FirecrawlStatus() {
   const [data, setData] = useState(null)
@@ -21,48 +21,30 @@ export default function FirecrawlStatus() {
 
   if (loading) {
     return (
-      <div className="fc-status-widget">
-        <Loader2 size={14} className="spin" style={{ color: 'var(--text-muted)' }} />
+      <div className="fc-status-chip">
+        <Loader2 size={10} className="spin" style={{ color: 'var(--text-muted)' }} />
       </div>
     )
   }
 
   if (!data || !data.connected) {
     return (
-      <div className="fc-status-widget fc-status-disconnected">
-        <WifiOff size={14} />
-        <span>Not connected</span>
-        <Link to="/settings" className="fc-status-link">Setup</Link>
-      </div>
+      <Link to="/settings" className="fc-status-chip fc-status-off">
+        <span className="fc-status-dot fc-status-dot-off" />
+        <span>Disconnected</span>
+      </Link>
     )
   }
 
-  const { credits, concurrency } = data
+  const { credits } = data
   const hasCredits = credits.total > 0
-  const pct = hasCredits
-    ? Math.round((credits.remaining / credits.total) * 100) : 100
 
   return (
-    <div className="fc-status-widget">
-      <img src="/firecrawl-logo.svg" alt="" width="14" height="14" />
-      {hasCredits ? (
-        <>
-          <div className="fc-credit-section">
-            <div className="fc-credit-bar">
-              <div className="fc-credit-fill" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="fc-credit-text">
-              {credits.remaining?.toLocaleString()}
-            </span>
-          </div>
-          {concurrency.max > 0 && (
-            <span className="fc-concurrency">
-              {concurrency.current}/{concurrency.max}
-            </span>
-          )}
-        </>
-      ) : (
-        <span className="fc-credit-text">Connected</span>
+    <div className="fc-status-chip">
+      <span className="fc-status-dot fc-status-dot-on" />
+      <span>Connected</span>
+      {hasCredits && (
+        <span className="fc-status-credits">{credits.remaining?.toLocaleString()}</span>
       )}
     </div>
   )
