@@ -3075,14 +3075,15 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 0;
-  margin-bottom: 6px;
+  padding: 0 0 10px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
 .sp-stat {
   font-size: 10px;
-  color: #52525b;
+  color: #3f3f46;
   font-weight: 500;
 }
 
@@ -3096,8 +3097,8 @@ a { color: var(--blue); text-decoration: none; }
 .sp-type-count {
   font-size: 9px;
   font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   background: rgba(255,255,255,0.03);
 }
 
@@ -3106,22 +3107,22 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .sp-filter-row {
   display: flex;
-  gap: 1px;
-  padding: 2px;
+  gap: 2px;
+  padding: 3px;
   background: rgba(255,255,255,0.02);
-  border-radius: 5px;
+  border-radius: 6px;
   flex: 1;
 }
 
 .sp-filter {
-  padding: 3px 7px;
+  padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
   color: #3f3f46;
   font-size: 10px;
@@ -3167,11 +3168,11 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
-  margin-bottom: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 6px;
+  border-radius: 8px;
   animation: fadeIn 0.15s ease;
 }
 
@@ -3185,11 +3186,11 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 5px;
-  background: #fafafa;
-  border: none;
-  color: #09090b;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #e4e4e7;
   font-size: 10px;
   font-weight: 600;
   font-family: inherit;
@@ -3197,7 +3198,7 @@ a { color: var(--blue); text-decoration: none; }
   transition: all 0.15s;
 }
 
-.sp-gen-btn:hover:not(:disabled) { background: #e4e4e7; }
+.sp-gen-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.12); }
 .sp-gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Source list */
@@ -3208,14 +3209,15 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .sp-empty {
-  padding: 24px 0;
+  padding: 32px 12px;
   text-align: center;
   font-size: 11px;
   color: #27272a;
+  line-height: 1.5;
 }
 
 .sp-src {
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.02);
 }
 
 .sp-src:last-child { border-bottom: none; }
@@ -3223,12 +3225,12 @@ a { color: var(--blue); text-decoration: none; }
 .sp-src-row {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 6px 4px;
+  gap: 8px;
+  padding: 8px 6px;
   cursor: pointer;
   user-select: none;
   transition: background 0.1s;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -3260,7 +3262,7 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .sp-src-host {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: #a1a1aa;
   white-space: nowrap;
@@ -3269,11 +3271,12 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .sp-src-title {
-  font-size: 9px;
+  font-size: 10px;
   color: #3f3f46;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 1px;
 }
 
 .sp-src-meta {
@@ -3395,20 +3398,20 @@ a { color: var(--blue); text-decoration: none; }
 
 .sources-filters, .task-filters {
   display: flex;
-  gap: 1px;
-  margin-bottom: 6px;
-  padding: 2px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 5px;
+  gap: 2px;
+  margin-bottom: 10px;
+  padding: 3px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 6px;
   width: fit-content;
 }
 
 .sources-filter, .task-filter {
-  padding: 3px 8px;
+  padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
-  color: var(--text-muted);
+  color: #3f3f46;
   font-size: 10px;
   font-weight: 500;
   font-family: inherit;
@@ -3416,9 +3419,11 @@ a { color: var(--blue); text-decoration: none; }
   transition: all var(--transition);
 }
 
+.sources-filter:hover, .task-filter:hover { color: #71717a; }
+
 .sources-filter.active, .task-filter.active {
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
+  background: rgba(255,255,255,0.07);
+  color: #e4e4e7;
 }
 
 .source-row {
