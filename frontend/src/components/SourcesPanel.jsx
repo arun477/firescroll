@@ -32,12 +32,14 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
+export default function SourcesPanel({ sources, stats, topicId, onRefresh, alwaysOpen = false }) {
   const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(new Set())
   const [generating, setGenerating] = useState(false)
   const [expandedSrc, setExpandedSrc] = useState(null)
+
+  const isOpen = alwaysOpen || expanded
 
   const filtered = filter === 'all'
     ? sources
@@ -76,7 +78,6 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
     setTimeout(onRefresh, 3000)
   }
 
-  // Count by type
   const typeCounts = {}
   sources.forEach(s => { typeCounts[s.source_type] = (typeCounts[s.source_type] || 0) + 1 })
   const totalWords = sources.reduce((sum, s) => sum + (s.word_count || 0), 0)
@@ -85,17 +86,18 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
   const allSelected = filtered.length > 0 && selected.size === filtered.length
 
   return (
-    <div className="sources-panel">
-      <button className="sp-header" onClick={() => setExpanded(!expanded)}>
-        {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />
-        <span className="sp-header-title">Knowledge Base</span>
-        <span className="sp-header-count">{stats?.total || 0}</span>
-      </button>
+    <div className={`sources-panel ${alwaysOpen ? 'sp-always-open' : ''}`}>
+      {!alwaysOpen && (
+        <button className="sp-header" onClick={() => setExpanded(!expanded)}>
+          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />
+          <span className="sp-header-title">Knowledge Base</span>
+          <span className="sp-header-count">{stats?.total || 0}</span>
+        </button>
+      )}
 
-      {expanded && (
+      {isOpen && (
         <div className="sp-body">
-          {/* Stats bar */}
           {sources.length > 0 && (
             <div className="sp-stats">
               <span className="sp-stat">{sources.length} sources</span>
@@ -109,7 +111,6 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
             </div>
           )}
 
-          {/* Filters */}
           <div className="sp-filters">
             <div className="sp-filter-row">
               {types.map(t => {
@@ -131,7 +132,6 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
             )}
           </div>
 
-          {/* Action bar */}
           {selected.size > 0 && (
             <div className="sp-action-bar">
               <span className="sp-action-count">{selected.size} selected</span>
@@ -143,10 +143,13 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh }) {
             </div>
           )}
 
-          {/* Source list */}
           <div className="sp-list">
             {filtered.length === 0 && (
-              <div className="sp-empty">No sources yet</div>
+              <div className="sp-empty">
+                {alwaysOpen
+                  ? 'Use the research tools on the left to gather sources.'
+                  : 'No sources yet'}
+              </div>
             )}
             {filtered.map(src => {
               const TypeIcon = TYPE_ICONS[src.source_type] || FileText

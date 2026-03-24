@@ -3,7 +3,6 @@ import {
   Sparkles, Loader2, CheckCircle2, Database,
   Search, Plus, ChevronLeft, ChevronRight, Pencil, Check,
 } from 'lucide-react'
-import FirecrawlBadge from './FirecrawlBadge'
 import FirecrawlStatus from './FirecrawlStatus'
 import FirecrawlToolbar from './FirecrawlToolbar'
 import SegmentDetailCard from './SegmentDetailCard'
@@ -20,8 +19,8 @@ export default function ResearchPanel({
   const [newTitle, setNewTitle] = useState('')
   const [numSegments, setNumSegments] = useState(6)
   const [instruction, setInstruction] = useState('')
-  const [researchForm, setResearchForm] = useState(null) // null | 'ai' | 'firecrawl'
-  const [descDraft, setDescDraft] = useState(null) // null = not editing
+  const [researchForm, setResearchForm] = useState(null)
+  const [descDraft, setDescDraft] = useState(null)
 
   const [segData, setSegData] = useState(null)
   const perPage = 10
@@ -36,7 +35,6 @@ export default function ResearchPanel({
 
   useEffect(() => { fetchSegments() }, [topicId, searchQuery, page])
 
-  // Poll when anything is busy — clean up on unmount or state change
   const wasBusy = useRef(false)
   useEffect(() => {
     const isBusy = topic?.research_status === 'generating' ||
@@ -49,7 +47,6 @@ export default function ResearchPanel({
       return () => clearInterval(iv)
     }
 
-    // Just finished — final refresh with cleanup
     if (wasBusy.current) {
       wasBusy.current = false
       const t1 = setTimeout(() => { fetchSegments(); onRefresh() }, 1000)
@@ -106,111 +103,136 @@ export default function ResearchPanel({
   useEffect(() => { setPage(1) }, [searchQuery])
 
   return (
-    <div className="rp-split">
-      <div className="rp-left">
-        {/* Topic description */}
-        {descDraft === null && (
-          <div className="rp-desc" onClick={() => setDescDraft(topic.description || '')}>
-            {topic.description
-              ? <span className="rp-desc-text">{topic.description}</span>
-              : <span className="rp-desc-placeholder">Add a description to guide research...</span>
-            }
-            <Pencil size={11} className="rp-desc-icon" />
+    <div className="rp-platform">
+      {/* ═══ LEFT: Firecrawl Command Center ═══ */}
+      <div className="rp-col-left">
+        <div className="fc-cmd">
+          {/* Header */}
+          <div className="fc-cmd-header">
+            <img src="/firecrawl-logo.svg" alt="" />
+            <span className="fc-cmd-title">Research <span>Tools</span></span>
+            <FirecrawlStatus />
           </div>
-        )}
-        {descDraft !== null && (
-          <div className="rp-desc-form">
-            <textarea className="rp-desc-input" value={descDraft} onChange={e => setDescDraft(e.target.value)} rows={2} autoFocus
-              placeholder="Describe what the video series should cover, the angle, target audience..." />
-            <button className="rp-desc-save" onClick={handleSaveDesc}><Check size={12} /></button>
-          </div>
-        )}
 
-        <div className="rp-controls">
-          <div className="rp-controls-left">
-            <div className="rp-chips">
-              <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
-                <CheckCircle2 size={12} />
-                {readyCount}/{segments.length || 0}
-              </span>
-              {srcCount > 0 && (
-                <span className="rp-chip">
-                  <Database size={12} /> {srcCount}
-                </span>
-              )}
-              {busyCount > 0 && (
-                <span className="rp-chip rp-chip-blue">
-                  <Loader2 size={12} className="spin" /> {busyCount}
-                </span>
-              )}
+          {/* Topic description */}
+          {descDraft === null && (
+            <div className="rp-desc" onClick={() => setDescDraft(topic.description || '')}>
+              {topic.description
+                ? <span className="rp-desc-text">{topic.description}</span>
+                : <span className="rp-desc-placeholder">Add a description to guide research...</span>
+              }
+              <Pencil size={11} className="rp-desc-icon" />
             </div>
-            <div className="rp-divider" />
-            <button className="btn btn-secondary btn-sm"
-              onClick={() => setResearchForm('ai')}
+          )}
+          {descDraft !== null && (
+            <div className="rp-desc-form">
+              <textarea className="rp-desc-input" value={descDraft} onChange={e => setDescDraft(e.target.value)} rows={2} autoFocus
+                placeholder="Describe what the video series should cover..." />
+              <button className="rp-desc-save" onClick={handleSaveDesc}><Check size={12} /></button>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div className="fc-quick-actions">
+            <button className="fc-quick-btn"
+              onClick={() => setResearchForm(researchForm === 'ai' ? null : 'ai')}
               disabled={isRunning || generating}>
               {generating === 'ai'
                 ? <Loader2 size={13} className="spin" />
-                : <><Sparkles size={13} /> AI All</>}
+                : <Sparkles size={13} />}
+              AI All
             </button>
-            <button className="btn btn-firecrawl btn-sm"
-              onClick={() => setResearchForm('firecrawl')}
+            <button className="fc-quick-btn fc-quick-btn-fc"
+              onClick={() => setResearchForm(researchForm === 'firecrawl' ? null : 'firecrawl')}
               disabled={isRunning || generating}>
               {generating === 'firecrawl'
                 ? <Loader2 size={13} className="spin" />
-                : <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Web All</>}
+                : <img src="/firecrawl-logo.svg" alt="" width="13" height="13" />}
+              Web All
             </button>
           </div>
-          <FirecrawlStatus />
-        </div>
 
-        {/* Research form — segments + instruction */}
-        {researchForm && (
-          <div className="rp-research-form">
-            <div className="rp-rf-row">
-              <span className="rp-rf-label">Segments</span>
-              <div className="rp-rf-pills">
-                {[3, 4, 5, 6, 8, 10].map(n => (
-                  <button key={n} type="button"
-                    className={`rp-rf-pill ${n === numSegments ? 'rp-rf-pill-on' : ''}`}
-                    onClick={() => setNumSegments(n)}>{n}</button>
-                ))}
+          {/* Research form expand */}
+          {researchForm && (
+            <div className="fc-research-form">
+              <div className="fc-research-form-row">
+                <span className="fc-research-form-label">Segments</span>
+                <div className="fc-research-form-pills">
+                  {[3, 4, 5, 6, 8, 10].map(n => (
+                    <button key={n} type="button"
+                      className={`fc-research-form-pill ${n === numSegments ? 'fc-research-form-pill-on' : ''}`}
+                      onClick={() => setNumSegments(n)}>{n}</button>
+                  ))}
+                </div>
+              </div>
+              <input
+                className="fc-research-form-instruction"
+                placeholder="Optional: focus on recent discoveries..."
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleGenerateAll(researchForm)}
+              />
+              <div className="fc-research-form-actions">
+                <button className="fc-tool-form-submit" style={{ flex: 1 }}
+                  onClick={() => handleGenerateAll(researchForm)}>
+                  {researchForm === 'firecrawl'
+                    ? <><img src="/firecrawl-logo.svg" alt="" width="12" height="12" /> Run Web Research</>
+                    : <><Sparkles size={12} /> Run AI Generation</>}
+                </button>
+                <button className="fc-quick-btn" style={{ flex: 0, padding: '6px 10px', fontSize: 11 }}
+                  onClick={() => setResearchForm(null)}>Cancel</button>
               </div>
             </div>
-            <input
-              className="rp-rf-input"
-              placeholder="Optional instruction: e.g. Focus on recent discoveries, keep it beginner-friendly..."
-              value={instruction}
-              onChange={e => setInstruction(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleGenerateAll(researchForm)}
-            />
-            <div className="rp-rf-actions">
-              <button className={researchForm === 'firecrawl' ? 'btn btn-firecrawl btn-sm' : 'btn btn-secondary btn-sm'}
-                onClick={() => handleGenerateAll(researchForm)}>
-                {researchForm === 'firecrawl'
-                  ? <><img src="/firecrawl-logo.svg" alt="" width="13" height="13" /> Run Web Research</>
-                  : <><Sparkles size={13} /> Run AI Generation</>}
-              </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => setResearchForm(null)}>Cancel</button>
-            </div>
-          </div>
-        )}
+          )}
 
-        <div className="rp-tools-row">
+          {/* Firecrawl Tool Cards */}
           <FirecrawlToolbar
             topicId={topicId}
             segments={segments}
             onRefresh={refresh}
           />
-          <div className="rp-tools-right">
-            <div className="rp-search">
-              <Search size={13} />
-              <input
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="rp-search-input"
-              />
-            </div>
+
+          {/* Badge */}
+          <div className="fc-cmd-badge">
+            <img src="/firecrawl-logo.svg" alt="" width="14" height="14" />
+            Powered by <strong>Firecrawl</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ CENTER: Segments ═══ */}
+      <div className="rp-col-center">
+        <div className="rp-col-header">
+          <span className="rp-col-header-title">Segments</span>
+          <div className="rp-chips">
+            <span className={`rp-chip ${readyCount > 0 ? 'rp-chip-green' : ''}`}>
+              <CheckCircle2 size={12} />
+              {readyCount}/{segments.length || 0}
+            </span>
+            {srcCount > 0 && (
+              <span className="rp-chip">
+                <Database size={12} /> {srcCount}
+              </span>
+            )}
+            {busyCount > 0 && (
+              <span className="rp-chip rp-chip-blue">
+                <Loader2 size={12} className="spin" /> {busyCount}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="rp-seg-controls">
+          <div className="rp-search">
+            <Search size={13} />
+            <input
+              placeholder="Search segments..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="rp-search-input"
+            />
+          </div>
+          <div className="rp-seg-controls-right">
             <button className="btn btn-secondary btn-sm"
               onClick={() => setAddingSegment(!addingSegment)}>
               <Plus size={13} />
@@ -253,7 +275,7 @@ export default function ResearchPanel({
             <div className="rp-empty-msg">
               {searchQuery
                 ? <p>No segments match "{searchQuery}"</p>
-                : <p>Click AI All or Web All to start.</p>}
+                : <p>Click AI All or Web All to start researching.</p>}
             </div>
           )}
         </div>
@@ -271,22 +293,29 @@ export default function ResearchPanel({
             </button>
           </div>
         )}
-
-        <FirecrawlBadge variant="footer" />
       </div>
 
-      <div className="rp-right">
+      {/* ═══ RIGHT: Knowledge Base ═══ */}
+      <div className="rp-col-right">
+        <div className="rp-col-header">
+          <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />
+          <span className="rp-col-header-title">Knowledge Base</span>
+          <span className="rp-col-header-badge">{srcCount} sources</span>
+        </div>
+
         <SourcesPanel
           sources={sources || []}
           stats={sourceStats}
           topicId={topicId}
           onRefresh={refresh}
+          alwaysOpen
         />
         <ResearchTaskManager
           tasks={research || []}
           fcJobs={fcJobs || []}
           topicId={topicId}
           onRefresh={refresh}
+          alwaysOpen
         />
       </div>
     </div>

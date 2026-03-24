@@ -54,10 +54,11 @@ function normalizeItems(tasks, fcJobs) {
   return items
 }
 
-export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh }) {
+export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh, alwaysOpen = false }) {
   const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
 
+  const isOpen = alwaysOpen || expanded
   const allItems = normalizeItems(tasks, fcJobs)
 
   const filtered = filter === 'all'
@@ -88,20 +89,40 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh 
   ).length
 
   return (
-    <div className="task-manager">
-      <div className="collapsible-header" onClick={() => setExpanded(!expanded)}>
-        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <span>Activity</span>
-        <span className="collapsible-count">
-          {allItems.length}
-          {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
-        </span>
-        <button className="task-clear-btn" onClick={e => { e.stopPropagation(); clearCompleted() }}>
-          Clear
-        </button>
-      </div>
+    <div className={`task-manager ${alwaysOpen ? 'tm-always-open' : ''}`}>
+      {!alwaysOpen && (
+        <div className="collapsible-header" onClick={() => setExpanded(!expanded)}>
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <span>Activity</span>
+          <span className="collapsible-count">
+            {allItems.length}
+            {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
+          </span>
+          <button className="task-clear-btn" onClick={e => { e.stopPropagation(); clearCompleted() }}>
+            Clear
+          </button>
+        </div>
+      )}
 
-      {expanded && (
+      {alwaysOpen && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: 8,
+        }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '1.2px',
+            textTransform: 'uppercase', color: 'var(--text-muted)', flex: 1,
+          }}>Activity</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            {allItems.length}
+            {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
+          </span>
+          <button className="task-clear-btn" onClick={clearCompleted}>Clear</button>
+        </div>
+      )}
+
+      {isOpen && (
         <div className="task-content">
           <div className="task-filters">
             {filters.map(f => (
