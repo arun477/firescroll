@@ -172,6 +172,9 @@ export default function SourcesPanel({ sources, stats, topicId, onRefresh, alway
                       {src.title && src.title !== 'Untitled' && (
                         <span className="sp-src-title">{src.title}</span>
                       )}
+                      {src.content_preview && (
+                        <span className="sp-src-snippet">{src.content_preview.slice(0, 100)}</span>
+                      )}
                     </div>
                     <div className="sp-src-meta">
                       {src.word_count > 0 && (

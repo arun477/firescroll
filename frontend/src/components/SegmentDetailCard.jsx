@@ -3,7 +3,7 @@ import SourcePreview from './SourcePreview'
 import {
   CheckCircle2, Clock, FileText, Loader2, AlertCircle,
   Cpu, Globe, ChevronDown, ChevronRight, Save, Pencil, Trash2, RefreshCw,
-  ExternalLink, Database,
+  ExternalLink, Database, Layers, Bot, MoreHorizontal,
 } from 'lucide-react'
 
 const STATUS_CFG = {
@@ -100,16 +100,24 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
         <div className="seg-right" onClick={e => e.stopPropagation()}>
           <button className={`seg-action-btn ${loading === 'ai' ? 'active' : ''}`}
             onClick={() => handleResearch('ai')} disabled={isBusy} title="AI Generate">
-            {loading === 'ai' ? <Loader2 size={14} className="spin" /> : <Cpu size={14} />}
+            {loading === 'ai' ? <Loader2 size={13} className="spin" /> : <Cpu size={13} />}
             <span>AI</span>
           </button>
           <button className={`seg-action-btn seg-action-fc ${loading === 'firecrawl' ? 'active' : ''}`}
             onClick={() => handleResearch('firecrawl')} disabled={isBusy} title="Web Research">
-            {loading === 'firecrawl' ? <Loader2 size={14} className="spin" /> : <img src="/firecrawl-logo.svg" alt="" width="14" height="14" />}
+            {loading === 'firecrawl' ? <Loader2 size={13} className="spin" /> : <img src="/firecrawl-logo.svg" alt="" width="13" height="13" />}
             <span>Web</span>
           </button>
+          <button className={`seg-action-btn seg-action-deep ${loading === 'deep' ? 'active' : ''}`}
+            onClick={() => handleResearch('deep')} disabled={isBusy} title="Deep: Search→Scrape→Extract→Synthesize">
+            {loading === 'deep' ? <Loader2 size={13} className="spin" /> : <Layers size={13} />}
+          </button>
+          <button className={`seg-action-btn seg-action-agent ${loading === 'agent' ? 'active' : ''}`}
+            onClick={() => handleResearch('agent')} disabled={isBusy} title="Agent: Autonomous research">
+            {loading === 'agent' ? <Loader2 size={13} className="spin" /> : <Bot size={13} />}
+          </button>
           <button className="seg-expand-btn" onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}>
-            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
         </div>
       </div>

@@ -133,7 +133,7 @@ export default function ResearchPanel({
           )}
 
           {/* Research Modes */}
-          <div className="fc-quick-actions" style={{ flexWrap: 'wrap' }}>
+          <div className="fc-quick-actions">
             {[
               { id: 'ai', icon: <Sparkles size={12} />, label: 'AI' },
               { id: 'firecrawl', icon: <img src="/firecrawl-logo.svg" alt="" width="12" height="12" />, label: 'Web', cls: 'fc-quick-btn-fc' },
