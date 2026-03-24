@@ -2245,54 +2245,50 @@ a { color: var(--blue); text-decoration: none; }
 .fc-tool-grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
 }
 
 .fc-tool-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  padding: 8px 6px;
+  border-radius: 6px;
+  background: none;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .fc-tool-card:hover {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
 }
 
 .fc-tool-card-active {
-  border-color: var(--fc-heat) !important;
-  background: var(--fc-heat-bg) !important;
-  box-shadow: 0 0 24px var(--fc-heat-glow);
+  background: rgba(250,93,25,0.06) !important;
 }
 
 .fc-tool-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: #3f3f46;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  border: none;
 }
 
 .fc-tool-card:hover .fc-tool-card-icon {
-  color: var(--text-secondary);
+  color: #71717a;
   background: rgba(255,255,255,0.06);
 }
 
 .fc-tool-card-active .fc-tool-card-icon {
-  background: rgba(250,93,25,0.15);
-  border-color: rgba(250,93,25,0.3);
+  background: rgba(250,93,25,0.12);
   color: var(--fc-heat);
 }
 
@@ -2305,14 +2301,18 @@ a { color: var(--blue); text-decoration: none; }
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text);
+  color: #a1a1aa;
   letter-spacing: -0.1px;
+}
+
+.fc-tool-card:hover .fc-tool-card-name {
+  color: #e4e4e7;
 }
 
 .fc-tool-card-desc {
   display: block;
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 10px;
+  color: #3f3f46;
   margin-top: 1px;
 }
 
@@ -2321,40 +2321,41 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 .fc-tool-card-chevron {
-  color: var(--text-muted);
+  color: #27272a;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: all 0.15s;
 }
 
-.fc-tool-card:hover .fc-tool-card-chevron,
+.fc-tool-card:hover .fc-tool-card-chevron {
+  opacity: 1;
+  color: #52525b;
+}
+
 .fc-tool-card-active .fc-tool-card-chevron {
   opacity: 1;
-}
-
-.fc-tool-card-active .fc-tool-card-chevron {
+  color: var(--fc-heat);
   transform: rotate(90deg);
 }
 
 /* Tool Inline Form */
 .fc-tool-form {
-  padding: 14px;
-  margin-top: 2px;
+  padding: 16px;
+  margin: 6px 0;
   border-radius: 10px;
-  background: rgba(0,0,0,0.25);
-  border: 1px solid rgba(250,93,25,0.12);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
   animation: fadeUp 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .fc-tool-form-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
-  margin-bottom: 2px;
 }
 
 .fc-tool-form-title {
@@ -2455,7 +2456,7 @@ a { color: var(--blue); text-decoration: none; }
   justify-content: center;
   gap: 6px;
   padding: 10px 14px;
-  margin-top: 2px;
+  margin-top: 4px;
   border-radius: 8px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
