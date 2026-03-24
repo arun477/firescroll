@@ -5085,19 +5085,8 @@ a { color: var(--blue); text-decoration: none; }
 
 .ve-right::-webkit-scrollbar { width: 3px; }
 
-/* ElevenLabs brand in Voice section */
-.ve-provider-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.02);
-  color: #a1a1aa;
-  font-size: 12px;
-  font-weight: 600;
-}
+/* ElevenLabs brand — no longer used inline */
+.ve-provider-brand { display: none; }
 
 /* Accordion sections */
 .ve-sec {
@@ -5436,8 +5425,8 @@ a { color: var(--blue); text-decoration: none; }
   transition: all 0.15s;
   box-shadow: 0 2px 12px rgba(59,130,246,0.25);
 }
-.ve-gen-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,0.35); }
-.ve-gen-btn:active:not(:disabled) { transform: translateY(0); }
+.ve-gen-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.12); }
+.ve-gen-btn:active:not(:disabled) { background: rgba(255,255,255,0.08); }
 .ve-gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ve-gen-meta {
