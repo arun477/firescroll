@@ -1489,6 +1489,8 @@ a { color: var(--blue); text-decoration: none; }
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+  margin-left: -20px;
+  margin-right: -20px;
   gap: 16px;
 }
 
@@ -3780,13 +3782,15 @@ a { color: var(--blue); text-decoration: none; }
 /* =================== RESEARCH PLATFORM LAYOUT =================== */
 .rp-platform {
   display: grid;
-  grid-template-columns: 300px 1fr 340px;
+  grid-template-columns: 320px 1fr 356px;
   gap: 0;
   animation: fadeIn 0.3s ease;
   position: relative;
   min-height: calc(100vh - 120px);
   align-items: stretch;
   border-top: 1px solid rgba(255,255,255,0.05);
+  margin-left: -36px;
+  margin-right: -36px;
 }
 
 /* Horizontal line under headers */
@@ -3802,13 +3806,13 @@ a { color: var(--blue); text-decoration: none; }
   z-index: 1;
 }
 
-/* Vertical dividers — absolute within grid, extended with large bottom */
+/* Vertical dividers — absolute within grid, clipped to grid area */
 .rp-platform::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: -1px;
   bottom: -200px;
-  left: 300px;
+  left: 320px;
   width: 1px;
   background: rgba(255,255,255,0.05);
   pointer-events: none;
@@ -3822,7 +3826,7 @@ a { color: var(--blue); text-decoration: none; }
 .rp-col-center::after {
   content: '';
   position: absolute;
-  top: 0;
+  top: -1px;
   bottom: -200px;
   right: 0;
   width: 1px;
@@ -3832,8 +3836,8 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 @media (max-width: 1400px) {
-  .rp-platform { grid-template-columns: 280px 1fr 300px; }
-  .rp-platform::before { left: 280px; }
+  .rp-platform { grid-template-columns: 300px 1fr 320px; }
+  .rp-platform::before { left: 300px; }
 }
 
 @media (max-width: 1100px) {
@@ -3849,7 +3853,7 @@ a { color: var(--blue); text-decoration: none; }
   align-self: start;
   height: calc(100vh - 120px);
   overflow-y: auto;
-  padding: 0 20px 20px 0;
+  padding: 0 20px 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -3871,7 +3875,7 @@ a { color: var(--blue); text-decoration: none; }
   height: calc(100vh - 120px);
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 0 20px 20px;
+  padding: 0 16px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
