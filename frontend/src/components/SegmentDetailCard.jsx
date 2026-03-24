@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import SourcePreview from './SourcePreview'
 import {
   CheckCircle2, Clock, FileText, Loader2, AlertCircle,
   Cpu, Globe, ChevronDown, ChevronRight, Save, Pencil, Trash2, RefreshCw,
-  ExternalLink,
+  ExternalLink, Database,
 } from 'lucide-react'
 
 const STATUS_CFG = {
@@ -18,6 +19,7 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
   const [edits, setEdits] = useState({})
   const [loading, setLoading] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showSources, setShowSources] = useState(false)
 
   const st = STATUS_CFG[seg.status] || STATUS_CFG.draft
   const StIcon = st.icon
@@ -142,19 +144,19 @@ export default function SegmentDetailCard({ seg, topicId, onRefresh }) {
                   )}
                   {sources.length > 0 && (
                     <div className="seg-field">
-                      <span className="seg-label">Sources ({sources.length})</span>
-                      <div className="seg-sources">
-                        {sources.map((url, i) => {
-                          try {
-                            return (
-                              <a key={i} href={url} target="_blank" rel="noreferrer" className="seg-source-link">
-                                <ExternalLink size={10} /> {new URL(url).hostname}
-                              </a>
-                            )
-                          } catch { return null }
-                        })}
-                      </div>
+                      <button className="seg-sources-btn" onClick={() => setShowSources(true)}>
+                        <Database size={11} />
+                        <span>View {sources.length} {sources.length === 1 ? 'source' : 'sources'}</span>
+                        <ChevronRight size={12} />
+                      </button>
                     </div>
+                  )}
+                  {showSources && (
+                    <SourcePreview
+                      topicId={topicId}
+                      sourceUrls={sources}
+                      onClose={() => setShowSources(false)}
+                    />
                   )}
                 </div>
               )}
