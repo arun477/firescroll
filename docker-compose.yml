@@ -29,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork
+    command: celery -A celery_app worker --loglevel=info --pool=solo
     volumes:
       - ./data:/app/data
       - ./output:/app/output

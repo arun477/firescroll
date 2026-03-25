@@ -4,8 +4,8 @@ import os
 import random
 import sys
 import tempfile
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from multiprocessing import Pool, cpu_count
 
 from audio_utils import (
     mix_voice_and_music,
@@ -344,15 +344,14 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
 
             workers = min(cpu_count(), 8)
             cancel_check_interval = FPS * 2  # check every ~2 seconds of video
-            with ProcessPoolExecutor(max_workers=workers) as executor:
-                futures = {executor.submit(_render_frame_worker, t): t for t in tasks}
+            with Pool(workers) as pool:
                 done = 0
-                for fut in as_completed(futures):
-                    fut.result()  # raise if frame worker crashed
+                for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
                     done += 1
                     if done % cancel_check_interval == 0:
                         if _is_cancelled(job_id):
-                            executor.shutdown(wait=False, cancel_futures=True)
+                            pool.terminate()
+                            pool.join()
                             print(f"  [Seg {sid}] Cancelled during rendering")
                             return job_id, None
                     if done % (FPS * 3) == 0 or done == total_frames:
