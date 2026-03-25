@@ -11,8 +11,6 @@ from datetime import datetime, timezone
 
 import redis
 
-from remotion_templates import TEMPLATES, STYLES
-
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 CONV_TTL = 86400  # 24 hours
 
@@ -119,21 +117,68 @@ def delete_conversation(cid):
         r.delete(_key(cid, suffix))
 
 
+# ── Code-first helpers ──
+
+def _get_code_summary(cid):
+    """Return a summary of existing scene code for the system prompt."""
+    r = _get_redis()
+    raw = r.get(_key(cid, "custom_code"))
+    if not raw:
+        return "No scenes written yet."
+    code_map = json.loads(raw)
+    if not code_map:
+        return "No scenes written yet."
+    lines = []
+    for idx in sorted(code_map.keys(), key=int):
+        snippet = code_map[idx].replace("\n", " ")[:80]
+        lines.append(f"  Scene {idx}: {snippet}...")
+    return "\n".join(lines)
+
+
+def _reindex_custom_code(cid, removed_index):
+    """Shift custom_code keys down after a scene is removed."""
+    r = _get_redis()
+    raw = r.get(_key(cid, "custom_code"))
+    if not raw:
+        return
+    old_map = json.loads(raw)
+    new_map = {}
+    for k, v in old_map.items():
+        i = int(k)
+        if i == removed_index:
+            continue
+        new_key = i - 1 if i > removed_index else i
+        new_map[str(new_key)] = v
+    r.set(_key(cid, "custom_code"), json.dumps(new_map))
+    r.expire(_key(cid, "custom_code"), CONV_TTL)
+
+
+def _reindex_custom_code_reorder(cid, new_order):
+    """Remap custom_code keys according to a new scene order."""
+    r = _get_redis()
+    raw = r.get(_key(cid, "custom_code"))
+    if not raw:
+        return
+    old_map = json.loads(raw)
+    new_map = {}
+    for new_idx, old_idx in enumerate(new_order):
+        code = old_map.get(str(old_idx))
+        if code:
+            new_map[str(new_idx)] = code
+    r.set(_key(cid, "custom_code"), json.dumps(new_map))
+    r.expire(_key(cid, "custom_code"), CONV_TTL)
+
+
 # ── Build system prompt ──
 
-def _build_system_prompt(segment, state, scene_config):
-    template_docs = ""
-    for tid, t in TEMPLATES.items():
-        props = ", ".join(f"{k}: {v}" for k, v in t["props"].items())
-        template_docs += f'  • {tid} — {t["description"]}\n    Props: {props}\n'
-
-    style_docs = "\n".join(f'  • {k} — {v}' for k, v in STYLES.items())
-
+def _build_system_prompt(segment, state, scene_config, cid=None):
     from batch_generate import ELEVENLABS_LANGUAGES
     lang_list = ", ".join(f'{v["name"]} ({k})' for k, v in list(ELEVENLABS_LANGUAGES.items())[:10])
 
     has_scenes = bool(scene_config and scene_config.get("scenes"))
-    config_block = json.dumps(scene_config, indent=2) if has_scenes else "NONE — compose scenes first."
+    config_block = json.dumps(scene_config, indent=2) if has_scenes else "NONE — create scenes first."
+
+    code_summary = _get_code_summary(cid) if cid else "No scenes written yet."
 
     # Get render status
     render_status = "No renders yet"
@@ -156,7 +201,7 @@ def _build_system_prompt(segment, state, scene_config):
     except Exception:
         pass
 
-    return f"""You are the Motion Director — an AI creative collaborator that composes animated video scenes.
+    return f"""You are the Motion Director — an AI creative director that composes animated video scenes by writing React/Remotion code. You have FULL creative control. Every scene is code you write.
 
 ## SEGMENT CONTENT
 Title: {segment.get("title", "")}
@@ -167,14 +212,88 @@ Series: {segment.get("series_title", "")}
 
 ## CURRENT STATE
 Scene Config: {config_block}
-Style: {state.get("style", "cinematic")} | Voice: {state.get("voice_name") or state.get("voice_id") or "Not set"} | Language: {state.get("language") or "English"}
+Scene Code:
+{code_summary}
+Voice: {state.get("voice_name") or state.get("voice_id") or "Not set"} | Language: {state.get("language") or "English"}
 Render Status: {render_status}
 
-## TEMPLATES
-{template_docs}
+## CODE ENVIRONMENT
+Format: 1080×1920 vertical, 30fps
+Syntax: React.createElement() only — NO JSX
+Must return: a React element
 
-## STYLES
-{style_docs}
+Available in scope:
+  React, AbsoluteFill, spring, interpolate, useCurrentFrame, useVideoConfig,
+  frame (current frame 0,1,2...), fps (30), width (1080), height (1920)
+
+spring({{ frame, fps, config: {{ damping: 15, mass: 0.8 }} }}) → 0..1 physics ease
+interpolate(value, [inMin, inMax], [outMin, outMax]) → mapped value
+
+## CODE PATTERNS (adapt freely)
+
+PATTERN: Animated title with spring entrance
+```
+var progress = spring({{ frame, fps, config: {{ damping: 14 }} }});
+var titleY = interpolate(progress, [0, 1], [100, 0]);
+var titleOp = interpolate(progress, [0, 1], [0, 1]);
+return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center'}}}},
+  React.createElement('div', {{style: {{fontSize: 72, fontWeight: 800, color: '#fff', textAlign: 'center', transform: 'translateY(' + titleY + 'px)', opacity: titleOp, padding: '0 60px'}}}}, 'Your Title')
+);
+```
+
+PATTERN: Counter/stat animation
+```
+var target = 92;
+var count = Math.min(Math.floor(frame * 1.5), target);
+return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}}},
+  React.createElement('div', {{style: {{fontSize: 140, fontWeight: 900, color: '#E63250'}}}}, count + 'M'),
+  React.createElement('div', {{style: {{fontSize: 32, color: '#ffffffaa', marginTop: 20}}}}, 'Active Users')
+);
+```
+
+PATTERN: Word-by-word text reveal
+```
+var words = 'Your text goes here and reveals word by word'.split(' ');
+var wordsPerSec = 3;
+var visibleCount = Math.min(Math.floor(frame / fps * wordsPerSec), words.length);
+var children = words.map(function(w, i) {{
+  var op = i < visibleCount ? 1 : 0.15;
+  var color = i < visibleCount ? '#ffffff' : '#ffffff33';
+  return React.createElement('span', {{key: i, style: {{opacity: op, color: color, transition: 'opacity 0.1s'}}}}, w + ' ');
+}});
+return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 80px'}}}},
+  React.createElement('div', {{style: {{fontSize: 44, fontWeight: 600, lineHeight: 1.5, textAlign: 'center'}}}}, children)
+);
+```
+
+PATTERN: Staggered bullet points
+```
+var points = ['Point one', 'Point two', 'Point three'];
+var items = points.map(function(p, i) {{
+  var delay = i * 12;
+  var prog = spring({{ frame: Math.max(0, frame - delay), fps, config: {{ damping: 14 }} }});
+  var x = interpolate(prog, [0, 1], [60, 0]);
+  return React.createElement('div', {{key: i, style: {{fontSize: 36, color: '#fff', opacity: prog, transform: 'translateX(' + x + 'px)', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 16}}}},
+    React.createElement('div', {{style: {{width: 10, height: 10, borderRadius: '50%', background: '#E63250'}}}}, null),
+    p
+  );
+}});
+return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', padding: '200px 100px', justifyContent: 'center'}}}},
+  React.createElement('div', {{style: {{fontSize: 52, fontWeight: 800, color: '#fff', marginBottom: 60}}}}, 'Heading'),
+  React.createElement('div', null, items)
+);
+```
+
+PATTERN: CTA outro with pulsing ring
+```
+var pulse = Math.sin(frame / 15) * 0.15 + 1;
+var prog = spring({{ frame, fps, config: {{ damping: 12 }} }});
+return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}}},
+  React.createElement('div', {{style: {{width: 200, height: 200, borderRadius: '50%', border: '3px solid #E63250', transform: 'scale(' + pulse + ')', opacity: prog * 0.6, position: 'absolute'}}}}, null),
+  React.createElement('div', {{style: {{fontSize: 56, fontWeight: 800, color: '#fff', textAlign: 'center', opacity: prog, padding: '0 60px'}}}}, 'Call to Action'),
+  React.createElement('div', {{style: {{fontSize: 24, color: '#ffffff88', marginTop: 20, opacity: prog}}}}, 'Supporting text')
+);
+```
 
 ## AUDIO
 Voices: 10+ ElevenLabs voices (use list_voices to show picker)
@@ -182,42 +301,29 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
 ## BEHAVIOR RULES
 
-1. FIRST MESSAGE: Briefly greet (1 sentence), compose 4-5 scenes using compose_scenes, show :::scene_config:::, then ask "Want to adjust anything or pick a voice?" Keep it SHORT — the scene card shows the details. Do NOT list every template/prop in text.
-   IMPORTANT: If the user specifies visual preferences (colors, backgrounds, style) in their first message, compose scenes first, then IMMEDIATELY expand each scene to generic and apply the visual changes with set_scene_prop. Do NOT rely on template colorScheme params — they don't control exact colors.
+1. FIRST MESSAGE: Greet briefly (1 sentence), then create 4-5 scenes with create_scene and write code for each with write_scene_code. Show :::scene_config::: after. Ask "Want to adjust anything or pick a voice?"
+   Base your scenes on the segment content: hook → opening scene, script → middle scenes, visual_cue → creative direction.
+   Default durations: opening 4s (120f), content 5s (150f), closing 3s (90f). Total ~25-30s.
 
-2. ACTION OVER TALK: When user requests ANY change, IMMEDIATELY use the right tool:
-   - "change background to white" → expand_to_generic if needed → set_scene_prop(0, "props.backgroundColor", '"#ffffff"')
-   - "white background" → for EVERY scene: expand_to_generic(i), then set_scene_prop(i, "props.backgroundColor", '"#ffffff"')
-   - "make text bigger" → set_scene_prop(0, "props.textLayers.0.fontSize", '96')
-   - "change text color to red" → set_scene_prop(0, "props.textLayers.0.color", '"#E63250"')
-   - "add particles" → set_scene_prop(0, "props.particles", 'true')
-   - "remove particles" → set_scene_prop(0, "props.particles", 'false')
-   - "make it longer" → set_scene_prop(0, "durationInFrames", '180')
-   - "add a stat" → add_scene with fact_card template
-   - "remove the CTA" → remove_scene
-   - "use Spanish" → set_language
-   - "change voice" → list_voices to show picker, then set_voice when they pick
-   CRITICAL for visual/color changes: Template props like colorScheme do NOT control exact colors or backgrounds.
-   You MUST call expand_to_generic(scene_index) first, THEN set_scene_prop() to set exact values.
-   When a change applies to ALL scenes (e.g. "white background"), loop through every scene index.
-   For STRUCTURAL changes: use add_scene/remove_scene/reorder_scenes.
-   The live preview updates AUTOMATICALLY — no need to trigger_render for preview.
-   Only trigger_render when user wants the FINAL video with audio.
-   DO NOT just acknowledge — ALWAYS use the tool, THEN confirm what you did.
+2. ACTION OVER TALK: When user requests ANY change, act immediately:
+   - Visual change ("white background", "bigger text", "red color") → read_scene_code → modify code → write_scene_code
+   - Global change ("all scenes white") → loop through each scene index
+   - Structural change → use remove_scene/reorder_scenes/create_scene
+   - Timing change → set_scene_timing
+   - Voice/language → list_voices/set_voice/set_language
+   DO NOT just acknowledge — use the tool, THEN confirm in 1-2 sentences.
 
-3. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep your text to 1-2 sentences MAX — the visual card speaks for itself. NEVER list scene details as text when the card shows them.
+3. ERROR RECOVERY: If write_scene_code returns a validation error, read the error, fix the code, call write_scene_code again. Retry up to 3 times silently. The user doesn't see failed attempts.
 
-4. RENDER FLOW: After composing scenes, ask about voice/language. When user says "go"/"render"/"start" → trigger_render. After render completes, tell user "Video is ready! Want to make any changes?"
+4. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep text to 1-2 sentences MAX.
 
-5. ITERATION: When render_status is COMPLETE and user requests changes, modify scenes with tools and CALL trigger_render to re-render. Don't ask "should I render?" — just do it. The user asked for the change, they want to see it.
+5. RENDER FLOW: After composing scenes, ask about voice/language. When user says "go"/"render"/"start" → trigger_render.
 
-6. PICKERS: Use :::voice_picker::: :::language_picker::: :::style_picker::: to show interactive UI. Don't list options as text when a picker is available.
+6. ITERATION: For changes after render, modify scenes and call trigger_render again. Don't ask "should I render?" — just do it.
 
-7. SCENE FORMAT: fps=30, 1080x1920 vertical. Scenes must not overlap. 3-6 scenes. Start with title_reveal or fact_card, end with cta_outro. Max 50 words per narrative scene. Total duration should be ~30s for short, ~60s for long.
+7. PICKERS: Use :::voice_picker::: :::language_picker::: to show interactive UI.
 
-8. CUSTOM ANIMATIONS: When user requests creative animations that templates can't handle (bouncing ball, particle effects, physics, spinning shapes, creative motion graphics), use write_scene_code to write React/Remotion code. The code is a JS function body receiving: React, AbsoluteFill, spring, interpolate, frame, fps, width, height. Return React.createElement() calls (NOT JSX). Code is validated server-side — if it fails, you'll see the error. Fix and retry. The user won't see failed attempts.
-   When writing custom code, tell the user: "Writing animation code..." before the first attempt. If it takes multiple tries, say "Refining the animation..." When it succeeds: "Animation ready! Check the preview."
-   Use frame-based math: frame increments each frame at 30fps. Always use width/height for responsive positioning."""
+8. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Scenes must not overlap (sequential from values). Keep text readable (min font size 28). Use width/height for responsive positioning — never hardcode pixel positions beyond the canvas."""
 
 
 # ── Agent tools ──
@@ -227,64 +333,55 @@ def _make_tools(cid):
     from agents import function_tool
 
     @function_tool
-    def compose_scenes(scene_config_json: str) -> str:
-        """Replace the entire scene composition. Pass the full scene config as a JSON string.
-        Format: {"fps":30,"width":1080,"height":1920,"scenes":[{"template":"...","from":0,"durationInFrames":120,"props":{...}}]}"""
-        try:
-            scene_config = json.loads(scene_config_json)
-        except (json.JSONDecodeError, TypeError):
-            return "Error: invalid JSON. Pass a valid scene config JSON string."
-        if "scenes" not in scene_config or not scene_config["scenes"]:
-            return "Error: scene_config must have a non-empty 'scenes' array."
-        scene_config.setdefault("fps", 30)
-        scene_config.setdefault("width", 1080)
-        scene_config.setdefault("height", 1920)
-        set_scene_config(cid, scene_config)
-        n = len(scene_config["scenes"])
-        total_s = max(s["from"] + s["durationInFrames"] for s in scene_config["scenes"]) / 30
-        return f"Scene config updated: {n} scenes, {total_s:.1f}s total. Include :::scene_config::: in your response to show it."
+    def create_scene(duration_frames: int, position: int) -> str:
+        """Create an empty scene slot at the given position. Shifts subsequent scenes.
+        After creating, use write_scene_code to fill it with animation code.
+        Duration is in frames (30fps). E.g. 120 = 4 seconds, 150 = 5 seconds."""
+        config = get_scene_config(cid) or {"fps": 30, "width": 1080, "height": 1920, "scenes": []}
+        scenes = config["scenes"]
+        pos = max(0, min(position, len(scenes)))
+        if pos == 0:
+            start = 0
+        elif pos >= len(scenes):
+            start = (scenes[-1]["from"] + scenes[-1]["durationInFrames"]) if scenes else 0
+        else:
+            start = scenes[pos]["from"]
+        # Shift subsequent scenes
+        for s in scenes[pos:]:
+            s["from"] += duration_frames
+        new_scene = {"template": "custom_code", "from": start,
+                     "durationInFrames": duration_frames, "props": {}}
+        scenes.insert(pos, new_scene)
+        config["scenes"] = scenes
+        set_scene_config(cid, config)
+        return f"Scene {pos} created ({duration_frames}f = {duration_frames/30:.1f}s). Now write code with write_scene_code({pos}, code)."
 
     @function_tool
-    def update_scene(scene_index: int, updates_json: str) -> str:
-        """Update a specific scene's properties. Pass updates as JSON string, e.g. '{"props":{"title":"New Title"}}'"""
-        try:
-            updates = json.loads(updates_json)
-        except (json.JSONDecodeError, TypeError):
-            return "Error: invalid JSON for updates."
+    def read_scene_code(scene_index: int) -> str:
+        """Read the current code for a scene. Use this before modifying existing scenes."""
+        r = _get_redis()
+        raw = r.get(_key(cid, "custom_code"))
+        if not raw:
+            return "No scene code exists yet."
+        code_map = json.loads(raw)
+        code = code_map.get(str(scene_index))
+        if not code:
+            return f"No code found for scene {scene_index}."
+        return code
+
+    @function_tool
+    def set_scene_timing(scene_index: int, duration_frames: int) -> str:
+        """Change a scene's duration and recalculate timing for all subsequent scenes."""
         config = get_scene_config(cid)
         if not config or scene_index >= len(config.get("scenes", [])):
             return f"Error: scene index {scene_index} out of range."
-        scene = config["scenes"][scene_index]
-        if "props" in updates and "props" in scene:
-            scene["props"].update(updates.pop("props"))
-        scene.update(updates)
+        old_dur = config["scenes"][scene_index]["durationInFrames"]
+        config["scenes"][scene_index]["durationInFrames"] = duration_frames
+        diff = duration_frames - old_dur
+        for s in config["scenes"][scene_index + 1:]:
+            s["from"] += diff
         set_scene_config(cid, config)
-        return f"Scene {scene_index} updated. Include :::scene_config::: to show changes."
-
-    @function_tool
-    def add_scene(position: int, template: str, duration_frames: int, props_json: str) -> str:
-        """Insert a new scene. props_json is a JSON string of the template props."""
-        if template not in TEMPLATES:
-            return f"Error: unknown template '{template}'. Available: {list(TEMPLATES.keys())}"
-        try:
-            props = json.loads(props_json)
-        except (json.JSONDecodeError, TypeError):
-            return "Error: invalid JSON for props."
-        config = get_scene_config(cid) or {"fps": 30, "width": 1080, "height": 1920, "scenes": []}
-        scenes = config["scenes"]
-        if position <= 0:
-            start = 0
-        elif position >= len(scenes):
-            start = scenes[-1]["from"] + scenes[-1]["durationInFrames"] if scenes else 0
-        else:
-            start = scenes[position]["from"]
-            for s in scenes[position:]:
-                s["from"] += duration_frames
-        new_scene = {"template": template, "from": start,
-                     "durationInFrames": duration_frames, "props": props}
-        scenes.insert(position, new_scene)
-        set_scene_config(cid, config)
-        return f"Added {template} at position {position}. Include :::scene_config::: to show."
+        return f"Scene {scene_index} duration set to {duration_frames}f ({duration_frames/30:.1f}s)."
 
     @function_tool
     def remove_scene(scene_index: int) -> str:
@@ -293,219 +390,49 @@ def _make_tools(cid):
         if not config or scene_index >= len(config.get("scenes", [])):
             return f"Error: scene index {scene_index} out of range."
         removed = config["scenes"].pop(scene_index)
-        # Close the gap — shift subsequent scenes back
         dur = removed["durationInFrames"]
         for s in config["scenes"][scene_index:]:
             s["from"] = max(0, s["from"] - dur)
         set_scene_config(cid, config)
-        return f"Removed scene {scene_index} ({removed['template']}). Include :::scene_config::: to show."
+        _reindex_custom_code(cid, scene_index)
+        return f"Removed scene {scene_index}. Include :::scene_config::: to show."
 
     @function_tool
     def reorder_scenes(new_order_json: str) -> str:
-        """Reorder scenes. Pass JSON array of indices in desired order, e.g. '[2,0,1,3]'."""
+        """Reorder scenes. Pass JSON array of indices, e.g. '[2,0,1,3]'."""
         try:
             new_order = json.loads(new_order_json)
         except (json.JSONDecodeError, TypeError):
-            return "Error: invalid JSON. Pass a JSON array of indices."
+            return "Error: invalid JSON."
         config = get_scene_config(cid)
         if not config:
-            return "Error: no scene config exists."
+            return "Error: no scene config."
         scenes = config["scenes"]
         if sorted(new_order) != list(range(len(scenes))):
-            return f"Error: new_order must be a permutation of [0..{len(scenes)-1}]."
+            return f"Error: must be permutation of [0..{len(scenes)-1}]."
         reordered = [scenes[i] for i in new_order]
-        # Recalculate 'from' values sequentially
         cursor = 0
         for s in reordered:
             s["from"] = cursor
             cursor += s["durationInFrames"]
         config["scenes"] = reordered
         set_scene_config(cid, config)
+        _reindex_custom_code_reorder(cid, new_order)
         return "Scenes reordered. Include :::scene_config::: to show."
 
     @function_tool
-    def set_style(style: str) -> str:
-        """Change the visual style for the video."""
-        if style not in STYLES:
-            return f"Error: unknown style '{style}'. Available: {list(STYLES.keys())}"
-        r = _get_redis()
-        state = get_conversation_state(cid) or {}
-        state["style"] = style
-        r.set(_key(cid, "state"), json.dumps(state))
-        return f"Style set to '{style}'. Include :::style_picker::: if showing options."
-
-    @function_tool
-    def set_voice(voice_id: str, voice_name: str) -> str:
-        """Select an ElevenLabs voice for narration."""
-        r = _get_redis()
-        state = get_conversation_state(cid) or {}
-        state["voice_id"] = voice_id
-        state["voice_name"] = voice_name
-        r.set(_key(cid, "state"), json.dumps(state))
-        return f"Voice set to '{voice_name}' ({voice_id})."
-
-    @function_tool
-    def set_language(language_code: str) -> str:
-        """Set the translation language. Use 'en' for English (no translation)."""
-        from batch_generate import ELEVENLABS_LANGUAGES
-        if language_code not in ELEVENLABS_LANGUAGES:
-            return f"Error: unsupported language '{language_code}'. Available: {list(ELEVENLABS_LANGUAGES.keys())}"
-        r = _get_redis()
-        state = get_conversation_state(cid) or {}
-        state["language"] = language_code
-        r.set(_key(cid, "state"), json.dumps(state))
-        name = ELEVENLABS_LANGUAGES[language_code]["name"]
-        return f"Language set to {name} ({language_code}). Text will be translated before TTS."
-
-    @function_tool
-    def list_voices() -> str:
-        """Get available ElevenLabs voices. Returns voice list and triggers voice picker UI."""
-        try:
-            from voice import get_provider
-            tts = get_provider("elevenlabs")
-            voices = tts.list_voices()
-            voice_text = "\n".join(f"  • {v['name']} ({v['id']})" for v in voices[:15])
-            return f"Available voices:\n{voice_text}\n\nInclude :::voice_picker::: to show the selection UI."
-        except Exception as e:
-            return f"Could not load voices: {e}"
-
-    @function_tool
-    def list_languages() -> str:
-        """Get available translation languages. Triggers language picker UI."""
-        from batch_generate import ELEVENLABS_LANGUAGES
-        lang_text = "\n".join(f"  • {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
-        return f"Available languages:\n{lang_text}\n\nInclude :::language_picker::: to show the selection UI."
-
-    @function_tool
-    def trigger_render() -> str:
-        """Start rendering the video with the current scene config, voice, and language settings.
-        Call this when the user confirms they want to render, OR when they request changes after a previous render (re-render)."""
-        config = get_scene_config(cid)
-        if not config or not config.get("scenes"):
-            return "Error: no scene config to render. Compose scenes first."
-        r = _get_redis()
-        r.set(_key(cid, "render_requested"), "1")
-        r.expire(_key(cid, "render_requested"), 300)
-        return "Render requested! The video will start generating with the current scene config."
-
-    @function_tool
-    def get_render_status() -> str:
-        """Check the current render status for this segment."""
-        state = get_conversation_state(cid)
-        if not state:
-            return "No conversation state found."
-        from db import get_remotion_jobs_for_topic, REMOTION_ACTIVE
-        jobs = get_remotion_jobs_for_topic(state["topic_id"])
-        seg_id = state.get("segment_id")
-        # Find segment number from segment id
-        from db import get_segments_for_topic
-        segs = get_segments_for_topic(state["topic_id"])
-        seg = next((s for s in segs if s["id"] == seg_id), None)
-        if not seg:
-            return "Segment not found."
-        seg_num = seg["segment_num"]
-        seg_jobs = [j for j in jobs if j["segment_id"] == seg_num]
-        if not seg_jobs:
-            return "No renders found for this segment. Compose scenes and trigger a render."
-        latest = seg_jobs[0]  # ordered by created_at DESC
-        if latest["status"] in REMOTION_ACTIVE:
-            return f"Render in progress: {latest['status']} ({latest.get('progress', 0)}%)"
-        elif latest["status"] == "done":
-            return "Latest render is COMPLETE. You can modify scenes and re-render, or the user can watch the video."
-        else:
-            return f"Latest render FAILED: {latest.get('error', 'unknown error')[:200]}"
-
-    @function_tool
-    def set_scene_prop(scene_index: int, prop_path: str, value_json: str) -> str:
-        """Set any property on a scene using a dot-path.
-        Examples:
-          set_scene_prop(0, "props.backgroundColor", '"#ffffff"')
-          set_scene_prop(0, "props.textLayers.0.fontSize", '96')
-          set_scene_prop(0, "props.particles", 'false')
-          set_scene_prop(0, "props.textLayers.0.color", '"#E63250"')
-          set_scene_prop(0, "durationInFrames", '180')
-        """
-        config = get_scene_config(cid)
-        if not config or scene_index >= len(config.get("scenes", [])):
-            return f"Error: scene index {scene_index} out of range."
-        try:
-            value = json.loads(value_json)
-        except (json.JSONDecodeError, TypeError):
-            return f"Error: invalid JSON value: {value_json}"
-        # Navigate the dot path
-        parts = prop_path.split(".")
-        obj = config["scenes"][scene_index]
-        for part in parts[:-1]:
-            if part.isdigit():
-                idx = int(part)
-                if not isinstance(obj, list) or idx >= len(obj):
-                    return f"Error: index {idx} out of range in path '{prop_path}'"
-                obj = obj[idx]
-            else:
-                if part not in obj:
-                    obj[part] = {}
-                obj = obj[part]
-        final_key = parts[-1]
-        if final_key.isdigit() and isinstance(obj, list):
-            obj[int(final_key)] = value
-        else:
-            obj[final_key] = value
-        set_scene_config(cid, config)
-        return f"Set {prop_path} = {value_json} on scene {scene_index}. The live preview will update automatically."
-
-    @function_tool
-    def expand_to_generic(scene_index: int) -> str:
-        """Convert a template-based scene (title_reveal, fact_card, etc.) to a generic scene
-        with direct visual properties. This enables fine-grained control over every visual element.
-        Call this before using set_scene_prop on template scenes."""
-        config = get_scene_config(cid)
-        if not config or scene_index >= len(config.get("scenes", [])):
-            return f"Error: scene index {scene_index} out of range."
-        scene = config["scenes"][scene_index]
-        if scene["template"] == "generic":
-            return f"Scene {scene_index} is already generic. You can modify any property with set_scene_prop."
-        from remotion_templates import expand_template_to_generic
-        state = get_conversation_state(cid)
-        style = state.get("style", "cinematic") if state else "cinematic"
-        expanded = expand_template_to_generic(scene["template"], scene.get("props", {}), style)
-        if not expanded:
-            return f"Error: cannot expand template '{scene['template']}'."
-        # Preserve timing
-        expanded["from"] = scene["from"]
-        expanded["durationInFrames"] = scene["durationInFrames"]
-        config["scenes"][scene_index] = expanded
-        set_scene_config(cid, config)
-        props_summary = json.dumps(list(expanded["props"].keys()))
-        return f"Scene {scene_index} expanded to generic. Available props: {props_summary}. Use set_scene_prop to modify any property."
-
-    @function_tool
     def write_scene_code(scene_index: int, code: str) -> str:
-        """Write custom React/Remotion animation code for a scene.
-        The code is a JavaScript function body that must return a React element using React.createElement().
+        """Write React/Remotion code for a scene. The code is a JS function body that must return
+        a React element via React.createElement() (NOT JSX).
 
-        Available in scope:
-        - React (use React.createElement, NOT JSX)
-        - AbsoluteFill — full-screen container element tag
-        - spring({frame, fps, config}) — Remotion spring physics animation
-        - interpolate(value, inputRange, outputRange) — map values between ranges
-        - useCurrentFrame() — returns current frame number
-        - useVideoConfig() — returns {fps, width, height, durationInFrames}
-        - frame (number) — current frame (0, 1, 2... at 30fps)
-        - fps (number) — 30
-        - width (number) — 1080
-        - height (number) — 1920
+        Available: React, AbsoluteFill, spring, interpolate, useCurrentFrame, useVideoConfig,
+        frame, fps (30), width (1080), height (1920).
 
-        Example — bouncing ball:
-        var y = height/2 - 40 + Math.sin(frame / 10 * Math.PI) * 200;
-        return React.createElement(AbsoluteFill, {style: {background: '#0a0a0f'}},
-          React.createElement('div', {style: {
-            width: 80, height: 80, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #E63250, #f97316)',
-            position: 'absolute', left: width/2 - 40, top: y,
-            boxShadow: '0 0 40px rgba(230,50,80,0.6)'
-          }})
-        );
-        """
+        The scene must already exist (use create_scene first)."""
+        config = get_scene_config(cid)
+        if not config or scene_index >= len(config.get("scenes", [])):
+            return f"Error: scene {scene_index} doesn't exist. Use create_scene first."
+
         import requests as _req
         remotion_url = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
 
@@ -524,7 +451,7 @@ def _make_tools(cid):
             phase = result.get("phase", "unknown")
             return f"Code validation FAILED ({phase}): {error}\n\nFix the error and call write_scene_code again."
 
-        # Valid — store in Redis
+        # Store in Redis
         r = _get_redis()
         custom_key = _key(cid, "custom_code")
         existing = r.get(custom_key)
@@ -533,29 +460,92 @@ def _make_tools(cid):
         r.set(custom_key, json.dumps(custom_map))
         r.expire(custom_key, CONV_TTL)
 
-        # Ensure scene_config has a slot for this scene
+        # Mark scene as custom_code
+        config["scenes"][scene_index]["template"] = "custom_code"
+        set_scene_config(cid, config)
+
+        return f"Scene {scene_index} code saved. Preview updates automatically."
+
+    @function_tool
+    def set_voice(voice_id: str, voice_name: str) -> str:
+        """Select an ElevenLabs voice for narration."""
+        r = _get_redis()
+        state = get_conversation_state(cid) or {}
+        state["voice_id"] = voice_id
+        state["voice_name"] = voice_name
+        r.set(_key(cid, "state"), json.dumps(state))
+        return f"Voice set to '{voice_name}' ({voice_id})."
+
+    @function_tool
+    def set_language(language_code: str) -> str:
+        """Set the translation language. Use 'en' for English (no translation)."""
+        from batch_generate import ELEVENLABS_LANGUAGES
+        if language_code not in ELEVENLABS_LANGUAGES:
+            return f"Error: unsupported language '{language_code}'."
+        r = _get_redis()
+        state = get_conversation_state(cid) or {}
+        state["language"] = language_code
+        r.set(_key(cid, "state"), json.dumps(state))
+        name = ELEVENLABS_LANGUAGES[language_code]["name"]
+        return f"Language set to {name} ({language_code})."
+
+    @function_tool
+    def list_voices() -> str:
+        """Get available ElevenLabs voices."""
+        try:
+            from voice import get_provider
+            tts = get_provider("elevenlabs")
+            voices = tts.list_voices()
+            voice_text = "\n".join(f"  • {v['name']} ({v['id']})" for v in voices[:15])
+            return f"Available voices:\n{voice_text}\n\nInclude :::voice_picker::: to show the selection UI."
+        except Exception as e:
+            return f"Could not load voices: {e}"
+
+    @function_tool
+    def list_languages() -> str:
+        """Get available translation languages."""
+        from batch_generate import ELEVENLABS_LANGUAGES
+        lang_text = "\n".join(f"  • {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
+        return f"Available languages:\n{lang_text}\n\nInclude :::language_picker::: to show the selection UI."
+
+    @function_tool
+    def trigger_render() -> str:
+        """Start rendering the final video with audio."""
         config = get_scene_config(cid)
-        if config:
-            scenes = config.get("scenes", [])
-            if scene_index < len(scenes):
-                scenes[scene_index]["template"] = "custom_code"
-            else:
-                last_end = max((s["from"] + s["durationInFrames"] for s in scenes), default=0)
-                scenes.append({
-                    "template": "custom_code",
-                    "from": last_end,
-                    "durationInFrames": 150,
-                    "props": {},
-                })
-            config["scenes"] = scenes
-            set_scene_config(cid, config)
+        if not config or not config.get("scenes"):
+            return "Error: no scenes to render. Create scenes first."
+        r = _get_redis()
+        r.set(_key(cid, "render_requested"), "1")
+        r.expire(_key(cid, "render_requested"), 300)
+        return "Render requested! Video will generate with current scenes + voice."
 
-        return f"Custom code validated and saved for scene {scene_index}. The live preview will update automatically."
+    @function_tool
+    def get_render_status() -> str:
+        """Check render progress."""
+        state = get_conversation_state(cid)
+        if not state:
+            return "No conversation state."
+        from db import get_remotion_jobs_for_topic, REMOTION_ACTIVE, get_segments_for_topic
+        jobs = get_remotion_jobs_for_topic(state["topic_id"])
+        segs = get_segments_for_topic(state["topic_id"])
+        seg = next((s for s in segs if s["id"] == state.get("segment_id")), None)
+        if not seg:
+            return "Segment not found."
+        seg_jobs = [j for j in jobs if j["segment_id"] == seg["segment_num"]]
+        if not seg_jobs:
+            return "No renders yet."
+        latest = seg_jobs[0]
+        if latest["status"] in REMOTION_ACTIVE:
+            return f"Rendering: {latest['status']} ({latest.get('progress', 0)}%)"
+        elif latest["status"] == "done":
+            return "Render COMPLETE. Modify and re-render, or user can watch."
+        else:
+            return f"FAILED: {latest.get('error', 'unknown')[:200]}"
 
-    return [compose_scenes, update_scene, add_scene, remove_scene,
-            reorder_scenes, set_style, set_voice, set_language,
-            list_voices, list_languages, trigger_render, get_render_status,
-            set_scene_prop, expand_to_generic, write_scene_code]
+    return [create_scene, read_scene_code, set_scene_timing, write_scene_code,
+            remove_scene, reorder_scenes,
+            set_voice, set_language, list_voices, list_languages,
+            trigger_render, get_render_status]
 
 
 # ── Main agent runner ──
@@ -624,7 +614,7 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
         scene_config = get_scene_config(cid)
 
         # Build agent
-        system_prompt = _build_system_prompt(seg_data, state, scene_config)
+        system_prompt = _build_system_prompt(seg_data, state, scene_config, cid=cid)
         tools = _make_tools(cid)
 
         agent = Agent(
