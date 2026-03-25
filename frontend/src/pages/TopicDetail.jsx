@@ -142,6 +142,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [uploading, setUploading] = useState(false)
   const [mediaDrawerOpen, setMediaDrawerOpen] = useState(false)
   const [languages, setLanguages] = useState([])
+  const [langSearch, setLangSearch] = useState('')
   const uploadPollRef = useRef(null)
 
   // Cleanup upload poll on unmount
@@ -468,17 +469,24 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
           {languages.length > 0 && (
           <Section icon={Globe} title="Language"
             value={localLang ? languages.find(l => l.code === localLang)?.name || localLang : 'English (Original)'}>
-            <div className="ve-lang-grid">
-              <button
-                className={`ve-lang-btn ${!localLang ? 've-lang-on' : ''}`}
+            <div className="ve-search">
+              <Search size={12} className="ve-search-i" />
+              <input className="ve-search-in" placeholder={`Search ${languages.length} languages...`}
+                value={langSearch} onChange={e => setLangSearch(e.target.value)} />
+              {langSearch && <button className="ve-search-x" onClick={() => setLangSearch('')}><X size={10} /></button>}
+            </div>
+            <div className="ve-voices">
+              <button className={`ve-vc ${!localLang ? 've-vc-on' : ''}`}
                 onClick={() => setSetting(selectedSeg.id, 'language', null)}>
-                English (Original)
+                <span className="ve-vc-name">English (Original)</span>
               </button>
-              {languages.filter(l => l.code !== 'en').map(l => (
-                <button key={l.code}
-                  className={`ve-lang-btn ${localLang === l.code ? 've-lang-on' : ''}`}
+              {languages
+                .filter(l => l.code !== 'en')
+                .filter(l => !langSearch || l.name.toLowerCase().includes(langSearch.toLowerCase()))
+                .map(l => (
+                <button key={l.code} className={`ve-vc ${localLang === l.code ? 've-vc-on' : ''}`}
                   onClick={() => setSetting(selectedSeg.id, 'language', l.code)}>
-                  {l.name}
+                  <span className="ve-vc-name">{l.name}</span>
                 </button>
               ))}
             </div>

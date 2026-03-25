@@ -559,10 +559,253 @@ function FeaturesSection() {
         <div className="ln-fs-spacer" />
       </div>
 
-      {/* Right: desktop-only sticky visual */}
+      {/* Right: sticky visual that swaps — desktop */}
       <div className="ln-fs-sticky ln-fs-sticky-desk">
         <div className="ln-fs-visuals">
-          {vizContent}
+          {/* Voices — ElevenLabs branded */}
+          <div className={`ln-fs-viz ln-fs-viz-voices ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
+            {/* Header */}
+            <div className="ln-v-header">
+              <div className="ln-v-brand">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+                  <rect x="8" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
+                  <rect x="19" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
+                </svg>
+                <span>ElevenLabs</span>
+              </div>
+              <span className="ln-v-count">50+ voices</span>
+            </div>
+
+            {/* Voice cards */}
+            <div className="ln-v-list">
+              {[
+                { name: 'Laura', desc: 'Warm & expressive', active: true },
+                { name: 'Aria', desc: 'Clear & professional' },
+                { name: 'Roger', desc: 'Deep & authoritative' },
+              ].map((v, i) => (
+                <div key={v.name} className={`ln-v-card ${v.active ? 'ln-v-card-on' : ''}`}>
+                  <div className="ln-v-card-play">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                  <div className="ln-v-card-wave">
+                    {[...Array(16)].map((_, j) => (
+                      <div key={j} className="ln-v-bar" style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${j * 0.07 + i * 0.05}s` }} />
+                    ))}
+                  </div>
+                  <div className="ln-v-card-info">
+                    <span className="ln-v-card-name">{v.name}</span>
+                    <span className="ln-v-card-desc">{v.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Style presets */}
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">Style presets</span>
+              <div className="ln-v-styles-row">
+                {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, i) => (
+                  <span key={p} className={`ln-v-style ${i === 1 ? 'ln-v-style-on' : ''}`}>{p}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Music */}
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">AI Music</span>
+              <div className="ln-v-music-player">
+                <div className="ln-v-music-play">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+                <div className="ln-v-music-wave">
+                  {[...Array(40)].map((_, i) => (
+                    <div key={i} className="ln-v-music-bar" style={{
+                      height: `${20 + Math.sin(i * 0.5) * 30 + Math.random() * 25}%`,
+                      animationDelay: `${i * 0.06}s`,
+                    }} />
+                  ))}
+                </div>
+                <span className="ln-v-music-dur">0:45</span>
+              </div>
+              <div className="ln-v-music-tracks">
+                {['Valley Sunset', 'Digital Clouds', 'Cyberpunk City', 'Forest Mist'].map((t, i) => (
+                  <span key={t} className={`ln-v-music-track ${i === 0 ? 'ln-v-music-track-on' : ''}`}>{t}</span>
+                ))}
+                <span className="ln-v-music-more">+16</span>
+              </div>
+            </div>
+
+            {/* Sound Effects */}
+            <div className="ln-v-sec">
+              <span className="ln-v-sec-label">Sound Effects</span>
+              <div className="ln-v-sfx-row">
+                <div className="ln-v-sfx ln-v-sfx-on">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                  Cinematic Whoosh
+                </div>
+                <div className="ln-v-sfx">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                  Bass Drop
+                </div>
+                <div className="ln-v-sfx">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+                  Riser
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Research — Firecrawl branded */}
+          <div className={`ln-fs-viz ln-fs-viz-research ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-r-header">
+              <div className="ln-r-brand">
+                <img src="/firecrawl-light-logo.svg" alt="" className="ln-r-logo" />
+                <span>Firecrawl</span>
+              </div>
+              <div className="ln-r-status">
+                <span className="ln-r-status-dot" />
+                <span className="ln-r-status-text">Connected</span>
+              </div>
+            </div>
+            <ResearchToolGrid />
+            <div className="ln-r-flow">
+              <div className="ln-r-flow-label">Live pipeline</div>
+              <div className="ln-r-pipeline">
+                <div className="ln-r-pipe-step ln-r-pipe-done">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  </div>
+                  <span>Search "quantum computing"</span>
+                  <span className="ln-r-pipe-count">12 results</span>
+                </div>
+                <div className="ln-r-pipe-line" />
+                <div className="ln-r-pipe-step ln-r-pipe-done">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                  </div>
+                  <span>Scraping 8 sources</span>
+                  <span className="ln-r-pipe-count">42 pages</span>
+                </div>
+                <div className="ln-r-pipe-line" />
+                <div className="ln-r-pipe-step ln-r-pipe-active">
+                  <div className="ln-r-pipe-icon ln-r-pipe-icon-pulse">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
+                  </div>
+                  <span>AI synthesizing</span>
+                  <div className="ln-r-pipe-progress">
+                    <div className="ln-r-pipe-progress-bar" />
+                  </div>
+                </div>
+                <div className="ln-r-pipe-line ln-r-pipe-line-dim" />
+                <div className="ln-r-pipe-step ln-r-pipe-pending">
+                  <div className="ln-r-pipe-icon">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </div>
+                  <span>Generate 6 segments</span>
+                </div>
+              </div>
+            </div>
+            <div className="ln-r-sources">
+              {[
+                { domain: 'arxiv.org', title: 'Quantum Computing: A Survey', badge: 'markdown' },
+                { domain: 'nature.com', title: 'Advances in Qubit Architecture', badge: 'extracted' },
+                { domain: 'mit.edu', title: 'Error Correction Breakthroughs', badge: 'crawled' },
+              ].map((s, i) => (
+                <div key={s.domain} className="ln-r-src" style={{ animationDelay: `${i * 0.4}s` }}>
+                  <div className="ln-r-src-favicon">
+                    <div className="ln-r-src-scan" />
+                  </div>
+                  <div className="ln-r-src-info">
+                    <span className="ln-r-src-domain">{s.domain}</span>
+                    <span className="ln-r-src-title">{s.title}</span>
+                  </div>
+                  <span className="ln-r-src-badge">{s.badge}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Studio — hero phone with grouped floating controls */}
+          <div className={`ln-fs-viz ln-fs-viz-studio ${active === 2 ? 'ln-fs-viz-on' : ''}`}>
+            <div className="ln-ft-hero-phone">
+              <StudioPreviewPhone videoRefOut={studioVideoRef} />
+              <PhoneMicButton videoRef={studioVideoRef} show={active === 2} />
+            </div>
+            <div className="ln-grp ln-grp-voice">
+              <div className="ln-grp-label">Voice</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Aria</div>
+                <div className="ln-pill ln-pill-sel">Laura</div>
+                <div className="ln-pill">Roger</div>
+              </div>
+              <div className="ln-grp-label">Style</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Natural</div>
+                <div className="ln-pill ln-pill-sel">Dramatic</div>
+                <div className="ln-pill">Calm</div>
+              </div>
+            </div>
+            <div className="ln-grp ln-grp-mode">
+              <div className="ln-grp-label">Visual</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-sel">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                  AI Backgrounds
+                </div>
+                <div className="ln-pill">Split Screen</div>
+              </div>
+              <div className="ln-grp-row">
+                <div className="ln-pill">Video BG</div>
+                <div className="ln-pill">Karaoke</div>
+              </div>
+            </div>
+            <div className="ln-grp ln-grp-audio">
+              <div className="ln-grp-label">Audio</div>
+              <div className="ln-grp-row">
+                <div className="ln-pill ln-pill-on">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  AI Music
+                </div>
+                <div className="ln-pill">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Captions
+                </div>
+              </div>
+            </div>
+            <svg className="ln-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M79,16 C68,16 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M79,48 C72,48 64,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M79,80 C68,80 62,48 58,48" stroke="rgba(255,255,255,0.13)" strokeWidth="0.25" fill="none"/>
+              <path d="M52,48 L38,48" stroke="rgba(255,255,255,0.16)" strokeWidth="0.25" fill="none"/>
+              <polygon points="38,48 39.5,47 39.5,49" fill="rgba(255,255,255,0.35)"/>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" path="M79,16 C68,16 62,48 58,48"/>
+              </circle>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="0.7s" path="M79,48 C72,48 64,48 58,48"/>
+              </circle>
+              <circle r="0.5" fill="rgba(255,255,255,0.6)">
+                <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.4s" path="M79,80 C68,80 62,48 58,48"/>
+              </circle>
+              <circle r="0.7" fill="rgba(255,255,255,0.8)">
+                <animateMotion dur="1.2s" repeatCount="indefinite" path="M58,48 L38,48"/>
+              </circle>
+            </svg>
+            <div className="ln-gen-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Generate
+            </div>
+          </div>
+
+          {/* Viral Patterns — open layout */}
+          <div className={`ln-fs-viz ln-fs-viz-viral ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
+            <ViralPatternsViz />
+          </div>
+
+          {/* Media Library — visual grid */}
+          <div className={`ln-fs-viz ln-fs-viz-media ${active === 4 ? 'ln-fs-viz-on' : ''}`}>
+            <MediaLibraryViz />
+          </div>
         </div>
       </div>
     </section>

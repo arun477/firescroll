@@ -99,38 +99,38 @@ def _translate_text(text, target_language):
     return response.choices[0].message.content.strip()
 
 
-# ElevenLabs eleven_v3 language codes (ISO 639-3)
+# ElevenLabs eleven_v3 language codes (ISO 639-1, as required by the API)
 ELEVENLABS_LANGUAGES = {
-    "en": {"name": "English", "code": "eng"},
-    "es": {"name": "Spanish", "code": "spa"},
-    "fr": {"name": "French", "code": "fra"},
-    "de": {"name": "German", "code": "deu"},
-    "pt": {"name": "Portuguese", "code": "por"},
-    "it": {"name": "Italian", "code": "ita"},
-    "nl": {"name": "Dutch", "code": "nld"},
-    "pl": {"name": "Polish", "code": "pol"},
-    "ru": {"name": "Russian", "code": "rus"},
-    "ja": {"name": "Japanese", "code": "jpn"},
-    "ko": {"name": "Korean", "code": "kor"},
-    "zh": {"name": "Chinese", "code": "cmn"},
-    "hi": {"name": "Hindi", "code": "hin"},
-    "ar": {"name": "Arabic", "code": "ara"},
-    "tr": {"name": "Turkish", "code": "tur"},
-    "sv": {"name": "Swedish", "code": "swe"},
-    "da": {"name": "Danish", "code": "dan"},
-    "fi": {"name": "Finnish", "code": "fin"},
-    "id": {"name": "Indonesian", "code": "ind"},
-    "th": {"name": "Thai", "code": "tha"},
-    "vi": {"name": "Vietnamese", "code": "vie"},
-    "uk": {"name": "Ukrainian", "code": "ukr"},
-    "cs": {"name": "Czech", "code": "ces"},
-    "ro": {"name": "Romanian", "code": "ron"},
-    "hu": {"name": "Hungarian", "code": "hun"},
-    "el": {"name": "Greek", "code": "ell"},
-    "he": {"name": "Hebrew", "code": "heb"},
-    "bn": {"name": "Bengali", "code": "ben"},
-    "ta": {"name": "Tamil", "code": "tam"},
-    "fil": {"name": "Filipino", "code": "fil"},
+    "en": {"name": "English"},
+    "es": {"name": "Spanish"},
+    "fr": {"name": "French"},
+    "de": {"name": "German"},
+    "pt": {"name": "Portuguese"},
+    "it": {"name": "Italian"},
+    "nl": {"name": "Dutch"},
+    "pl": {"name": "Polish"},
+    "ru": {"name": "Russian"},
+    "ja": {"name": "Japanese"},
+    "ko": {"name": "Korean"},
+    "zh": {"name": "Chinese"},
+    "hi": {"name": "Hindi"},
+    "ar": {"name": "Arabic"},
+    "tr": {"name": "Turkish"},
+    "sv": {"name": "Swedish"},
+    "da": {"name": "Danish"},
+    "fi": {"name": "Finnish"},
+    "id": {"name": "Indonesian"},
+    "th": {"name": "Thai"},
+    "vi": {"name": "Vietnamese"},
+    "uk": {"name": "Ukrainian"},
+    "cs": {"name": "Czech"},
+    "ro": {"name": "Romanian"},
+    "hu": {"name": "Hungarian"},
+    "el": {"name": "Greek"},
+    "he": {"name": "Hebrew"},
+    "bn": {"name": "Bengali"},
+    "ta": {"name": "Tamil"},
+    "fil": {"name": "Filipino"},
 }
 
 
@@ -160,7 +160,7 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
         voice_kwargs["voice"] = voice_id
     # Set language code for ElevenLabs TTS
     if language and language in ELEVENLABS_LANGUAGES:
-        voice_kwargs["language_code"] = ELEVENLABS_LANGUAGES[language]["code"]
+        voice_kwargs["language_code"] = language  # ISO 639-1 code (e.g. "es", "fr")
     # Apply voice preset or custom settings (ElevenLabs only)
     if voice_style and voice_style != "custom":
         from voice import VOICE_PRESETS
