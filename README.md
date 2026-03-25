@@ -11,6 +11,22 @@
 
 Type any topic. FireScroll researches the web, writes scripts, composes animated scenes through a conversational AI director, and renders publish-ready vertical videos with voice narration in 30+ languages. The full pipeline from idea to final cut, running locally with Docker.
 
+## Quick Start
+
+```bash
+git clone https://github.com/arun477/firescroll.git
+cd firescroll
+docker compose up --build
+```
+
+Open [localhost:3500](http://localhost:3500) and configure your API keys in **Settings**.
+
+| Key | Purpose | Required |
+|-----|---------|----------|
+| OpenAI | Script generation, Motion Director agent | Yes |
+| ElevenLabs | Voice narration, multilingual TTS | Yes |
+| Firecrawl | Web research and source crawling | Optional |
+
 ## Features
 
 ### Research Engine
@@ -27,22 +43,6 @@ An AI agent you chat with to compose video scenes. It writes React/Remotion anim
 
 ### Media Library
 Upload your own background videos (MP4, MOV, AVI, WebM). Audio is stripped automatically. Shared across all projects.
-
-## Quick Start
-
-```bash
-git clone https://github.com/arun477/firescroll.git
-cd firescroll
-docker compose up --build
-```
-
-Open [localhost:3500](http://localhost:3500) and configure your API keys in **Settings**.
-
-| Key | Purpose | Required |
-|-----|---------|----------|
-| OpenAI | Script generation, Motion Director agent | Yes |
-| ElevenLabs | Voice narration, multilingual TTS | Yes |
-| Firecrawl | Web research and source crawling | Optional |
 
 ## Usage
 
@@ -68,22 +68,6 @@ Six Docker services:
 User -> Frontend -> Backend API -> Celery Workers -> Remotion Studio
                                 -> Redis (state + queue)
                                 -> SQLite (persistence)
-```
-
-## Project Layout
-
-```
-server.py              FastAPI application (API, SSE, job management)
-chat_agent.py          Motion Director agent (OpenAI Agents SDK, tool definitions)
-celery_app.py          Task queue configuration and routing
-db.py                  Database schema, migrations, CRUD
-remotion_pipeline.py   Render orchestration (translate, TTS, render, merge)
-remotion_templates.py  Scene template definitions and GPT prompt generation
-voice.py               Voice provider abstraction (ElevenLabs integration)
-audio_utils.py         Audio processing utilities
-frontend/              React SPA (pages, components, styles)
-remotion-studio/       Remotion preview app and rendering server
-docker-compose.yml     Service definitions and orchestration
 ```
 
 ## Built With
