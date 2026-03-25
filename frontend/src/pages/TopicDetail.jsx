@@ -572,12 +572,21 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             <div className="ve-gen-meta">
               {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}
             </div>
-            {!activeJob && segJobs.find(j => j.status === 'failed') && (
-              <div className="ve-gen-error">
-                <AlertCircle size={11} />
-                {fmtError(segJobs.find(j => j.status === 'failed').error)}
-              </div>
-            )}
+            {!activeJob && segJobs.find(j => j.status === 'failed') && (() => {
+              const failedJob = segJobs.find(j => j.status === 'failed')
+              return (
+                <div className="ve-gen-error">
+                  <AlertCircle size={11} />
+                  {fmtError(failedJob.error)}
+                  <button className="ve-gen-error-x" onClick={async () => {
+                    await fetch(`/api/jobs/${failedJob.id}`, { method: 'DELETE' })
+                    onRefresh()
+                  }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              )
+            })()}
           </div>
 
         </div>

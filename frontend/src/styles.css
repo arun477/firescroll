@@ -5636,6 +5636,20 @@ a { color: var(--blue); text-decoration: none; }
 }
 .ve-gen-error svg { flex-shrink: 0; margin-top: 1px; }
 
+.ve-gen-error-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity 0.1s;
+}
+.ve-gen-error-x:hover { opacity: 1; }
+
 /* History */
 .ve-hist {
   padding: 10px 14px 14px;

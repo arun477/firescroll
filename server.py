@@ -577,6 +577,23 @@ def cancel_job(job_id: str):
     return {"status": "not_active"}
 
 
+@app.delete("/api/jobs/{job_id}")
+def delete_job_ep(job_id: str):
+    from db import get_job, delete_job, ACTIVE_STATUSES
+    import os
+    job = get_job(job_id)
+    if not job:
+        return {"error": "not found"}
+    if job["status"] in ACTIVE_STATUSES:
+        return {"error": "cannot delete active job"}
+    for path_key in ("video_path", "thumb_path", "audio_path"):
+        path = job.get(path_key)
+        if path and os.path.exists(path):
+            os.remove(path)
+    delete_job(job_id)
+    return {"status": "deleted"}
+
+
 class SegmentConfigRequest(BaseModel):
     config: dict
 

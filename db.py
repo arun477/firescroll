@@ -265,6 +265,13 @@ def get_job(job_id):
     return dict(row) if row else None
 
 
+def delete_job(job_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+    conn.commit()
+    conn.close()
+
+
 def get_jobs_for_topic(topic_id):
     conn = get_conn()
     rows = conn.execute(
