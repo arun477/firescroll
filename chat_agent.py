@@ -315,7 +315,7 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
 3. ERROR RECOVERY: If write_scene_code returns a validation error, read the error, fix the code, call write_scene_code again. Retry up to 3 times silently. The user doesn't see failed attempts.
 
-4. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep text to 1-2 sentences MAX.
+4. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep text to 1-2 sentences MAX. NEVER list scene details, timing, or descriptions as text — the scene config card shows everything the user needs. No "Scene 0: ...", no frame counts, no durations in text.
 
 5. RENDER FLOW: After composing scenes, ask about voice/language. When user says "go"/"render"/"start" → trigger_render.
 

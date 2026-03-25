@@ -117,6 +117,32 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }
   }, [])
 
+  // Recover full state from history endpoint — used on SSE drop and refresh
+  const recoverFromHistory = useCallback((cid) => {
+    fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
+      if (data.messages?.length) {
+        setMessages(data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started')))
+      }
+      if (data.scene_config) onSceneConfigUpdate(data.scene_config)
+      if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
+      if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
+      // If agent is still working, reconnect SSE
+      if (data.status === 'thinking') {
+        streamRef.current = ''
+        setStreamText('')
+        openSSEStream(cid)
+      } else {
+        streamRef.current = ''
+        setStreamText('')
+        setStatus('idle')
+      }
+    }).catch(() => {
+      streamRef.current = ''
+      setStreamText('')
+      setStatus('idle')
+    })
+  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate])
+
   // Open SSE stream imperatively — called AFTER POST succeeds
   const openSSEStream = useCallback((cid) => {
     closeSSE()
@@ -163,16 +189,12 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }
 
     evtSource.onerror = () => {
-      if (streamRef.current) {
-        setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
-      }
-      streamRef.current = ''
-      setStreamText('')
-      setStatus('idle')
       evtSource.close()
       evtSourceRef.current = null
+      // Don't give up — recover from history + reconnect if still thinking
+      recoverFromHistory(cid)
     }
-  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate, onGenerate, closeSSE])
+  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate, onGenerate, closeSSE, recoverFromHistory])
 
   // Stable conversation ID per segment — survives page refresh
   useEffect(() => {
@@ -187,7 +209,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     // Load existing conversation history + recover from stuck states
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (data.messages?.length > 0) {
-        const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
+        const msgs = data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started'))
         setMessages(msgs)
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
         if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
