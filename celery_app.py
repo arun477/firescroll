@@ -17,6 +17,9 @@ celery.conf.update(
     worker_prefetch_multiplier=1,
     task_track_started=True,
     broker_connection_retry_on_startup=True,
+    task_routes={
+        "firescroll.chat_agent": {"queue": "chat"},
+    },
 )
 
 

@@ -996,6 +996,7 @@ class RemotionGenerateRequest(BaseModel):
     voice_style: Optional[str] = None
     voice_settings: Optional[dict] = None
     music_track: Optional[str] = None
+    conversation_id: Optional[str] = None  # pull pre-composed scene config from chat agent
 
 
 class RemotionPreviewRequest(BaseModel):
@@ -1031,6 +1032,12 @@ def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
     from celery_app import remotion_generate_task
     from db import create_remotion_job, update_remotion_job
 
+    # Pull pre-composed scene config from chat agent if conversation_id given
+    pre_scene_config = None
+    if req.conversation_id:
+        from chat_agent import get_scene_config as get_chat_scene_config
+        pre_scene_config = get_chat_scene_config(req.conversation_id)
+
     segments = get_segments_for_topic(topic_id)
     gen_data = _segments_to_gen_data(topic, segments)
     dispatched = []
@@ -1058,6 +1065,7 @@ def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
                 voice_style=req.voice_style,
                 voice_settings=req.voice_settings,
                 music_track=req.music_track,
+                scene_config=pre_scene_config,
             )
             update_remotion_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)
@@ -1199,12 +1207,27 @@ class ChatSendRequest(BaseModel):
 @app.post("/api/chat/send")
 def chat_send(req: ChatSendRequest):
     from celery_app import chat_agent_task
-    from chat_agent import get_conversation_state, set_status
+    from chat_agent import (
+        get_conversation_state, set_status, init_conversation, clear_chunks,
+    )
 
     # Check if already thinking
     state = get_conversation_state(req.conversation_id)
     if state and state.get("status") == "thinking":
         return {"error": "Agent is still thinking. Wait for completion."}
+
+    # Initialize conversation in Redis if it doesn't exist yet
+    if not state:
+        init_conversation(
+            req.conversation_id, req.topic_id, req.segment_id or "",
+            style=req.style or "cinematic",
+            voice_id=req.voice_id or "",
+            language=req.language or "",
+        )
+
+    # Set status BEFORE dispatching — eliminates SSE race condition
+    set_status(req.conversation_id, "thinking")
+    clear_chunks(req.conversation_id)
 
     chat_agent_task.delay(
         req.conversation_id, req.message, req.topic_id,

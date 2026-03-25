@@ -30,7 +30,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    command: celery -A celery_app worker --loglevel=info --pool=solo
+    command: celery -A celery_app worker --loglevel=info --pool=solo -Q celery
     volumes:
       - ./data:/app/data
       - ./output:/app/output
@@ -45,6 +45,22 @@ services:
     depends_on:
       - redis
       - remotion-studio
+    restart: unless-stopped
+
+  chat-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: celery -A celery_app worker --loglevel=info --pool=solo -Q chat -c 1
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+      - dbdata:/app/dbdata
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
     restart: unless-stopped
 
   remotion-studio:

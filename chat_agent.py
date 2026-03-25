@@ -571,7 +571,8 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
     cid = conversation_id
     r = _get_redis()
 
-    # Initialize conversation if new
+    # Server already set status="thinking" and cleared chunks before dispatch.
+    # Ensure conversation exists (defensive — server should have init'd).
     state = get_conversation_state(cid)
     if not state:
         init_conversation(cid, topic_id, segment_id or "",
@@ -579,6 +580,7 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                           voice_id=voice_id or "",
                           language=language or "")
         state = get_conversation_state(cid)
+        set_status(cid, "thinking")
 
     # Update settings if provided
     if style:
@@ -588,9 +590,6 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
     if language:
         state["language"] = language
     r.set(_key(cid, "state"), json.dumps(state))
-
-    set_status(cid, "thinking")
-    clear_chunks(cid)
 
     try:
         # Load segment data

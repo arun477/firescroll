@@ -156,8 +156,12 @@ def run_remotion_pipeline(segment, job_id, output_dir,
                           voice_provider=None, voice_id=None,
                           language=None, voice_style=None,
                           voice_settings=None, music_track=None,
-                          music_source=None):
-    """Full Remotion pipeline: audio → scene config → render → merge."""
+                          music_source=None, scene_config=None):
+    """Full Remotion pipeline: audio → scene config → render → merge.
+
+    If scene_config is provided (e.g. from Motion Director), Phase 2 is
+    skipped and the pre-composed config is used directly.
+    """
     from db import update_remotion_job
 
     sid = segment.get("id", "?")
@@ -178,11 +182,16 @@ def run_remotion_pipeline(segment, job_id, output_dir,
         update_remotion_job(job_id, progress=20, audio_path=audio_path,
                            duration_seconds=duration)
 
-        # Phase 2: AI Scene Composition
-        update_remotion_job(job_id, status="composing", progress=25)
-        print(f"  [Remotion Seg {sid}] Composing scenes...")
-        scene_config = generate_scene_config(segment, user_prompt, style, duration)
-        update_remotion_job(job_id, scene_config=json.dumps(scene_config), progress=35)
+        # Phase 2: Scene Composition — skip if pre-composed config provided
+        if scene_config:
+            print(f"  [Remotion Seg {sid}] Using pre-composed scene config ({len(scene_config.get('scenes', []))} scenes)")
+            update_remotion_job(job_id, status="composing", progress=35,
+                               scene_config=json.dumps(scene_config))
+        else:
+            update_remotion_job(job_id, status="composing", progress=25)
+            print(f"  [Remotion Seg {sid}] Composing scenes...")
+            scene_config = generate_scene_config(segment, user_prompt, style, duration)
+            update_remotion_job(job_id, scene_config=json.dumps(scene_config), progress=35)
 
         # Phase 3: Remotion Render
         update_remotion_job(job_id, status="rendering", progress=40)

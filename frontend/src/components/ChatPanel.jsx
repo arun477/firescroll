@@ -97,7 +97,8 @@ function parseMessage(text) {
 }
 
 export default function ChatPanel({ topicId, segment, voices, languages, styles, templates,
-                                     sceneConfig, settings, onSceneConfigUpdate, onCustomCodeUpdate, onGenerate }) {
+                                     sceneConfig, settings, onSceneConfigUpdate, onCustomCodeUpdate,
+                                     onSettingsUpdate, onGenerate }) {
   const [conversationId, setConversationId] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -169,6 +170,8 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           case 'done':
           case 'error':
           case 'idle':
+            // Propagate agent-driven settings changes to parent
+            if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
             // Finalize — move stream into a proper message
             if (streamRef.current) {
               setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
@@ -215,12 +218,15 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           message: text,
           topic_id: topicId,
           segment_id: segment?.id || null,
+          style: settings?.style || null,
+          voice_id: settings?.voice_id || null,
+          language: settings?.language || null,
         }),
       })
     } catch {
       setStatus('idle')
     }
-  }, [topicId, segment])
+  }, [topicId, segment, settings])
 
   const sendMessage = useCallback(async (text) => {
     if (status === 'thinking' || !conversationId) return

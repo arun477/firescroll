@@ -108,6 +108,8 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   const doneJob = ss.done
   const failedJob = !activeJob ? ss.failed : null
 
+  const conversationId = selectedSeg ? `conv_${topicId}_${selectedSeg.id}` : null
+
   const handleGenerate = async () => {
     if (!selectedSeg || generating) return
     setGenerating(true)
@@ -118,6 +120,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
         voice_id: chatSettings.voice_id || null,
         language: chatSettings.language || null,
         segment_ids: [selectedSeg.segment_num],
+        conversation_id: conversationId,
       }),
     })
     setGenerating(false)
