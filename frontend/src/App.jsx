@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, PlusCircle, Flame, Key } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Flame, Key, Github } from 'lucide-react'
 import Landing from './pages/Landing'
 import Feed from './pages/Feed'
 import Dashboard from './pages/Dashboard'
@@ -44,6 +44,12 @@ export default function App() {
           <NavLink to="/dashboard"><LayoutDashboard size={18} />Dashboard</NavLink>
           <NavLink to="/create"><PlusCircle size={18} />Create</NavLink>
           <NavLink to="/settings"><Key size={18} />API Keys</NavLink>
+        </div>
+        <div className="sidebar-footer">
+          <a href="https://github.com/arun477/firescroll" target="_blank" rel="noopener noreferrer" className="sidebar-github">
+            <Github size={15} />
+            <span>GitHub</span>
+          </a>
         </div>
       </nav>
       <div className="main-content">

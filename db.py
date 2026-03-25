@@ -191,6 +191,31 @@ def init_db(db_path=DB_PATH):
             created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_media_status ON media_library(status);
+
+        CREATE TABLE IF NOT EXISTS remotion_jobs (
+            id TEXT PRIMARY KEY,
+            topic_id TEXT NOT NULL,
+            segment_id INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            progress INTEGER DEFAULT 0,
+            scene_config TEXT,
+            user_prompt TEXT DEFAULT '',
+            style TEXT DEFAULT 'cinematic',
+            video_path TEXT,
+            audio_path TEXT,
+            final_path TEXT,
+            duration_seconds REAL,
+            voice_provider TEXT DEFAULT '',
+            voice_id TEXT DEFAULT '',
+            language TEXT DEFAULT '',
+            error TEXT,
+            celery_task_id TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (topic_id) REFERENCES topics(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_remotion_jobs_topic ON remotion_jobs(topic_id);
+        CREATE INDEX IF NOT EXISTS idx_remotion_jobs_status ON remotion_jobs(status);
     """)
     conn.commit()
 
@@ -916,6 +941,73 @@ def get_all_segment_configs(topic_id):
 init_db()
 
 
+# ══════════════════════════════════════════════════════
+# REMOTION JOBS (completely separate from standard jobs)
+# ══════════════════════════════════════════════════════
+
+REMOTION_ACTIVE = ("pending", "audio", "composing", "rendering", "encoding")
+
+
+def create_remotion_job(topic_id, segment_id, user_prompt="", style="cinematic",
+                        voice_provider="", voice_id="", language=""):
+    conn = get_conn()
+    # Check for existing active remotion job
+    row = conn.execute(
+        "SELECT id FROM remotion_jobs WHERE topic_id = ? AND segment_id = ? "
+        "AND status IN (?, ?, ?, ?, ?)",
+        (topic_id, segment_id, *REMOTION_ACTIVE),
+    ).fetchone()
+    if row:
+        conn.close()
+        return None
+    job_id = uuid.uuid4().hex[:12]
+    now = _now()
+    conn.execute(
+        "INSERT INTO remotion_jobs (id, topic_id, segment_id, user_prompt, style, "
+        "voice_provider, voice_id, language, status, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+        (job_id, topic_id, segment_id, user_prompt, style,
+         voice_provider, voice_id, language, now, now),
+    )
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def update_remotion_job(job_id, **kwargs):
+    conn = get_conn()
+    kwargs["updated_at"] = _now()
+    sets = ", ".join(f"{k} = ?" for k in kwargs)
+    vals = list(kwargs.values()) + [job_id]
+    conn.execute(f"UPDATE remotion_jobs SET {sets} WHERE id = ?", vals)
+    conn.commit()
+    conn.close()
+
+
+def get_remotion_job(job_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM remotion_jobs WHERE id = ?", (job_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_remotion_jobs_for_topic(topic_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM remotion_jobs WHERE topic_id = ? ORDER BY created_at DESC",
+        (topic_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_remotion_job(job_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM remotion_jobs WHERE id = ?", (job_id,))
+    conn.commit()
+    conn.close()
+
+
 def recover_stuck_on_startup():
     """Mark orphaned jobs/media as failed on startup.
     Only resets jobs with no celery_task_id (never dispatched to a worker)
@@ -929,6 +1021,13 @@ def recover_stuck_on_startup():
         "updated_at = ? WHERE status IN (?, ?, ?, ?, ?, ?) "
         "AND (celery_task_id IS NULL OR celery_task_id = '')",
         (STATUS_FAILED, _now(), *ACTIVE_STATUSES),
+    ).rowcount
+    # Recover orphaned remotion jobs
+    n_rjobs = conn.execute(
+        "UPDATE remotion_jobs SET status = 'failed', error = 'Server restarted', "
+        "updated_at = ? WHERE status IN (?, ?, ?, ?, ?) "
+        "AND (celery_task_id IS NULL OR celery_task_id = '')",
+        (_now(), *REMOTION_ACTIVE),
     ).rowcount
     # Recover stuck media uploads
     n_media = conn.execute(

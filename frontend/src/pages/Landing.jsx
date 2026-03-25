@@ -157,6 +157,10 @@ export default function Landing() {
           Start Creating <ArrowRight size={16} />
         </button>
         <p className="ln-fine">Bring your own API keys. Free and open source.</p>
+        <a href="https://github.com/arun477/firescroll" target="_blank" rel="noopener noreferrer" className="ln-cta-github">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
       </section>
     </div>
   )
@@ -414,121 +418,6 @@ function FeaturesSection() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const vizContent = (
-    <>
-      {/* Voices — ElevenLabs branded */}
-      <div className={`ln-fs-viz ln-fs-viz-voices ${active === 0 ? 'ln-fs-viz-on' : ''}`}>
-        <div className="ln-v-header">
-          <div className="ln-v-brand">
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
-              <rect x="8" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
-              <rect x="19" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/>
-            </svg>
-            <span>ElevenLabs</span>
-          </div>
-          <span className="ln-v-count">50+ voices</span>
-        </div>
-        <div className="ln-v-list">
-          {[
-            { name: 'Laura', desc: 'Warm & expressive', active: true },
-            { name: 'Aria', desc: 'Clear & professional' },
-            { name: 'Roger', desc: 'Deep & authoritative' },
-          ].map((v, vi) => (
-            <div key={v.name} className={`ln-v-card ${v.active ? 'ln-v-card-on' : ''}`}>
-              <div className="ln-v-card-play">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              </div>
-              <div className="ln-v-card-wave">
-                {[...Array(16)].map((_, j) => (
-                  <div key={j} className="ln-v-bar" style={{ height: `${20 + ((j * 37 + vi * 13) % 60)}%`, animationDelay: `${j * 0.07 + vi * 0.05}s` }} />
-                ))}
-              </div>
-              <div className="ln-v-card-info">
-                <span className="ln-v-card-name">{v.name}</span>
-                <span className="ln-v-card-desc">{v.desc}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="ln-v-sec">
-          <span className="ln-v-sec-label">Style presets</span>
-          <div className="ln-v-styles-row">
-            {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, pi) => (
-              <span key={p} className={`ln-v-style ${pi === 1 ? 'ln-v-style-on' : ''}`}>{p}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Research — Firecrawl branded */}
-      <div className={`ln-fs-viz ln-fs-viz-research ${active === 1 ? 'ln-fs-viz-on' : ''}`}>
-        <div className="ln-r-header">
-          <div className="ln-r-brand">
-            <img src="/firecrawl-light-logo.svg" alt="" className="ln-r-logo" />
-            <span>Firecrawl</span>
-          </div>
-          <div className="ln-r-status"><span className="ln-r-status-dot" /><span className="ln-r-status-text">Connected</span></div>
-        </div>
-        <ResearchToolGrid />
-        <div className="ln-r-sources">
-          {[
-            { domain: 'arxiv.org', title: 'Quantum Computing: A Survey', badge: 'markdown' },
-            { domain: 'nature.com', title: 'Advances in Qubit Architecture', badge: 'extracted' },
-            { domain: 'mit.edu', title: 'Error Correction Breakthroughs', badge: 'crawled' },
-          ].map((s, si) => (
-            <div key={s.domain} className="ln-r-src" style={{ animationDelay: `${si * 0.4}s` }}>
-              <div className="ln-r-src-favicon"><div className="ln-r-src-scan" /></div>
-              <div className="ln-r-src-info">
-                <span className="ln-r-src-domain">{s.domain}</span>
-                <span className="ln-r-src-title">{s.title}</span>
-              </div>
-              <span className="ln-r-src-badge">{s.badge}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Studio */}
-      <div className={`ln-fs-viz ln-fs-viz-studio ${active === 2 ? 'ln-fs-viz-on' : ''}`}>
-        <div className="ln-ft-hero-phone">
-          <StudioPreviewPhone videoRefOut={studioVideoRef} />
-          <PhoneMicButton videoRef={studioVideoRef} show={active === 2} />
-        </div>
-        <div className="ln-grp ln-grp-voice">
-          <div className="ln-grp-label">Voice</div>
-          <div className="ln-grp-row"><div className="ln-pill">Aria</div><div className="ln-pill ln-pill-sel">Laura</div><div className="ln-pill">Roger</div></div>
-          <div className="ln-grp-label">Style</div>
-          <div className="ln-grp-row"><div className="ln-pill">Natural</div><div className="ln-pill ln-pill-sel">Dramatic</div><div className="ln-pill">Calm</div></div>
-        </div>
-        <div className="ln-grp ln-grp-mode">
-          <div className="ln-grp-label">Visual</div>
-          <div className="ln-grp-row">
-            <div className="ln-pill ln-pill-sel"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg> AI Backgrounds</div>
-            <div className="ln-pill">Split Screen</div>
-          </div>
-          <div className="ln-grp-row"><div className="ln-pill">Video BG</div><div className="ln-pill">Karaoke</div></div>
-        </div>
-        <div className="ln-grp ln-grp-audio">
-          <div className="ln-grp-label">Audio</div>
-          <div className="ln-grp-row">
-            <div className="ln-pill ln-pill-on"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> AI Music</div>
-            <div className="ln-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Captions</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Viral Patterns */}
-      <div className={`ln-fs-viz ln-fs-viz-viral ${active === 3 ? 'ln-fs-viz-on' : ''}`}>
-        <ViralPatternsViz />
-      </div>
-
-      {/* Media Library */}
-      <div className={`ln-fs-viz ln-fs-viz-media ${active === 4 ? 'ln-fs-viz-on' : ''}`}>
-        <MediaLibraryViz />
-      </div>
-    </>
-  )
-
   return (
     <section className="ln-fs" ref={containerRef}>
       {/* Left: scrolling text steps */}
@@ -536,13 +425,6 @@ function FeaturesSection() {
         <div className="ln-fs-intro">
           <span className="ln-fs-label">The Platform</span>
           <h2 className="ln-fs-title">All you need to<br /><span className="ln-fire">fuel the scroll.</span></h2>
-        </div>
-
-        {/* Mobile-only sticky visual — correct DOM position */}
-        <div className="ln-fs-sticky-mob">
-          <div className="ln-fs-visuals">
-            {vizContent}
-          </div>
         </div>
 
         {FEATURES.map((f, i) => (
@@ -554,6 +436,296 @@ function FeaturesSection() {
             <span className="ln-fs-num">{f.num}</span>
             <h3 className="ln-fs-h3">{f.title}</h3>
             <p className="ln-fs-desc">{f.desc}</p>
+
+            {/* Mobile-only inline visual — premium reveal */}
+            <div className="ln-mob-viz">
+              {f.key === 'voices' && (
+                <div className="ln-mob-card ln-mob-card-voices">
+                  {/* Header with glow accent */}
+                  <div className="ln-mob-header">
+                    <div className="ln-mob-row">
+                      <svg width="18" height="18" viewBox="0 0 32 32" fill="none"><rect x="8" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/><rect x="19" y="2" width="5" height="28" rx="2.5" fill="#fafafa"/></svg>
+                      <span className="ln-mob-brand">ElevenLabs</span>
+                    </div>
+                    <span className="ln-mob-tag">50+ voices</span>
+                  </div>
+
+                  {/* Voice selector — active has glow ring */}
+                  <div className="ln-mob-voices">
+                    {[
+                      { name: 'Laura', desc: 'Warm & expressive' },
+                      { name: 'Aria', desc: 'Clear & professional' },
+                      { name: 'Roger', desc: 'Deep & authoritative' },
+                    ].map((v, vi) => (
+                      <div key={v.name} className={`ln-mob-voice ${vi === 0 ? 'ln-mob-voice-on' : ''}`}>
+                        <div className="ln-mob-voice-play">
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </div>
+                        <div className="ln-mob-wave">
+                          {[...Array(24)].map((_, j) => (
+                            <div key={j} className="ln-mob-wave-bar" style={{
+                              height: `${12 + ((j * 31 + vi * 19) % 76)}%`,
+                              animationDelay: `${j * 0.05}s`,
+                              animationDuration: `${0.8 + (j % 3) * 0.3}s`,
+                            }} />
+                          ))}
+                        </div>
+                        <div className="ln-mob-voice-info">
+                          <span className="ln-mob-voice-name">{v.name}</span>
+                          <span className="ln-mob-voice-desc">{v.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Style presets — horizontal scroll */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Style presets</span>
+                    <div className="ln-mob-pills ln-mob-pills-scroll">
+                      {['Natural', 'Dramatic', 'Energetic', 'Calm', 'Storyteller'].map((p, pi) => (
+                        <span key={p} className={`ln-mob-pill ${pi === 1 ? 'ln-mob-pill-accent' : ''}`}>{p}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Music player — full width with visualizer */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">AI Music</span>
+                    <div className="ln-mob-player">
+                      <div className="ln-mob-player-play">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      </div>
+                      <div className="ln-mob-player-viz">
+                        {[...Array(32)].map((_, j) => (
+                          <div key={j} className="ln-mob-player-bar" style={{
+                            height: `${10 + Math.sin(j * 0.5) * 30 + ((j * 23) % 40)}%`,
+                            animationDelay: `${j * 0.04}s`,
+                          }} />
+                        ))}
+                      </div>
+                      <span className="ln-mob-player-time">0:45</span>
+                    </div>
+                    <div className="ln-mob-pills">
+                      <span className="ln-mob-pill ln-mob-pill-on">Valley Sunset</span>
+                      <span className="ln-mob-pill">Digital Clouds</span>
+                      <span className="ln-mob-pill">Cyberpunk City</span>
+                      <span className="ln-mob-pill ln-mob-pill-dim">+16</span>
+                    </div>
+                  </div>
+
+                  {/* SFX row */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Sound Effects</span>
+                    <div className="ln-mob-pills">
+                      <span className="ln-mob-pill ln-mob-pill-on">Cinematic Whoosh</span>
+                      <span className="ln-mob-pill">Bass Drop</span>
+                      <span className="ln-mob-pill">Riser</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {f.key === 'research' && (
+                <div className="ln-mob-card ln-mob-card-research">
+                  <div className="ln-mob-header">
+                    <div className="ln-mob-row">
+                      <img src="/firecrawl-light-logo.svg" alt="" style={{ height: 18 }} />
+                      <span className="ln-mob-brand">Firecrawl</span>
+                    </div>
+                    <span className="ln-mob-tag ln-mob-tag-green">
+                      <span className="ln-mob-tag-dot" />Connected
+                    </span>
+                  </div>
+
+                  {/* Tools — grid layout */}
+                  <div className="ln-mob-tools">
+                    {['Search', 'Scrape', 'Crawl', 'Extract', 'Map', 'Agent'].map((t, ti) => (
+                      <div key={t} className={`ln-mob-tool ${ti === 5 ? 'ln-mob-tool-on' : ''}`}>
+                        <span className="ln-mob-tool-name">{t}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Live pipeline — visual timeline */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Live pipeline</span>
+                    <div className="ln-mob-pipeline">
+                      {[
+                        { label: 'Search "quantum computing"', count: '12 results', status: 'done' },
+                        { label: 'Scraping 8 sources', count: '42 pages', status: 'done' },
+                        { label: 'AI synthesizing...', status: 'active' },
+                        { label: 'Generate 6 segments', status: 'pending' },
+                      ].map((step, si) => (
+                        <div key={si}>
+                          {si > 0 && <div className={`ln-mob-pipe-line ${step.status === 'pending' ? 'ln-mob-pipe-line-dim' : ''}`} />}
+                          <div className={`ln-mob-pipe ln-mob-pipe-${step.status}`}>
+                            <div className={`ln-mob-pipe-dot ${step.status === 'active' ? 'ln-mob-pipe-pulse' : ''}`} />
+                            <span className="ln-mob-pipe-label">{step.label}</span>
+                            {step.count && <span className="ln-mob-pipe-count">{step.count}</span>}
+                            {step.status === 'active' && (
+                              <div className="ln-mob-pipe-bar"><div className="ln-mob-pipe-bar-fill" /></div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sources — enriched cards */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Sources extracted</span>
+                    <div className="ln-mob-sources">
+                      {[
+                        { d: 'arxiv.org', t: 'Quantum Computing: A Survey', b: 'markdown', c: '#6bb88a' },
+                        { d: 'nature.com', t: 'Advances in Qubit Architecture', b: 'extracted', c: '#7dacf0' },
+                        { d: 'mit.edu', t: 'Error Correction Breakthroughs', b: 'crawled', c: '#f97316' },
+                      ].map((s, si) => (
+                        <div key={s.d} className="ln-mob-src" style={{ animationDelay: `${si * 0.15}s` }}>
+                          <div className="ln-mob-src-dot" style={{ background: s.c }} />
+                          <div className="ln-mob-src-info">
+                            <span className="ln-mob-src-d">{s.d}</span>
+                            <span className="ln-mob-src-t">{s.t}</span>
+                          </div>
+                          <span className="ln-mob-src-b">{s.b}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {f.key === 'studio' && (
+                <div className="ln-mob-card ln-mob-card-studio">
+                  {/* Config sections with visual separation */}
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Voice</span>
+                    <div className="ln-mob-voice-sel">
+                      {[
+                        { n: 'Aria', d: 'Clear' },
+                        { n: 'Laura', d: 'Warm', on: true },
+                        { n: 'Roger', d: 'Deep' },
+                      ].map(v => (
+                        <div key={v.n} className={`ln-mob-vsel ${v.on ? 'ln-mob-vsel-on' : ''}`}>
+                          <div className="ln-mob-vsel-avatar">{v.n[0]}</div>
+                          <span className="ln-mob-vsel-name">{v.n}</span>
+                          <span className="ln-mob-vsel-desc">{v.d}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Visual Mode</span>
+                    <div className="ln-mob-modes">
+                      {[
+                        { n: 'AI Backgrounds', on: true, icon: 'M3 3h18v18H3z' },
+                        { n: 'Split Screen', icon: 'M12 3v18' },
+                        { n: 'Video BG', icon: 'M23 7l-7 5 7 5V7z' },
+                        { n: 'Karaoke', icon: 'M9 18V5l12-2v13' },
+                      ].map(m => (
+                        <div key={m.n} className={`ln-mob-mode ${m.on ? 'ln-mob-mode-on' : ''}`}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d={m.icon}/></svg>
+                          <span>{m.n}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Audio</span>
+                    <div className="ln-mob-pills">
+                      <span className="ln-mob-pill ln-mob-pill-accent">AI Music</span>
+                      <span className="ln-mob-pill ln-mob-pill-on">Captions</span>
+                      <span className="ln-mob-pill">Sound FX</span>
+                    </div>
+                  </div>
+
+                  <div className="ln-mob-gen">
+                    <div className="ln-mob-gen-glow" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Generate Video
+                  </div>
+                </div>
+              )}
+
+              {f.key === 'tiktok' && (
+                <div className="ln-mob-card ln-mob-card-viral">
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Scroll-stopping formats</span>
+                    <div className="ln-mob-formats">
+                      {[
+                        { n: 'Hook Intro', d: '3-second attention grab opening' },
+                        { n: 'Split Screen', d: 'Face-cam + educational content' },
+                        { n: 'Karaoke Lyrics', d: 'Highlighted sing-along captions' },
+                        { n: 'Caption Overlay', d: 'Bold text-driven storytelling' },
+                      ].map((fmt, fi) => (
+                        <div key={fmt.n} className={`ln-mob-format ${fi === 0 ? 'ln-mob-format-on' : ''}`}>
+                          <div className="ln-mob-format-body">
+                            <span className="ln-mob-format-name">{fmt.n}</span>
+                            <span className="ln-mob-format-desc">{fmt.d}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Performance</span>
+                    <div className="ln-mob-stats">
+                      <div className="ln-mob-stat">
+                        <span className="ln-mob-stat-val">94%</span>
+                        <span className="ln-mob-stat-lbl">Watch rate</span>
+                      </div>
+                      <div className="ln-mob-stat">
+                        <span className="ln-mob-stat-val">2.4x</span>
+                        <span className="ln-mob-stat-lbl">Retention</span>
+                      </div>
+                      <div className="ln-mob-stat">
+                        <span className="ln-mob-stat-val">+67%</span>
+                        <span className="ln-mob-stat-lbl">Completion</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {f.key === 'media' && (
+                <div className="ln-mob-card ln-mob-card-media">
+                  <div className="ln-mob-section">
+                    <span className="ln-mob-sub">Your video library</span>
+                    <div className="ln-mob-media-grid">
+                      {[
+                        { name: 'ocean_waves.mp4', dur: '0:45', g1: '#0c1220', g2: '#1a3050' },
+                        { name: 'city_night.mp4', dur: '1:12', g1: '#1a0a2e', g2: '#3d1a6e' },
+                        { name: 'abstract.mp4', dur: '0:30', g1: '#0a1a0a', g2: '#1a3a20' },
+                      ].map(v => (
+                        <div key={v.name} className="ln-mob-media-item">
+                          <div className="ln-mob-media-thumb" style={{ background: `linear-gradient(160deg, ${v.g1}, ${v.g2})` }}>
+                            <div className="ln-mob-media-play">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </div>
+                            <span className="ln-mob-media-dur">{v.dur}</span>
+                          </div>
+                          <span className="ln-mob-media-name">{v.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Upload indicator */}
+                  <div className="ln-mob-upload">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    <span>Drop videos here</span>
+                    <div className="ln-mob-upload-formats">MP4 / MOV / AVI / WebM</div>
+                  </div>
+
+                  <div className="ln-mob-row" style={{ gap: 6 }}>
+                    <div className="ln-mob-feat-pill">Audio auto-stripped</div>
+                    <div className="ln-mob-feat-pill">Shared across projects</div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ))}
         <div className="ln-fs-spacer" />

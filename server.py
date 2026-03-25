@@ -940,3 +940,180 @@ def remove_api_key(key_name: str):
         return {"error": f"Invalid key name. Valid: {API_KEY_NAMES}"}
     delete_api_key(key_name)
     return {"status": "deleted", "key_name": key_name}
+
+
+# ══════════════════════════════════════════════════════
+# REMOTION AGENT PIPELINE (completely separate from existing pipeline)
+# ══════════════════════════════════════════════════════
+
+class RemotionGenerateRequest(BaseModel):
+    user_prompt: str = ""
+    style: str = "cinematic"
+    segment_ids: Optional[list] = None
+    voice_provider: Optional[str] = None
+    voice_id: Optional[str] = None
+    language: Optional[str] = None
+    voice_style: Optional[str] = None
+    voice_settings: Optional[dict] = None
+    music_track: Optional[str] = None
+
+
+class RemotionPreviewRequest(BaseModel):
+    user_prompt: str = ""
+    style: str = "cinematic"
+    segment_id: Optional[str] = None
+
+
+@app.get("/api/remotion/templates")
+def remotion_templates():
+    from remotion_templates import TEMPLATES
+    return {"templates": [
+        {"id": k, "name": v["name"], "description": v["description"]}
+        for k, v in TEMPLATES.items()
+    ]}
+
+
+@app.get("/api/remotion/styles")
+def remotion_styles():
+    from remotion_templates import STYLES
+    return {"styles": [
+        {"id": k, "name": k.capitalize(), "description": v}
+        for k, v in STYLES.items()
+    ]}
+
+
+@app.post("/api/topics/{topic_id}/remotion/generate")
+def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "not found"}
+
+    from celery_app import remotion_generate_task
+    from db import create_remotion_job, update_remotion_job
+
+    segments = get_segments_for_topic(topic_id)
+    gen_data = _segments_to_gen_data(topic, segments)
+    dispatched = []
+
+    for seg in gen_data:
+        if req.segment_ids and seg["id"] not in req.segment_ids:
+            continue
+
+        job_id = create_remotion_job(
+            topic_id, seg["id"],
+            user_prompt=req.user_prompt,
+            style=req.style,
+            voice_provider=req.voice_provider or "",
+            voice_id=req.voice_id or "",
+            language=req.language or "",
+        )
+        if job_id:
+            result = remotion_generate_task.delay(
+                seg, OUTPUT_DIR, job_id,
+                user_prompt=req.user_prompt,
+                style=req.style,
+                voice_provider=req.voice_provider,
+                voice_id=req.voice_id,
+                language=req.language,
+                voice_style=req.voice_style,
+                voice_settings=req.voice_settings,
+                music_track=req.music_track,
+            )
+            update_remotion_job(job_id, celery_task_id=result.id)
+            dispatched.append(job_id)
+
+        if not req.segment_ids:
+            break
+
+    return {"status": "started", "jobs": dispatched}
+
+
+@app.get("/api/topics/{topic_id}/remotion/jobs")
+def remotion_jobs_list(topic_id: str):
+    from db import get_remotion_jobs_for_topic
+    jobs = get_remotion_jobs_for_topic(topic_id)
+    for j in jobs:
+        if j.get("final_path") and os.path.exists(j["final_path"]):
+            j["video_url"] = f"/static/{os.path.relpath(j['final_path'], OUTPUT_DIR)}"
+        else:
+            j["video_url"] = None
+    return {"jobs": jobs}
+
+
+@app.get("/api/remotion/jobs/{job_id}")
+def remotion_job_detail(job_id: str):
+    from db import get_remotion_job
+    job = get_remotion_job(job_id)
+    if not job:
+        return {"error": "not found"}
+    if job.get("final_path") and os.path.exists(job["final_path"]):
+        job["video_url"] = f"/static/{os.path.relpath(job['final_path'], OUTPUT_DIR)}"
+    else:
+        job["video_url"] = None
+    return job
+
+
+@app.post("/api/remotion/jobs/{job_id}/cancel")
+def remotion_cancel(job_id: str):
+    from db import get_remotion_job, update_remotion_job, REMOTION_ACTIVE
+    job = get_remotion_job(job_id)
+    if not job:
+        return {"error": "not found"}
+    if job["status"] in REMOTION_ACTIVE:
+        update_remotion_job(job_id, status="failed", error="Cancelled by user")
+        celery_task_id = job.get("celery_task_id")
+        if celery_task_id:
+            from celery_app import celery
+            celery.control.revoke(celery_task_id, terminate=True, signal="SIGTERM")
+        return {"status": "cancelled"}
+    return {"status": "not_active"}
+
+
+@app.delete("/api/remotion/jobs/{job_id}")
+def remotion_delete(job_id: str):
+    from db import get_remotion_job, delete_remotion_job, REMOTION_ACTIVE
+    job = get_remotion_job(job_id)
+    if not job:
+        return {"error": "not found"}
+    if job["status"] in REMOTION_ACTIVE:
+        return {"error": "cannot delete active job"}
+    for path_key in ("video_path", "audio_path", "final_path"):
+        path = job.get(path_key)
+        if path and os.path.exists(path):
+            os.remove(path)
+    delete_remotion_job(job_id)
+    return {"status": "deleted"}
+
+
+@app.post("/api/topics/{topic_id}/remotion/preview-config")
+def remotion_preview_config(topic_id: str, req: RemotionPreviewRequest):
+    """Generate scene config without rendering — for live preview."""
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "not found"}
+
+    segments = get_segments_for_topic(topic_id)
+    seg = None
+    if req.segment_id:
+        seg = next((s for s in segments if s["id"] == req.segment_id), None)
+    if not seg:
+        seg = next((s for s in segments if s["status"] == "ready"), None)
+    if not seg:
+        return {"error": "no ready segment"}
+
+    seg_data = {
+        "id": seg["segment_num"],
+        "title": seg["title"],
+        "hook": seg["hook"],
+        "script": seg["script"],
+        "visual_cue": seg.get("visual_cue") or "",
+        "series_title": topic.get("series_title") or topic["title"],
+    }
+
+    from remotion_pipeline import generate_scene_config
+    # Estimate duration from text length (~150 words per minute)
+    word_count = len(seg["hook"].split()) + len(seg["script"].split())
+    est_duration = max(15, min(60, word_count / 2.5))
+
+    config = generate_scene_config(seg_data, req.user_prompt, req.style, est_duration)
+    return {"scene_config": config, "estimated_duration": est_duration}

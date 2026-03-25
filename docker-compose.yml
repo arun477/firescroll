@@ -21,6 +21,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
+      - REMOTION_API_URL=http://remotion-studio:3600
     depends_on:
       - redis
     restart: unless-stopped
@@ -40,8 +41,21 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
+      - REMOTION_API_URL=http://remotion-studio:3600
     depends_on:
       - redis
+      - remotion-studio
+    restart: unless-stopped
+
+  remotion-studio:
+    build:
+      context: ./remotion-studio
+      dockerfile: Dockerfile
+    volumes:
+      - ./output:/app/output
+    environment:
+      - NODE_ENV=production
+      - OUTPUT_DIR=/app/output
     restart: unless-stopped
 
   frontend:

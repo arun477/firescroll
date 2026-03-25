@@ -7,6 +7,7 @@ import {
   Eye, Sparkles, X, Square, Search, Palette, ChevronLeft, ChevronRight, Zap, Download, Globe,
 } from 'lucide-react'
 import ResearchPanel from '../components/ResearchPanel'
+import RemotionStudioPanel from '../components/RemotionStudio'
 
 const MODE_META = {
   full:  { icon: Layers,                label: 'AI Backgrounds',  desc: 'AI-generated cinematic backgrounds' },
@@ -95,6 +96,10 @@ export default function TopicDetail() {
               <Video size={14} /> Studio
               {doneJobs > 0 && <span className="td-tab-badge">{doneJobs}</span>}
             </button>
+            <button className={`td-tab ${tab === 'remotion' ? 'active' : ''}`}
+              onClick={() => setTab('remotion')}>
+              <Zap size={14} /> Motion Studio
+            </button>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/feed?topic=${topicId}`)}>
             <Flame size={14} /> Feed
@@ -113,6 +118,10 @@ export default function TopicDetail() {
           segments={segments || []} jobs={jobs || []} onRefresh={load}
           searchParams={searchParams} setSearchParams={setSearchParams}
           initialConfigs={segment_configs || {}} />
+      )}
+      {tab === 'remotion' && (
+        <RemotionStudioPanel topicId={topicId} topic={topic}
+          segments={segments || []} onRefresh={load} />
       )}
     </div>
   )

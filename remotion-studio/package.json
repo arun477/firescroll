@@ -1,0 +1,27 @@
+{
+  "name": "firescroll-remotion-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "npx remotion studio src/index.ts",
+    "build": "npx remotion bundle src/index.ts --out-dir bundled",
+    "server": "tsx server.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.242",
+    "@remotion/cli": "4.0.242",
+    "@remotion/renderer": "4.0.242",
+    "@remotion/player": "4.0.242",
+    "express": "^4.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.242",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/react": "^18.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
