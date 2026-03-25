@@ -1299,12 +1299,16 @@ async def chat_stream(conversation_id: str):
 @app.get("/api/chat/{conversation_id}/history")
 def chat_history(conversation_id: str):
     from chat_agent import (
-        get_conversation_history, get_scene_config, get_conversation_state
+        get_conversation_history, get_scene_config, get_conversation_state,
+        _get_redis, _key
     )
+    r = _get_redis()
     state = get_conversation_state(conversation_id)
+    custom_raw = r.get(_key(conversation_id, "custom_code"))
     return {
         "messages": get_conversation_history(conversation_id),
         "scene_config": get_scene_config(conversation_id),
+        "custom_code": json.loads(custom_raw) if custom_raw else None,
         "settings": {
             "style": state.get("style", "cinematic") if state else "cinematic",
             "voice_id": state.get("voice_id", "") if state else "",
