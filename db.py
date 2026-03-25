@@ -27,11 +27,17 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
+_wal_initialized = set()
+
+
 def get_conn(db_path=DB_PATH):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=10)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    # WAL mode persists on the database file — only needs to be set once
+    if db_path not in _wal_initialized:
+        conn.execute("PRAGMA journal_mode=WAL")
+        _wal_initialized.add(db_path)
     return conn
 
 
@@ -239,9 +245,16 @@ def has_active_job(topic_id, segment_id):
 
 def create_job(topic_id, segment_id, mode, caption,
                voice_provider="", voice_id="", music_track=""):
-    if has_active_job(topic_id, segment_id):
-        return None
     conn = get_conn()
+    # Atomic check-and-insert: check + insert in one transaction to avoid race
+    row = conn.execute(
+        "SELECT id FROM jobs WHERE topic_id = ? AND segment_id = ? "
+        "AND status IN (?, ?, ?, ?, ?, ?)",
+        (topic_id, segment_id, *ACTIVE_STATUSES),
+    ).fetchone()
+    if row:
+        conn.close()
+        return None
     job_id = uuid.uuid4().hex[:12]
     now = _now()
     conn.execute(

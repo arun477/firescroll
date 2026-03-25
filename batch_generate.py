@@ -388,6 +388,16 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         _cleanup_temps(video_tmp, thumb_tmp)
         print(f"  [Seg {sid}] Cancelled")
         return job_id, None
+    except KeyboardInterrupt:
+        _cleanup_temps(video_tmp, thumb_tmp)
+        update_job(job_id, status=STATUS_FAILED, error="Worker interrupted")
+        print(f"  [Seg {sid}] Interrupted")
+        return job_id, None
+    except SystemExit:
+        _cleanup_temps(video_tmp, thumb_tmp)
+        update_job(job_id, status=STATUS_FAILED, error="Worker killed (time limit)")
+        print(f"  [Seg {sid}] Time limit exceeded")
+        return job_id, None
     except Exception as exc:  # pylint: disable=broad-exception-caught
         _cleanup_temps(video_tmp, thumb_tmp)
         # Extract the most useful error info

@@ -2,7 +2,7 @@ import os
 import threading
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -232,7 +232,7 @@ def generate_segment(topic_id: str, req: GenerateRequest):
         return {"error": "not found"}
 
     from celery_app import generate_single_task
-    from db import create_job, has_active_job
+    from db import create_job, has_active_job, update_job
     segments = get_segments_for_topic(topic_id)
     gen_data = _segments_to_gen_data(topic, segments)
     dispatched = []
@@ -246,7 +246,7 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                             voice_id=req.voice_id or "",
                             music_track=req.music_track or "")
         if job_id:
-            generate_single_task.delay(
+            result = generate_single_task.delay(
                 seg, req.mode, req.caption, OUTPUT_DIR, job_id,
                 voice_provider=req.voice_provider,
                 voice_id=req.voice_id,
@@ -258,6 +258,7 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                 intro_sfx_prompt=req.intro_sfx_prompt,
                 bg_video_id=req.bg_video_id,
             )
+            update_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)
         if not req.segment_ids:
             break
@@ -275,7 +276,7 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
 
     import random
     from celery_app import generate_single_task
-    from db import create_job
+    from db import create_job, update_job
     segments = get_segments_for_topic(topic_id)
     gen_data = _segments_to_gen_data(topic, segments)
     modes = ["full", "video", "split"]
@@ -290,7 +291,7 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
                             voice_id=req.voice_id or "",
                             music_track=req.music_track or "")
         if job_id:
-            generate_single_task.delay(
+            result = generate_single_task.delay(
                 seg, mode, caption, OUTPUT_DIR, job_id,
                 voice_provider=req.voice_provider,
                 voice_id=req.voice_id,
@@ -300,6 +301,7 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
                 voice_style=req.voice_style,
                 voice_settings=req.voice_settings,
             )
+            update_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)
 
     return {"status": "started", "jobs": dispatched}

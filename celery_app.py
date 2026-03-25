@@ -12,13 +12,13 @@ celery.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_track_started=True,
+    broker_connection_retry_on_startup=True,
 )
 
 
-@celery.task(name="firescroll.generate_single", bind=True)
+@celery.task(name="firescroll.generate_single", bind=True,
+             max_retries=0, reject_on_worker_lost=True,
+             soft_time_limit=600, time_limit=660)
 def generate_single_task(self, segment, mode, caption, output_dir, job_id, **kwargs):
-    from db import update_job
-    update_job(job_id, celery_task_id=self.request.id)
-
     from batch_generate import _generate_single
     return _generate_single(segment, mode, caption, output_dir, job_id, **kwargs)
