@@ -20,36 +20,52 @@ SPOKEN_COLOR = (200, 200, 200)
 UNSPOKEN_COLOR = (255, 255, 255)
 WORD_BG = (20, 20, 30, 200)
 ACTIVE_WORD_BG = (230, 50, 80, 230)
-MAX_LINE_WIDTH = WIDTH - TEXT_PAD_X * 2 - 120
+STROKE_W = 4
+# Safe margin: padding + stroke + extra breathing room
+MAX_LINE_WIDTH = WIDTH - (TEXT_PAD_X + STROKE_W + 20) * 2
 LINE_H = 90
 
 
+def _word_by_word_width(words_text, font, draw):
+    """Measure width the same way rendering works: sum of individual words + spaces."""
+    space_w, _ = text_size(draw, " ", font)
+    total = 0
+    for i, word in enumerate(words_text):
+        ww, _ = text_size(draw, word, font)
+        total += ww
+        if i < len(words_text) - 1:
+            total += space_w
+    # Account for stroke extending beyond measured text
+    total += STROKE_W * 2
+    return total
+
+
 def _group_words_into_lines(words, font, draw):
-    """Group words into lines based on pixel width, not fixed word count."""
+    """Group words into lines based on pixel width, matching word-by-word rendering."""
     lines = []
     current_words = []
-    current_text = ""
+    current_word_texts = []
     for w in words:
-        test_text = f"{current_text} {w['word']}".strip()
-        tw, _ = text_size(draw, test_text, font)
+        test_texts = current_word_texts + [w["word"]]
+        tw = _word_by_word_width(test_texts, font, draw)
         if tw > MAX_LINE_WIDTH and current_words:
             lines.append({
                 "words": current_words,
                 "start": current_words[0]["start"],
                 "end": current_words[-1]["end"],
-                "text": current_text,
+                "text": " ".join(current_word_texts),
             })
             current_words = [w]
-            current_text = w["word"]
+            current_word_texts = [w["word"]]
         else:
             current_words.append(w)
-            current_text = test_text
+            current_word_texts.append(w["word"])
     if current_words:
         lines.append({
             "words": current_words,
             "start": current_words[0]["start"],
             "end": current_words[-1]["end"],
-            "text": current_text,
+            "text": " ".join(current_word_texts),
         })
     return lines
 
