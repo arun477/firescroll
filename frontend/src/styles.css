@@ -8748,15 +8748,98 @@ a { color: var(--blue); text-decoration: none; }
   .ln-fs-sticky-mob {
     display: block;
     position: sticky;
-    top: 48px;
-    height: 260px;
+    top: 0;
     z-index: 2;
     margin: 0;
+    padding: 54px 0 0;
     background: #050507;
-    padding-bottom: 12px;
   }
-  .ln-fs-sticky-mob .ln-fs-visuals { height: 260px; }
-  .ln-fs-viz { border-radius: 14px; padding: 12px; }
+  .ln-fs-sticky-mob::after {
+    content: '';
+    position: absolute;
+    left: -20px;
+    right: -20px;
+    bottom: -24px;
+    height: 24px;
+    background: linear-gradient(to bottom, #050507, transparent);
+    pointer-events: none;
+  }
+  .ln-fs-sticky-mob .ln-fs-visuals {
+    height: 260px;
+    overflow: hidden;
+    border-radius: 14px;
+    position: relative;
+  }
+  .ln-fs-viz { border-radius: 14px; padding: 12px; overflow: hidden !important; }
+
+  /* ── Voices viz — mobile ── */
+  .ln-fs-viz-voices { padding: 0 !important; }
+  .ln-v-header { padding: 10px 12px 6px; }
+  .ln-v-brand svg { width: 16px; height: 16px; }
+  .ln-v-brand span { font-size: 12px; }
+  .ln-v-count { font-size: 9px; }
+  .ln-v-list { gap: 2px; padding: 0 8px; }
+  .ln-v-card { padding: 5px 8px; gap: 6px; }
+  .ln-v-card-play { width: 20px; height: 20px; min-width: 20px; }
+  .ln-v-card-play svg { width: 8px; height: 8px; }
+  .ln-v-card-wave { height: 20px; }
+  .ln-v-card-name { font-size: 10px; }
+  .ln-v-card-desc { font-size: 8px; }
+  .ln-v-sec { padding: 6px 12px 0; }
+  .ln-v-sec-label { font-size: 7px; margin-bottom: 4px; }
+  .ln-v-styles-row { gap: 3px; }
+  .ln-v-style { font-size: 8px; padding: 2px 6px; }
+  .ln-v-music-player { padding: 4px 8px; gap: 4px; }
+  .ln-v-music-play { width: 20px; height: 20px; min-width: 20px; }
+  .ln-v-music-wave { height: 24px; }
+  .ln-v-music-dur { font-size: 9px; }
+  .ln-v-music-tracks { padding: 0 12px; gap: 3px; }
+  .ln-v-music-track { font-size: 8px; padding: 2px 6px; }
+  .ln-v-music-more { font-size: 8px; }
+  .ln-v-sfx-row { padding: 0 12px; gap: 3px; flex-wrap: wrap; }
+  .ln-v-sfx { font-size: 8px; padding: 3px 6px; }
+
+  /* ── Research viz — mobile ── */
+  .ln-r-header { padding: 10px 12px 6px; }
+  .ln-r-brand span { font-size: 12px; }
+  .ln-r-logo { height: 16px; }
+  .ln-r-status-text { font-size: 9px; }
+  .ln-r-tools { gap: 3px; padding: 0 10px; }
+  .ln-r-tool { padding: 4px 6px; }
+  .ln-r-tool-icon { width: 18px; height: 18px; }
+  .ln-r-tool-name { font-size: 9px; }
+  .ln-r-tool-desc { font-size: 8px; }
+  .ln-r-flow { padding: 6px 10px 0; }
+  .ln-r-flow-label { font-size: 7px; margin-bottom: 4px; }
+  .ln-r-pipeline { gap: 0; }
+  .ln-r-pipe-step { padding: 3px 0; font-size: 9px; gap: 4px; }
+  .ln-r-pipe-icon { width: 16px; height: 16px; min-width: 16px; }
+  .ln-r-pipe-count { font-size: 8px; }
+  .ln-r-pipe-line { height: 8px; }
+  .ln-r-sources { padding: 6px 10px 8px; gap: 3px; }
+  .ln-r-src { padding: 4px 6px; gap: 6px; }
+  .ln-r-src-favicon { width: 20px; height: 20px; min-width: 20px; }
+  .ln-r-src-domain { font-size: 8px; }
+  .ln-r-src-title { font-size: 9px; }
+  .ln-r-src-badge { font-size: 7px; padding: 1px 4px; }
+
+  /* ── Studio viz — mobile ── */
+  .ln-fs-viz-studio { overflow: hidden !important; background: transparent !important; border-color: transparent !important; }
+  .ln-ft-hero-phone { left: 50%; transform: translate(-50%, -54%); }
+  .ln-sm-phone { width: 140px !important; height: 250px !important; border-radius: 16px !important; }
+  .ln-grp, .ln-gen-btn, .ln-flow-svg { display: none; }
+
+  /* ── Viral patterns viz — mobile ── */
+  .ln-fs-viz-viral { overflow: hidden !important; }
+  .ln-vp { justify-content: center; }
+  .ln-vp-phone { width: 130px; height: 230px; border-radius: 18px; }
+  .ln-vp-modes, .ln-vp-hook-badge, .ln-vp-caps, .ln-vp-stats { display: none; }
+
+  /* ── Media library viz — mobile ── */
+  .ln-fs-viz-media { overflow: hidden !important; }
+  .ln-ml-badge { display: none; }
+  .ln-ml-stack { transform: scale(0.75); }
+  .ln-ml-uploading { transform: scale(0.8); }
   .ln-fs-text { padding-top: 0; }
   .ln-fs-intro {
     padding-top: 32px;
@@ -8799,45 +8882,6 @@ a { color: var(--blue); text-decoration: none; }
     min-width: 18px;
   }
   .ln-flow-arrow { display: none; }
-
-  /* ── Feature visuals — compact for mobile ── */
-  .ln-grp, .ln-gen-btn { display: none; }
-  .ln-sm-phone { width: 160px; height: 280px; border-radius: 18px; }
-
-  /* Viral patterns — hide floating decorations */
-  .ln-vp-modes, .ln-vp-hook-badge, .ln-vp-caps, .ln-vp-stats { display: none; }
-  .ln-vp-phone { width: 140px; height: 240px; border-radius: 18px; }
-
-  /* Media library — hide badges */
-  .ln-ml-badge { display: none; }
-  .ln-ml-stack { transform: scale(0.85); }
-
-  /* Research tools — compact */
-  .ln-r-tools { gap: 4px; }
-  .ln-r-tool { padding: 5px 8px; }
-  .ln-r-tool-name { font-size: 10px; }
-  .ln-r-tool-desc { font-size: 9px; }
-
-  /* Voice cards — compact */
-  .ln-v-header { padding: 0 0 8px; }
-  .ln-v-brand span { font-size: 12px; }
-  .ln-v-count { font-size: 10px; }
-  .ln-v-card { padding: 6px 8px; gap: 6px; }
-  .ln-v-card-wave { height: 24px; }
-  .ln-v-card-name { font-size: 11px; }
-  .ln-v-card-desc { font-size: 9px; }
-  .ln-v-card-play { width: 22px; height: 22px; }
-  .ln-v-list { gap: 4px; }
-  .ln-v-sec { padding-top: 8px; }
-  .ln-v-sec-label { font-size: 8px; margin-bottom: 5px; }
-  .ln-v-styles-row { gap: 3px; }
-  .ln-v-style { font-size: 9px; padding: 3px 7px; }
-  .ln-v-music-player { padding: 6px 8px; gap: 6px; }
-  .ln-v-music-tags { gap: 3px; }
-  .ln-v-music-tag { font-size: 9px; padding: 2px 6px; }
-  .ln-v-sfx { margin-top: 6px; padding-top: 6px; }
-  .ln-v-sfx-tags { gap: 3px; }
-  .ln-v-sfx-tag { font-size: 9px; padding: 2px 6px; }
 
   /* ── CTA ── */
   .ln-cta { padding: 48px 24px 80px; }

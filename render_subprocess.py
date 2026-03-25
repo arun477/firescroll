@@ -89,6 +89,11 @@ def main():
     vid_dir = args.get("vid_dir")
     video_out = args["video_out"]
     audio_path = args["audio_path"]
+    language = args.get("language")
+
+    # Set font language before any rendering (affects font selection)
+    from fonts import set_language
+    set_language(language)
 
     # Load backgrounds before forking — children inherit via copy-on-write
     global _bg_images

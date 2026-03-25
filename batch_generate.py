@@ -364,6 +364,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             "vid_dir": extra.get("vid_dir"),
             "video_out": video_tmp,
             "audio_path": audio_result["audio_path"],
+            "language": language,
         }
         args_file = os.path.join(seg_dir, f"render_args_{job_id}.json")
         with open(args_file, "w") as f:
