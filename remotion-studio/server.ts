@@ -159,6 +159,78 @@ app.post("/cancel/:jobId", (req, res) => {
   }
 });
 
+// ══════ CODE VALIDATION ══════
+
+// Validate agent-generated React/Remotion code in a sandboxed VM
+app.post("/validate-code", async (req, res) => {
+  const { code } = req.body;
+  if (typeof code !== "string" || !code.trim()) {
+    return res.status(400).json({ valid: false, error: "No code provided" });
+  }
+
+  try {
+    // Step 1: Syntax check with esbuild
+    const esbuild = await import("esbuild");
+    try {
+      await esbuild.transform(
+        `(function(React,AbsoluteFill,spring,interpolate,useCurrentFrame,useVideoConfig,frame,fps,width,height){${code}})`,
+        { loader: "js" }
+      );
+    } catch (syntaxErr: any) {
+      const msg = syntaxErr.errors?.[0]?.text || syntaxErr.message || String(syntaxErr);
+      return res.json({ valid: false, error: `Syntax error: ${msg}`, phase: "parse" });
+    }
+
+    // Step 2: Sandboxed execution with mocked React/Remotion
+    const vm = await import("vm");
+
+    const mockCreateElement = (...args: any[]) => ({
+      $$typeof: Symbol.for("react.element"),
+      type: args[0] || "div",
+      props: args[1] || {},
+      children: args.slice(2),
+    });
+    const mockReact = {
+      createElement: mockCreateElement,
+      Fragment: Symbol.for("react.fragment"),
+    };
+
+    const sandbox = {
+      React: mockReact,
+      AbsoluteFill: "div",
+      spring: (_opts: any) => 1,
+      interpolate: (_val: number, _input: number[], output: number[]) => output?.[0] ?? 0,
+      useCurrentFrame: () => 0,
+      useVideoConfig: () => ({ fps: 30, width: 1080, height: 1920, durationInFrames: 150 }),
+      frame: 0,
+      fps: 30,
+      width: 1080,
+      height: 1920,
+      Math, Array, Object, String, Number, Boolean, JSON, parseInt, parseFloat,
+      console: { log: () => {}, warn: () => {}, error: () => {} },
+      undefined, null: null, true: true, false: false, Infinity, NaN,
+    };
+
+    const context = vm.createContext(sandbox);
+    const wrappedCode = `(function(React,AbsoluteFill,spring,interpolate,useCurrentFrame,useVideoConfig,frame,fps,width,height){${code}})(React,AbsoluteFill,spring,interpolate,useCurrentFrame,useVideoConfig,frame,fps,width,height)`;
+
+    const result = vm.runInContext(wrappedCode, context, { timeout: 1000 });
+
+    if (result === null || result === undefined) {
+      return res.json({ valid: false, error: "Code returned null/undefined. Must return a React element via React.createElement().", phase: "runtime" });
+    }
+
+    if (typeof result === "object" && (result.type || result.$$typeof)) {
+      return res.json({ valid: true });
+    }
+
+    return res.json({ valid: false, error: `Code returned ${typeof result} instead of a React element. Use React.createElement().`, phase: "runtime" });
+
+  } catch (err: any) {
+    return res.json({ valid: false, error: (err.message || String(err)).slice(0, 500), phase: "runtime" });
+  }
+});
+
 // ══════ LIVE PREVIEW ══════
 
 // Serve the preview page with Remotion Player (client-side, no Chromium)

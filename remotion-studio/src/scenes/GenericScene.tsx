@@ -20,11 +20,33 @@ export interface TextLayer {
   maxWidth?: number;
 }
 
+export interface ShapeElement {
+  type: "circle" | "rect" | "line" | "image";
+  x?: number;       // pixels from left (default: center)
+  y?: number;       // pixels from top (default: center)
+  size?: number;     // diameter for circle, side for rect
+  width?: number;    // rect width
+  height?: number;   // rect height
+  color?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  opacity?: number;
+  shadow?: boolean;
+  shadowColor?: string;
+  blur?: number;
+  rotation?: number; // degrees
+  animation?: "bounce" | "pulse" | "spin" | "float" | "slide-in" | "scale-in" | "fade-in" | "none";
+  animationDelay?: number;  // frames
+  animationSpeed?: number;  // multiplier (default 1)
+}
+
 export interface GenericSceneProps {
   backgroundColor?: string;
   backgroundGradient?: string;
 
   textLayers?: TextLayer[];
+
+  shapes?: ShapeElement[];
 
   counter?: {
     value: string;
