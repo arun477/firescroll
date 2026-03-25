@@ -62,7 +62,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
     setShowVideo(false)  // switch to preview when config changes
   }, [previewConfig])
 
-  // Send custom scene code to iframe when it changes
+  // Send custom scene code to iframe when it changes — preview updates live
   useEffect(() => {
     if (!customCode || !iframeRef.current?.contentWindow) return
     Object.entries(customCode).forEach(([idx, code]) => {
@@ -70,11 +70,6 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
         { type: 'CUSTOM_SCENE_CODE', payload: { sceneIndex: parseInt(idx), code } }, '*'
       )
     })
-    // Auto-play from start to show the new animation
-    setTimeout(() => {
-      iframeRef.current?.contentWindow?.postMessage({ type: 'SEEK', payload: { frame: 0 } }, '*')
-      iframeRef.current?.contentWindow?.postMessage({ type: 'PLAY' }, '*')
-    }, 100)
     setShowVideo(false)
   }, [customCode])
 
