@@ -1,30 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ArrowRight } from 'lucide-react'
+import {
+  Plus, ArrowRight, ChevronLeft, ChevronRight,
+  FileText, Video, Globe, Loader2, BookOpen,
+} from 'lucide-react'
+
+const PAGE_SIZE = 12
 
 export default function Dashboard() {
-  const [topics, setTopics] = useState([])
+  const [data, setData] = useState(null)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetch('/api/topics')
-      .then(r => r.json())
-      .then(setTopics)
-  }, [])
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/topics?page=${page}&page_size=${PAGE_SIZE}`)
+      setData(await res.json())
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [page])
+
+  useEffect(() => { setLoading(true); load() }, [load])
+
+  const topics = data?.topics || []
+  const totalPages = data?.pages || 1
+  const totalCount = data?.total || 0
+
+  if (loading && !data) {
+    return (
+      <div className="dash-loading">
+        <Loader2 size={20} className="spin" />
+        <span>Loading projects...</span>
+      </div>
+    )
+  }
 
   return (
-    <>
+    <div className="dash-wrap">
       <div className="dash-header">
         <div>
           <h1 className="dash-h1">Dashboard</h1>
-          <span className="dash-sub">{topics.length} {topics.length === 1 ? 'project' : 'projects'}</span>
+          <span className="dash-sub">{totalCount} {totalCount === 1 ? 'project' : 'projects'}</span>
         </div>
         <button className="dash-new" onClick={() => navigate('/create')}>
           <Plus size={15} /> New Topic
         </button>
       </div>
 
-      {topics.length === 0 ? (
+      {topics.length === 0 && !loading ? (
         <div className="dash-empty">
           <div className="dash-empty-icon">
             <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
@@ -43,38 +67,83 @@ export default function Dashboard() {
           </button>
         </div>
       ) : (
-        <div className="dash-grid">
-          {topics.map((topic, i) => {
-            const pct = topic.total > 0 ? Math.round((topic.done / topic.total) * 100) : 0
-            return (
-              <div
-                key={topic.id}
-                className="dash-card"
-                onClick={() => navigate(`/topic/${topic.id}`)}
-                style={{ animationDelay: `${i * 0.04}s` }}
-              >
-                <div className="dash-card-top">
-                  <h3 className="dash-card-title">{topic.title}</h3>
-                  <ArrowRight size={14} className="dash-card-arrow" />
-                </div>
-                <span className="dash-card-series">{topic.series_title}</span>
-                <div className="dash-card-bottom">
-                  <div className="dash-card-progress">
-                    <div className="dash-card-bar">
-                      <div className="dash-card-fill" style={{ width: `${pct}%` }} />
+        <>
+          <div className="dash-grid">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="dash-card dash-card-skeleton" />
+              ))
+            ) : (
+              topics.map((topic, i) => {
+                const hasResearch = topic.segments_ready > 0
+                const hasVideos = topic.videos_done > 0
+                const isResearching = topic.research_status === 'generating'
+
+                return (
+                  <div
+                    key={topic.id}
+                    className="dash-card"
+                    onClick={() => navigate(`/topic/${topic.id}`)}
+                    style={{ animationDelay: `${i * 0.04}s` }}
+                  >
+                    <div className="dash-card-top">
+                      <h3 className="dash-card-title">{topic.title}</h3>
+                      <ArrowRight size={14} className="dash-card-arrow" />
                     </div>
-                    <span className="dash-card-pct">{pct}%</span>
+                    {topic.series_title && (
+                      <span className="dash-card-series">{topic.series_title}</span>
+                    )}
+
+                    <div className="dash-card-chips">
+                      <span className={`dash-chip ${hasResearch ? 'dash-chip-good' : isResearching ? 'dash-chip-active' : ''}`}>
+                        <BookOpen size={10} />
+                        {topic.segments_ready}/{topic.segments_total || topic.total_segments} segments
+                      </span>
+                      {topic.source_count > 0 && (
+                        <span className="dash-chip">
+                          <Globe size={10} />
+                          {topic.source_count} sources
+                        </span>
+                      )}
+                      {topic.videos_total > 0 && (
+                        <span className={`dash-chip ${hasVideos ? 'dash-chip-good' : ''}`}>
+                          <Video size={10} />
+                          {topic.videos_done}/{topic.videos_total} videos
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="dash-card-footer">
+                      <span className="dash-card-date">
+                        {new Date(topic.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                      {isResearching && (
+                        <span className="dash-card-status">
+                          <Loader2 size={10} className="spin" /> Researching
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="dash-card-stats">
-                    <span>{topic.done}/{topic.total} done</span>
-                    <span>{topic.total_segments} segments</span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                )
+              })
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="dash-pagination">
+              <button className="dash-page-btn" disabled={page <= 1}
+                onClick={() => setPage(p => p - 1)}>
+                <ChevronLeft size={14} />
+              </button>
+              <span className="dash-page-info">{page} / {totalPages}</span>
+              <button className="dash-page-btn" disabled={page >= totalPages}
+                onClick={() => setPage(p => p + 1)}>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </>
       )}
-    </>
+    </div>
   )
 }

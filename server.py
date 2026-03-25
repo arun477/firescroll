@@ -75,13 +75,9 @@ class GenerateAllRequest(BaseModel):
 
 
 @app.get("/api/topics")
-def list_topics():
-    topics = get_all_topics()
-    for topic in topics:
-        jobs = get_jobs_for_topic(topic["id"])
-        topic["done"] = sum(1 for j in jobs if j["status"] == "done")
-        topic["total"] = len(jobs)
-    return topics
+def list_topics(page: int = 1, page_size: int = 12):
+    from db import get_topics_page
+    return get_topics_page(page=page, page_size=page_size)
 
 
 @app.get("/api/topics/{topic_id}")

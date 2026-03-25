@@ -268,6 +268,14 @@ a { color: var(--blue); text-decoration: none; }
   flex-direction: column;
 }
 
+/* When research panel is active, prevent gap at bottom */
+.main-content:has(.rp-platform) {
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* =================== FEED =================== */
 .feed-container {
   height: 100vh;
@@ -1179,6 +1187,25 @@ a { color: var(--blue); text-decoration: none; }
 
 /* =================== TOPIC GRID =================== */
 /* =================== DASHBOARD =================== */
+/* Dashboard wrapper */
+.dash-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.dash-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 120px 20px;
+  color: #52525b;
+  font-size: 13px;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+}
+
 .dash-header {
   display: flex;
   align-items: center;
@@ -1279,6 +1306,7 @@ a { color: var(--blue); text-decoration: none; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 10px;
+  flex: 1;
   animation: fadeUp 0.35s ease;
 }
 
@@ -1290,11 +1318,19 @@ a { color: var(--blue); text-decoration: none; }
   cursor: pointer;
   transition: all 0.2s;
   animation: fadeUp 0.3s ease both;
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-card:hover {
   border-color: rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.03);
+}
+
+.dash-card-skeleton {
+  min-height: 120px;
+  background: rgba(255,255,255,0.015);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .dash-card-top {
@@ -1329,50 +1365,101 @@ a { color: var(--blue); text-decoration: none; }
   font-size: 12px;
   color: #3f3f46;
   display: block;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
-.dash-card-bottom {
+/* Chips */
+.dash-card-chips {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
-.dash-card-progress {
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #52525b;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.dash-chip-good { color: #6bb88a; border-color: rgba(107,184,138,0.12); }
+.dash-chip-active { color: #7dacf0; border-color: rgba(125,172,240,0.12); }
+
+/* Footer */
+.dash-card-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.03);
 }
 
-.dash-card-bar {
-  flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(255,255,255,0.06);
-  overflow: hidden;
-}
-
-.dash-card-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #ef4444, #f97316);
-  transition: width 0.4s ease;
-}
-
-.dash-card-pct {
-  font-size: 11px;
-  font-weight: 700;
-  color: #52525b;
-  min-width: 28px;
-  text-align: right;
-}
-
-.dash-card-stats {
-  display: flex;
-  gap: 12px;
-  font-size: 11px;
-  color: #3f3f46;
+.dash-card-date {
+  font-size: 10px;
+  color: #27272a;
   font-weight: 500;
+}
+
+.dash-card-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #7dacf0;
+  font-weight: 600;
+}
+
+/* Sticky bottom pagination */
+.dash-pagination {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 0;
+  margin-top: 20px;
+  background: linear-gradient(to top, var(--bg, #09090b) 60%, transparent);
+  z-index: 5;
+}
+
+.dash-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: #71717a;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.dash-page-btn:hover:not(:disabled) { color: #a1a1aa; background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+.dash-page-btn:disabled { opacity: 0.3; cursor: default; }
+
+.dash-page-info {
+  font-size: 12px;
+  color: #52525b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.15; }
 }
 
 /* =================== JOB GRID =================== */
@@ -4038,7 +4125,8 @@ a { color: var(--blue); text-decoration: none; }
   gap: 0;
   animation: fadeIn 0.3s ease;
   position: relative;
-  min-height: calc(100vh - 120px);
+  flex: 1;
+  min-height: 0;
   align-items: stretch;
   border-top: 1px solid rgba(255,255,255,0.05);
   margin-left: -36px;
@@ -4102,8 +4190,7 @@ a { color: var(--blue); text-decoration: none; }
 .rp-col-left {
   position: sticky;
   top: 0;
-  align-self: start;
-  height: calc(100vh - 90px);
+  align-self: stretch;
   overflow-y: auto;
   padding: 0 20px 20px 16px;
   display: flex;
@@ -4117,14 +4204,14 @@ a { color: var(--blue); text-decoration: none; }
 .rp-col-center {
   min-width: 0;
   padding: 0 24px 20px;
+  overflow-y: auto;
 }
 
 /* Right Column — Knowledge Base */
 .rp-col-right {
   position: sticky;
   top: 0;
-  align-self: start;
-  height: calc(100vh - 90px);
+  align-self: stretch;
   overflow: hidden;
   padding: 0 16px 0 20px;
   display: flex;

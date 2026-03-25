@@ -317,6 +317,54 @@ def get_all_topics():
     return [dict(r) for r in rows]
 
 
+def get_topics_page(page=1, page_size=12):
+    conn = get_conn()
+    total = conn.execute("SELECT COUNT(*) FROM topics").fetchone()[0]
+    offset = (page - 1) * page_size
+    rows = conn.execute(
+        "SELECT * FROM topics ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        (page_size, offset),
+    ).fetchall()
+    topics = [dict(r) for r in rows]
+
+    for t in topics:
+        tid = t["id"]
+        # Segment stats
+        seg_total = conn.execute(
+            "SELECT COUNT(*) FROM segments WHERE topic_id = ?", (tid,)
+        ).fetchone()[0]
+        seg_ready = conn.execute(
+            "SELECT COUNT(*) FROM segments WHERE topic_id = ? AND status = 'ready'",
+            (tid,),
+        ).fetchone()[0]
+        # Video stats
+        vid_total = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE topic_id = ?", (tid,)
+        ).fetchone()[0]
+        vid_done = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE topic_id = ? AND status = 'done'",
+            (tid,),
+        ).fetchone()[0]
+        # Source count
+        src_count = conn.execute(
+            "SELECT COUNT(*) FROM research_sources WHERE topic_id = ?", (tid,)
+        ).fetchone()[0]
+
+        t["segments_total"] = seg_total
+        t["segments_ready"] = seg_ready
+        t["videos_total"] = vid_total
+        t["videos_done"] = vid_done
+        t["source_count"] = src_count
+
+    conn.close()
+    return {
+        "topics": topics,
+        "total": total,
+        "page": page,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
+
+
 def get_completed_videos(topic_id=None):
     conn = get_conn()
     if topic_id:
