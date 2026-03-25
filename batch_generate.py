@@ -263,8 +263,10 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                      music_source=None, music_prompt=None,
                      voice_style=None, voice_settings=None,
                      intro_sfx_prompt=None, bg_video_id=None):
+    video_tmp = None
+    thumb_tmp = None
+    sid = segment.get("id", "?")
     try:
-        sid = segment["id"]
         topic = segment.get("series_title", "topic").lower().replace(" ", "_")
         seg_dir = os.path.join(output_dir, f"{topic}_part{sid}")
         os.makedirs(seg_dir, exist_ok=True)
