@@ -5146,13 +5146,13 @@ a { color: var(--blue); text-decoration: none; }
 .ve-c-render-orb1 {
   width: 220px; height: 220px;
   top: -10%; left: 15%;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(239, 68, 68, 0.12);
 }
 
 .ve-c-render-orb2 {
   width: 180px; height: 180px;
   bottom: -5%; right: 10%;
-  background: rgba(139, 92, 246, 0.12);
+  background: rgba(249, 115, 22, 0.1);
   animation-delay: -5s;
   animation-duration: 14s;
 }
@@ -5166,46 +5166,15 @@ a { color: var(--blue); text-decoration: none; }
   z-index: 1;
 }
 
-/* Circular progress ring */
-.ve-c-render-ring {
-  position: relative;
-  width: 120px;
-  height: 120px;
-}
-
-.ve-c-render-svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.ve-c-ring-track {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.06);
-  stroke-width: 5;
-}
-
-.ve-c-ring-fill {
-  fill: none;
-  stroke: url(#veRingGrad);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-dasharray: 327;
-  transition: stroke-dashoffset 0.6s ease;
-  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
-}
-
 .ve-c-render-pct {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
+  font-size: 48px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  letter-spacing: -0.5px;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #ef4444, #f97316, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .ve-c-render-status {
@@ -5226,10 +5195,10 @@ a { color: var(--blue); text-decoration: none; }
 
 .ve-c-render-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #818cf8, #a78bfa);
+  background: linear-gradient(90deg, #ef4444, #f97316, #fbbf24);
   border-radius: 2px;
   transition: width 0.6s ease;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
 
 .ve-c-render-cancel {

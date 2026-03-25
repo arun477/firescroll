@@ -603,20 +603,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                     <div className="ve-c-render-orb ve-c-render-orb2" />
                   </div>
                   <div className="ve-c-render-inner">
-                    <div className="ve-c-render-ring">
-                      <svg viewBox="0 0 120 120" className="ve-c-render-svg">
-                        <defs>
-                          <linearGradient id="veRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#3b82f6" />
-                            <stop offset="100%" stopColor="#a78bfa" />
-                          </linearGradient>
-                        </defs>
-                        <circle cx="60" cy="60" r="52" className="ve-c-ring-track" />
-                        <circle cx="60" cy="60" r="52" className="ve-c-ring-fill"
-                          style={{ strokeDashoffset: 327 - (327 * (activeJob.progress || 0) / 100) }} />
-                      </svg>
-                      <div className="ve-c-render-pct">{activeJob.progress}%</div>
-                    </div>
+                    <div className="ve-c-render-pct">{activeJob.progress}%</div>
                     <div className="ve-c-render-status">{activeJob.status}</div>
                     <div className="ve-c-render-bar">
                       <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%` }} />
