@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Player, PlayerRef } from "@remotion/player";
 import { AbsoluteFill, Sequence, spring, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { DynamicVideo } from "./DynamicVideo";
+import { DynamicVideo, TEMPLATE_MAP } from "./DynamicVideo";
 import type { SceneConfig } from "./types";
 
 // Expose Remotion primitives globally so agent-generated code can use them
@@ -83,8 +83,7 @@ function EnhancedVideo({ sceneConfig, customScenes }: { sceneConfig: SceneConfig
               ) : (
                 (() => {
                   // Fall back to template rendering
-                  const TEMPLATE_MAP: Record<string, React.FC<any>> = (window as any).__TEMPLATE_MAP__;
-                  const Template = TEMPLATE_MAP?.[scene.template];
+                  const Template = TEMPLATE_MAP[scene.template];
                   return Template ? <Template {...scene.props} /> : null;
                 })()
               )}

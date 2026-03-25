@@ -28,10 +28,11 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   }
 
   const [previewConfig, setPreviewConfig] = useState(null)
+  const [customCode, setCustomCode] = useState(null)
   const [chatSettings, setChatSettings] = useState({ style: 'cinematic', voice_id: '', language: '' })
   const [generating, setGenerating] = useState(false)
   const [segSearch, setSegSearch] = useState('')
-  const [showVideo, setShowVideo] = useState(false)  // toggle between preview and rendered video
+  const [showVideo, setShowVideo] = useState(false)
   const iframeRef = useRef(null)
   const iframeReady = useRef(false)
 
@@ -60,6 +61,22 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
     )
     setShowVideo(false)  // switch to preview when config changes
   }, [previewConfig])
+
+  // Send custom scene code to iframe when it changes
+  useEffect(() => {
+    if (!customCode || !iframeRef.current?.contentWindow) return
+    Object.entries(customCode).forEach(([idx, code]) => {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'CUSTOM_SCENE_CODE', payload: { sceneIndex: parseInt(idx), code } }, '*'
+      )
+    })
+    // Auto-play from start to show the new animation
+    setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'SEEK', payload: { frame: 0 } }, '*')
+      iframeRef.current?.contentWindow?.postMessage({ type: 'PLAY' }, '*')
+    }, 100)
+    setShowVideo(false)
+  }, [customCode])
 
   // Listen for iframe ready
   useEffect(() => {
@@ -127,6 +144,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             sceneConfig={previewConfig}
             settings={chatSettings}
             onSceneConfigUpdate={setPreviewConfig}
+            onCustomCodeUpdate={setCustomCode}
             onSettingsUpdate={setChatSettings}
             onGenerate={handleGenerate}
           />

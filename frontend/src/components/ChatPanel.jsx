@@ -97,7 +97,7 @@ function parseMessage(text) {
 }
 
 export default function ChatPanel({ topicId, segment, voices, languages, styles, templates,
-                                     sceneConfig, settings, onSceneConfigUpdate, onGenerate }) {
+                                     sceneConfig, settings, onSceneConfigUpdate, onCustomCodeUpdate, onGenerate }) {
   const [conversationId, setConversationId] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -159,6 +159,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
         if (data.scene_config) {
           onSceneConfigUpdate(data.scene_config)
+        }
+        if (data.custom_code && onCustomCodeUpdate) {
+          onCustomCodeUpdate(data.custom_code)
         }
 
         if (data.render_requested && onGenerate) {

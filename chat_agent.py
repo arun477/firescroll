@@ -37,7 +37,7 @@ def _key(cid, suffix):
 
 
 def _refresh_ttl(r, cid):
-    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count", "custom_code"):
         r.expire(_key(cid, suffix), CONV_TTL)
 
 
@@ -115,7 +115,7 @@ def init_conversation(cid, topic_id, segment_id, style="cinematic",
 
 def delete_conversation(cid):
     r = _get_redis()
-    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count", "custom_code"):
         r.delete(_key(cid, suffix))
 
 
@@ -209,7 +209,11 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
 6. PICKERS: Use :::voice_picker::: :::language_picker::: :::style_picker::: to show interactive UI. Don't list options as text when a picker is available.
 
-7. SCENE FORMAT: fps=30, 1080x1920 vertical. Scenes must not overlap. 3-6 scenes. Start with title_reveal or fact_card, end with cta_outro. Max 50 words per narrative scene. Total duration should be ~30s for short, ~60s for long."""
+7. SCENE FORMAT: fps=30, 1080x1920 vertical. Scenes must not overlap. 3-6 scenes. Start with title_reveal or fact_card, end with cta_outro. Max 50 words per narrative scene. Total duration should be ~30s for short, ~60s for long.
+
+8. CUSTOM ANIMATIONS: When user requests creative animations that templates can't handle (bouncing ball, particle effects, physics, spinning shapes, creative motion graphics), use write_scene_code to write React/Remotion code. The code is a JS function body receiving: React, AbsoluteFill, spring, interpolate, frame, fps, width, height. Return React.createElement() calls (NOT JSX). Code is validated server-side — if it fails, you'll see the error. Fix and retry. The user won't see failed attempts.
+   When writing custom code, tell the user: "Writing animation code..." before the first attempt. If it takes multiple tries, say "Refining the animation..." When it succeeds: "Animation ready! Check the preview."
+   Use frame-based math: frame increments each frame at 30fps. Always use width/height for responsive positioning."""
 
 
 # ── Agent tools ──
@@ -470,10 +474,84 @@ def _make_tools(cid):
         props_summary = json.dumps(list(expanded["props"].keys()))
         return f"Scene {scene_index} expanded to generic. Available props: {props_summary}. Use set_scene_prop to modify any property."
 
+    @function_tool
+    def write_scene_code(scene_index: int, code: str) -> str:
+        """Write custom React/Remotion animation code for a scene.
+        The code is a JavaScript function body that must return a React element using React.createElement().
+
+        Available in scope:
+        - React (use React.createElement, NOT JSX)
+        - AbsoluteFill — full-screen container element tag
+        - spring({frame, fps, config}) — Remotion spring physics animation
+        - interpolate(value, inputRange, outputRange) — map values between ranges
+        - useCurrentFrame() — returns current frame number
+        - useVideoConfig() — returns {fps, width, height, durationInFrames}
+        - frame (number) — current frame (0, 1, 2... at 30fps)
+        - fps (number) — 30
+        - width (number) — 1080
+        - height (number) — 1920
+
+        Example — bouncing ball:
+        var y = height/2 - 40 + Math.sin(frame / 10 * Math.PI) * 200;
+        return React.createElement(AbsoluteFill, {style: {background: '#0a0a0f'}},
+          React.createElement('div', {style: {
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #E63250, #f97316)',
+            position: 'absolute', left: width/2 - 40, top: y,
+            boxShadow: '0 0 40px rgba(230,50,80,0.6)'
+          }})
+        );
+        """
+        import requests as _req
+        remotion_url = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
+
+        try:
+            resp = _req.post(
+                f"{remotion_url}/validate-code",
+                json={"code": code, "scene_index": scene_index},
+                timeout=5,
+            )
+            result = resp.json()
+        except Exception as e:
+            return f"Error: could not reach Remotion server: {e}"
+
+        if not result.get("valid"):
+            error = result.get("error", "Unknown error")
+            phase = result.get("phase", "unknown")
+            return f"Code validation FAILED ({phase}): {error}\n\nFix the error and call write_scene_code again."
+
+        # Valid — store in Redis
+        r = _get_redis()
+        custom_key = _key(cid, "custom_code")
+        existing = r.get(custom_key)
+        custom_map = json.loads(existing) if existing else {}
+        custom_map[str(scene_index)] = code
+        r.set(custom_key, json.dumps(custom_map))
+        r.expire(custom_key, CONV_TTL)
+
+        # Ensure scene_config has a slot for this scene
+        config = get_scene_config(cid)
+        if config:
+            scenes = config.get("scenes", [])
+            if scene_index < len(scenes):
+                scenes[scene_index]["template"] = "custom_code"
+            else:
+                last_end = max((s["from"] + s["durationInFrames"] for s in scenes), default=0)
+                scenes.append({
+                    "template": "custom_code",
+                    "from": last_end,
+                    "durationInFrames": 150,
+                    "props": {},
+                })
+            config["scenes"] = scenes
+            set_scene_config(cid, config)
+
+        return f"Custom code validated and saved for scene {scene_index}. The live preview will update automatically."
+
     return [compose_scenes, update_scene, add_scene, remove_scene,
             reorder_scenes, set_style, set_voice, set_language,
             list_voices, list_languages, trigger_render, get_render_status,
-            set_scene_prop, expand_to_generic]
+            set_scene_prop, expand_to_generic, write_scene_code]
 
 
 # ── Main agent runner ──
@@ -550,7 +628,7 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
             name="Motion Director",
             instructions=system_prompt,
             tools=tools,
-            model="gpt-4o",
+            model="gpt-4.1",
         )
 
         # Build input messages

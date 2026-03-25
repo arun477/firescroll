@@ -1232,6 +1232,10 @@ def chat_poll(conversation_id: str, offset: int = 0):
 
     config = get_scene_config(conversation_id)
 
+    # Get custom code for scenes
+    custom_code_raw = r.get(_key(conversation_id, "custom_code"))
+    custom_code = json.loads(custom_code_raw) if custom_code_raw else None
+
     # Check if agent requested a render
     render_requested = r.get(_key(conversation_id, "render_requested"))
     if render_requested:
@@ -1242,6 +1246,7 @@ def chat_poll(conversation_id: str, offset: int = 0):
         "chunks": chunks,
         "total_chunks": total,
         "scene_config": config,
+        "custom_code": custom_code,
         "settings": {
             "style": state.get("style", "cinematic"),
             "voice_id": state.get("voice_id", ""),

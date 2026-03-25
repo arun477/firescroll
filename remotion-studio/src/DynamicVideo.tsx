@@ -8,7 +8,7 @@ import { SplitInfoScene } from "./scenes/SplitInfoScene";
 import { CTAOutroScene } from "./scenes/CTAOutroScene";
 import { GenericScene } from "./scenes/GenericScene";
 
-const TEMPLATE_MAP: Record<string, React.FC<any>> = {
+export const TEMPLATE_MAP: Record<string, React.FC<any>> = {
   title_reveal: TitleRevealScene,
   fact_card: FactCardScene,
   narrative: NarrativeScene,
