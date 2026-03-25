@@ -6000,7 +6000,7 @@ a { color: var(--blue); text-decoration: none; }
 
 /* Generate section */
 .ve-gen {
-  padding: 10px 0 4px;
+  padding: 10px 14px 12px;
   flex-shrink: 0;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
