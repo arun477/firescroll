@@ -429,11 +429,10 @@ a { color: var(--blue); text-decoration: none; }
   transition: opacity 0.3s ease;
 }
 
-/* Always show on touch devices, fade on desktop unless hovered */
+/* Always show on touch devices, JS-controlled on desktop */
 @media (hover: hover) {
-  .vc-bottom { opacity: 0; }
-  .vc:hover .vc-bottom,
-  .vc-bottom-show { opacity: 1; }
+  .vc-bottom { opacity: 0; pointer-events: none; }
+  .vc-bottom-show { opacity: 1; pointer-events: auto; }
 }
 
 /* ── Info ── */
@@ -1476,7 +1475,7 @@ a { color: var(--blue); text-decoration: none; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 10px;
-  flex: 1;
+  align-content: start;
   animation: fadeUp 0.35s ease;
 }
 

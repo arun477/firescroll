@@ -18,7 +18,7 @@ const CAPTION_META = {
   karaoke: { icon: Mic,  label: 'Karaoke' },
 }
 
-function isActive(s) { return !['done', 'failed', 'pending'].includes(s) }
+function isActive(s) { return !['done', 'failed'].includes(s) }
 function fmtTrack(f) { return f.replace('.mp3', '').replace(/_/g, ' ') }
 function fmtError(err) {
   if (!err) return 'Unknown error'
@@ -649,8 +649,8 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                     <div className="ve-c-render-orb ve-c-render-orb2" />
                   </div>
                   <div className="ve-c-render-inner">
-                    <div className="ve-c-render-pct">{activeJob.progress}%</div>
-                    <div className="ve-c-render-status">{activeJob.status}</div>
+                    <div className="ve-c-render-pct">{activeJob.status === 'pending' ? '⏳' : `${activeJob.progress}%`}</div>
+                    <div className="ve-c-render-status">{activeJob.status === 'pending' ? 'Queued' : activeJob.status}</div>
                     <div className="ve-c-render-bar">
                       <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%` }} />
                     </div>
