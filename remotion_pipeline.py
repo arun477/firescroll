@@ -134,13 +134,16 @@ def render_remotion_video(scene_config, job_id):
 
 
 def merge_audio_video(video_path, audio_path, output_path):
-    """Merge Remotion video (no audio) with ElevenLabs audio track."""
+    """Merge Remotion video with ElevenLabs audio track."""
     result = subprocess.run([
         "ffmpeg", "-y",
         "-i", video_path,
         "-i", audio_path,
+        "-map", "0:v:0",       # video from first input
+        "-map", "1:a:0",       # audio from second input (ElevenLabs)
         "-c:v", "copy",
         "-c:a", "aac",
+        "-b:a", "128k",
         "-shortest",
         output_path,
     ], capture_output=True, text=True, check=False)
