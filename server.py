@@ -37,9 +37,9 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
 
-# Recover any media stuck in 'processing' from a previous crash
-from db import recover_stuck_media
-recover_stuck_media()
+# Recover any jobs/media stuck in active states from a previous crash
+from db import recover_stuck_on_startup
+recover_stuck_on_startup()
 
 
 class CreateTopicRequest(BaseModel):

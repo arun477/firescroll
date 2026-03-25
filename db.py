@@ -764,13 +764,27 @@ def get_all_segment_configs(topic_id):
 init_db()
 
 
-def recover_stuck_media():
-    """Mark media stuck in 'processing' state as failed on startup."""
+def recover_stuck_on_startup():
+    """Mark orphaned jobs/media as failed on startup.
+    Only resets jobs with no celery_task_id (never dispatched to a worker)
+    or stuck in 'pending' (dispatched but worker died before picking up).
+    """
     conn = get_conn()
-    conn.execute(
+    # Recover orphaned jobs: pending with no celery task, or any status
+    # with empty celery_task_id (never reached a worker)
+    n_jobs = conn.execute(
+        "UPDATE jobs SET status = ?, error = 'Server restarted', "
+        "updated_at = ? WHERE status IN (?, ?, ?, ?, ?, ?) "
+        "AND (celery_task_id IS NULL OR celery_task_id = '')",
+        (STATUS_FAILED, _now(), *ACTIVE_STATUSES),
+    ).rowcount
+    # Recover stuck media uploads
+    n_media = conn.execute(
         "UPDATE media_library SET status = 'failed', "
         "meta = '{\"error\": \"Server restarted during processing\"}' "
         "WHERE status = 'processing'",
-    )
+    ).rowcount
     conn.commit()
     conn.close()
+    if n_jobs or n_media:
+        print(f"[Recovery] Reset {n_jobs} orphaned jobs, {n_media} stuck media")
