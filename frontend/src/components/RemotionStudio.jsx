@@ -78,22 +78,26 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
     setShowVideo(false)
   }, [customCode])
 
-  // Listen for iframe ready
+  // Listen for iframe ready — resend BOTH config AND custom code
   useEffect(() => {
     const handler = (e) => {
       if (e.data?.type === 'PLAYER_READY') {
         iframeReady.current = true
-        // Send current config if we have one
-        if (previewConfig?.scenes?.length && iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage(
-            { type: 'SCENE_CONFIG_UPDATE', payload: previewConfig }, '*'
-          )
+        const win = iframeRef.current?.contentWindow
+        if (!win) return
+        if (previewConfig?.scenes?.length) {
+          win.postMessage({ type: 'SCENE_CONFIG_UPDATE', payload: previewConfig }, '*')
+        }
+        if (customCode) {
+          Object.entries(customCode).forEach(([idx, code]) => {
+            win.postMessage({ type: 'CUSTOM_SCENE_CODE', payload: { sceneIndex: parseInt(idx), code } }, '*')
+          })
         }
       }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [previewConfig])
+  }, [previewConfig, customCode])
 
   useEffect(() => {
     const load = () => fetch(`/api/topics/${topicId}/remotion/jobs`).then(r => r.json()).then(d => setSegStatus(d.segments || {}))

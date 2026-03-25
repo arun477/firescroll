@@ -1,21 +1,10 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Code2, Film } from 'lucide-react'
 
-const TEMPLATE_COLORS = {
-  title_reveal: '#E63250',
-  fact_card: '#f97316',
-  narrative: '#3b82f6',
-  split_info: '#22c55e',
-  cta_outro: '#a855f7',
-}
-
-const TEMPLATE_NAMES = {
-  title_reveal: 'Title',
-  fact_card: 'Fact',
-  narrative: 'Narrate',
-  split_info: 'Info',
-  cta_outro: 'CTA',
-}
+const SCENE_COLORS = [
+  '#E63250', '#f97316', '#3b82f6', '#22c55e', '#a855f7', '#06b6d4',
+  '#ec4899', '#eab308', '#14b8a6', '#6366f1',
+]
 
 export default function SceneConfigCard({ config }) {
   const [expanded, setExpanded] = useState(null)
@@ -29,14 +18,18 @@ export default function SceneConfigCard({ config }) {
       <div className="vc-scene-bar">
         {config.scenes.map((s, i) => {
           const pct = (s.durationInFrames / totalFrames) * 100
-          const color = TEMPLATE_COLORS[s.template] || '#666'
+          const color = SCENE_COLORS[i % SCENE_COLORS.length]
+          const dur = Math.round(s.durationInFrames / 30)
           return (
             <div key={i} className="vc-scene-block"
               style={{ width: `${pct}%`, background: `${color}20`, borderLeft: `3px solid ${color}` }}
               onClick={() => setExpanded(expanded === i ? null : i)}
-              title={`${TEMPLATE_NAMES[s.template] || s.template} (${Math.round(s.durationInFrames / 30)}s)`}>
-              <span className="vc-scene-block-name">{TEMPLATE_NAMES[s.template] || s.template}</span>
-              <span className="vc-scene-block-dur">{Math.round(s.durationInFrames / 30)}s</span>
+              title={`Scene ${i + 1} (${dur}s)`}>
+              <span className="vc-scene-block-name" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Code2 size={9} style={{ opacity: 0.6 }} />
+                {i + 1}
+              </span>
+              <span className="vc-scene-block-dur">{dur}s</span>
             </div>
           )
         })}
@@ -44,12 +37,13 @@ export default function SceneConfigCard({ config }) {
       <div className="vc-scene-meta">{config.scenes.length} scenes · {totalSec}s total</div>
       {expanded !== null && config.scenes[expanded] && (
         <div className="vc-scene-detail">
-          <div className="vc-scene-detail-head">
-            Scene {expanded + 1}: {config.scenes[expanded].template.replace(/_/g, ' ')}
+          <div className="vc-scene-detail-head" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Code2 size={12} style={{ color: SCENE_COLORS[expanded % SCENE_COLORS.length] }} />
+            Scene {expanded + 1} · {Math.round(config.scenes[expanded].durationInFrames / 30)}s
           </div>
-          <pre className="vc-scene-detail-props">
-            {JSON.stringify(config.scenes[expanded].props, null, 2)}
-          </pre>
+          <div style={{ fontSize: 10, color: '#71717a', padding: '4px 0' }}>
+            {(config.scenes[expanded].from / 30).toFixed(1)}s – {((config.scenes[expanded].from + config.scenes[expanded].durationInFrames) / 30).toFixed(1)}s
+          </div>
         </div>
       )}
     </div>
