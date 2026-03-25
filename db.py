@@ -762,3 +762,15 @@ def get_all_segment_configs(topic_id):
 
 
 init_db()
+
+
+def recover_stuck_media():
+    """Mark media stuck in 'processing' state as failed on startup."""
+    conn = get_conn()
+    conn.execute(
+        "UPDATE media_library SET status = 'failed', "
+        "meta = '{\"error\": \"Server restarted during processing\"}' "
+        "WHERE status = 'processing'",
+    )
+    conn.commit()
+    conn.close()

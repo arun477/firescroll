@@ -1,4 +1,8 @@
 import os
+import sys
+
+# Ensure /app is on the Python path for prefork child processes
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from celery import Celery
 

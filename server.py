@@ -37,6 +37,10 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
 
+# Recover any media stuck in 'processing' from a previous crash
+from db import recover_stuck_media
+recover_stuck_media()
+
 
 class CreateTopicRequest(BaseModel):
     topic: str
@@ -742,10 +746,11 @@ def _process_uploaded_video(media_id, file_path):
         if os.path.exists(silent_path):
             os.replace(silent_path, file_path)
 
-        # Generate thumbnail
+        # Generate thumbnail — try 2s in, fall back to first frame for short videos
+        seek = "2" if duration > 3 else "0"
         subprocess.run([
             "ffmpeg", "-y", "-i", file_path,
-            "-ss", "2", "-vframes", "1",
+            "-ss", seek, "-vframes", "1",
             "-vf", "scale=480:-1:flags=lanczos",
             thumb_path,
         ], capture_output=True, check=False)
@@ -782,12 +787,12 @@ async def upload_media(file: UploadFile = File(...)):
         return {"error": f"Unsupported format. Allowed: {', '.join(ALLOWED_VIDEO_EXTS)}"}
 
     media_id = uuid.uuid4().hex[:12]
-    safe_name = file.filename.replace(" ", "_").replace("/", "_")
     filename = f"{media_id}{ext}"
     file_path = os.path.join(MEDIA_DIR, filename)
 
     # Stream to disk in chunks (handles large files without memory issues)
     total_size = 0
+    too_large = False
     chunk_size = 1024 * 1024  # 1MB chunks
     with open(file_path, "wb") as f:
         while True:
@@ -796,12 +801,15 @@ async def upload_media(file: UploadFile = File(...)):
                 break
             total_size += len(chunk)
             if total_size > MAX_UPLOAD_SIZE:
-                f.close()
-                os.remove(file_path)
-                return {"error": f"File too large. Maximum size: {MAX_UPLOAD_SIZE // (1024*1024)}MB"}
+                too_large = True
+                break
             f.write(chunk)
 
-    create_media(media_id, filename, file.filename, file_path)
+    if too_large:
+        os.remove(file_path)
+        return {"error": f"File too large. Maximum size: {MAX_UPLOAD_SIZE // (1024*1024)}MB"}
+
+    create_media(media_id, filename, file.filename or "upload", file_path)
 
     # Process in background
     threading.Thread(
