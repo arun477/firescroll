@@ -123,18 +123,21 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     // Try to load existing conversation history
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (data.messages?.length > 0) {
-        // Filter out system init messages
         const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
         setMessages(msgs)
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
       } else {
-        // New conversation — send init message
-        setMessages([])
-        sendMessageDirect(cid, '')
+        // No history — show static welcome, don't call the agent
+        setMessages([{
+          role: 'assistant',
+          content: `I'm ready to help you create a motion video for **"${segment.title}"**.\n\nDescribe what you'd like — the tone, style, specific visuals — or just say "compose scenes" and I'll propose a layout based on the segment content.`
+        }])
       }
     }).catch(() => {
-      setMessages([])
-      sendMessageDirect(cid, '')
+      setMessages([{
+        role: 'assistant',
+        content: `Ready to compose your video. Describe your vision or say "compose scenes" to get started.`
+      }])
     })
   }, [segment?.id])
 
