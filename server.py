@@ -1215,47 +1215,85 @@ def chat_send(req: ChatSendRequest):
     return {"conversation_id": req.conversation_id, "status": "thinking"}
 
 
-@app.get("/api/chat/{conversation_id}/poll")
-def chat_poll(conversation_id: str, offset: int = 0):
+@app.get("/api/chat/{conversation_id}/stream")
+async def chat_stream(conversation_id: str):
+    """SSE endpoint — streams chat events in real-time."""
     from chat_agent import (
         get_conversation_state, get_scene_config, _get_redis, _key
     )
-    r = _get_redis()
-    state = get_conversation_state(conversation_id)
-    if not state:
-        return {"status": "idle", "chunks": [], "total_chunks": 0,
-                "scene_config": None, "settings": None, "error": None}
+    from fastapi.responses import StreamingResponse
+    import asyncio
 
-    # Get new chunks since offset
-    chunks = r.lrange(_key(conversation_id, "chunks"), offset, -1)
-    total = int(r.get(_key(conversation_id, "chunk_count")) or 0)
+    async def event_generator():
+        r = _get_redis()
+        offset = 0
+        last_config_hash = ""
+        last_custom_hash = ""
 
-    config = get_scene_config(conversation_id)
+        while True:
+            state = get_conversation_state(conversation_id)
+            if not state:
+                yield f"data: {json.dumps({'type': 'idle'})}\n\n"
+                return
 
-    # Get custom code for scenes
-    custom_code_raw = r.get(_key(conversation_id, "custom_code"))
-    custom_code = json.loads(custom_code_raw) if custom_code_raw else None
+            status = state.get("status", "idle")
 
-    # Check if agent requested a render
-    render_requested = r.get(_key(conversation_id, "render_requested"))
-    if render_requested:
-        r.delete(_key(conversation_id, "render_requested"))
+            # Stream new text chunks
+            chunks = r.lrange(_key(conversation_id, "chunks"), offset, -1)
+            if chunks:
+                text = "".join(chunks)
+                offset += len(chunks)
+                yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
 
-    return {
-        "status": state.get("status", "idle"),
-        "chunks": chunks,
-        "total_chunks": total,
-        "scene_config": config,
-        "custom_code": custom_code,
-        "settings": {
-            "style": state.get("style", "cinematic"),
-            "voice_id": state.get("voice_id", ""),
-            "voice_name": state.get("voice_name", ""),
-            "language": state.get("language", ""),
+            # Stream scene config changes
+            config = get_scene_config(conversation_id)
+            config_str = json.dumps(config) if config else ""
+            if config_str and config_str != last_config_hash:
+                last_config_hash = config_str
+                yield f"data: {json.dumps({'type': 'scene_config', 'config': config})}\n\n"
+
+            # Stream custom code changes
+            custom_raw = r.get(_key(conversation_id, "custom_code"))
+            if custom_raw and custom_raw != last_custom_hash:
+                last_custom_hash = custom_raw
+                yield f"data: {json.dumps({'type': 'custom_code', 'code': json.loads(custom_raw)})}\n\n"
+
+            # Check render requested
+            render_req = r.get(_key(conversation_id, "render_requested"))
+            if render_req:
+                r.delete(_key(conversation_id, "render_requested"))
+                yield f"data: {json.dumps({'type': 'render_requested'})}\n\n"
+
+            # Stream settings
+            settings = {
+                "style": state.get("style", "cinematic"),
+                "voice_id": state.get("voice_id", ""),
+                "voice_name": state.get("voice_name", ""),
+                "language": state.get("language", ""),
+            }
+
+            # Done or error — send final event and close
+            if status == "done":
+                yield f"data: {json.dumps({'type': 'done', 'settings': settings})}\n\n"
+                return
+            elif status == "error":
+                yield f"data: {json.dumps({'type': 'error', 'settings': settings})}\n\n"
+                return
+            elif status == "idle":
+                yield f"data: {json.dumps({'type': 'idle', 'settings': settings})}\n\n"
+                return
+
+            await asyncio.sleep(0.3)  # 300ms — much faster than 1.5s polling
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # disable nginx buffering
         },
-        "render_requested": bool(render_requested),
-        "error": None,
-    }
+    )
 
 
 @app.get("/api/chat/{conversation_id}/history")

@@ -141,49 +141,62 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     })
   }, [segment?.id])
 
-  // Poll for response chunks — uses refs to avoid stale closures
+  // SSE stream — real-time events from the agent
   useEffect(() => {
     if (status !== 'thinking' || !conversationId) return
 
-    const poll = async () => {
+    const evtSource = new EventSource(`/api/chat/${conversationId}/stream`)
+
+    evtSource.onmessage = (event) => {
       try {
-        const res = await fetch(`/api/chat/${conversationId}/poll?offset=${offsetRef.current}`)
-        const data = await res.json()
+        const data = JSON.parse(event.data)
 
-        // Append new chunks
-        if (data.chunks?.length) {
-          streamRef.current += data.chunks.join('')
-          offsetRef.current = data.total_chunks
-          setStreamText(streamRef.current)
-        }
+        switch (data.type) {
+          case 'text':
+            streamRef.current += data.content
+            setStreamText(streamRef.current)
+            break
 
-        if (data.scene_config) {
-          onSceneConfigUpdate(data.scene_config)
-        }
-        if (data.custom_code && onCustomCodeUpdate) {
-          onCustomCodeUpdate(data.custom_code)
-        }
+          case 'scene_config':
+            if (data.config) onSceneConfigUpdate(data.config)
+            break
 
-        if (data.render_requested && onGenerate) {
-          onGenerate()
-        }
+          case 'custom_code':
+            if (data.code && onCustomCodeUpdate) onCustomCodeUpdate(data.code)
+            break
 
-        if (data.status === 'done' || data.status === 'error') {
-          // Finalize — move stream content into a proper message
-          if (streamRef.current) {
-            setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
-          }
-          streamRef.current = ''
-          offsetRef.current = 0
-          setStreamText('')
-          setStatus('idle')
+          case 'render_requested':
+            if (onGenerate) onGenerate()
+            break
+
+          case 'done':
+          case 'error':
+          case 'idle':
+            // Finalize — move stream into a proper message
+            if (streamRef.current) {
+              setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
+            }
+            streamRef.current = ''
+            setStreamText('')
+            setStatus('idle')
+            evtSource.close()
+            break
         }
       } catch {}
     }
 
-    pollRef.current = setInterval(poll, 1500)
-    poll() // first poll immediately
-    return () => clearInterval(pollRef.current)
+    evtSource.onerror = () => {
+      // Finalize on error
+      if (streamRef.current) {
+        setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
+      }
+      streamRef.current = ''
+      setStreamText('')
+      setStatus('idle')
+      evtSource.close()
+    }
+
+    return () => evtSource.close()
   }, [status, conversationId])
 
   // Auto-scroll
