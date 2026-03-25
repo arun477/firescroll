@@ -1,6 +1,7 @@
 import json
 import os
 import threading
+import time
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -1211,10 +1212,18 @@ def chat_send(req: ChatSendRequest):
         get_conversation_state, set_status, init_conversation, clear_chunks,
     )
 
-    # Check if already thinking
+    # Check if already thinking — with stuck-state recovery
     state = get_conversation_state(req.conversation_id)
     if state and state.get("status") == "thinking":
-        return {"error": "Agent is still thinking. Wait for completion."}
+        # If stuck for > 3 minutes, force reset (worker probably crashed)
+        from chat_agent import _get_redis, _key
+        r = _get_redis()
+        thinking_since = r.get(_key(req.conversation_id, "thinking_since"))
+        if thinking_since and (time.time() - float(thinking_since)) > 180:
+            set_status(req.conversation_id, "idle")
+            state["status"] = "idle"
+        else:
+            return {"error": "Agent is still thinking. Wait for completion."}
 
     # Initialize conversation in Redis if it doesn't exist yet
     if not state:
@@ -1228,6 +1237,12 @@ def chat_send(req: ChatSendRequest):
     # Set status BEFORE dispatching — eliminates SSE race condition
     set_status(req.conversation_id, "thinking")
     clear_chunks(req.conversation_id)
+
+    # Track when thinking started for stuck-state recovery
+    from chat_agent import _get_redis, _key
+    r = _get_redis()
+    r.set(_key(req.conversation_id, "thinking_since"), str(time.time()))
+    r.expire(_key(req.conversation_id, "thinking_since"), 300)
 
     chat_agent_task.delay(
         req.conversation_id, req.message, req.topic_id,
@@ -1253,8 +1268,16 @@ async def chat_stream(conversation_id: str):
         offset = 0
         last_config_hash = ""
         last_custom_hash = ""
+        started = time.time()
+        SSE_TIMEOUT = 180  # 3 min max — matches Celery time_limit
 
         while True:
+            # Timeout guard — prevent infinite hang if worker crashes
+            if time.time() - started > SSE_TIMEOUT:
+                from chat_agent import set_status as _set_status
+                _set_status(conversation_id, "error")
+                yield f"data: {json.dumps({'type': 'error', 'timeout': True})}\n\n"
+                return
             state = get_conversation_state(conversation_id)
             if not state:
                 yield f"data: {json.dumps({'type': 'idle'})}\n\n"
@@ -1333,6 +1356,7 @@ def chat_history(conversation_id: str):
         "messages": get_conversation_history(conversation_id),
         "scene_config": get_scene_config(conversation_id),
         "custom_code": json.loads(custom_raw) if custom_raw else None,
+        "status": state.get("status", "idle") if state else "idle",
         "settings": {
             "style": state.get("style", "cinematic") if state else "cinematic",
             "voice_id": state.get("voice_id", "") if state else "",

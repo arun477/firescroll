@@ -184,18 +184,25 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     setStreamText('')
     setStatus('idle')
 
-    // Try to load existing conversation history
+    // Load existing conversation history + recover from stuck states
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (data.messages?.length > 0) {
         const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
         setMessages(msgs)
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
         if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
+        if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
       } else {
         setMessages([{
           role: 'assistant',
           content: `I'm ready to help you create a motion video for **"${segment.title}"**.\n\nDescribe what you'd like — the tone, style, specific visuals — or just say "compose scenes" and I'll propose a layout based on the segment content.`
         }])
+      }
+
+      // If agent is still "thinking" (page refresh during active stream), reconnect SSE
+      if (data.status === 'thinking') {
+        setStatus('thinking')
+        openSSEStream(cid)
       }
     }).catch(() => {
       setMessages([{
