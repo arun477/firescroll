@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -1272,61 +1272,96 @@ def chat_send(req: ChatSendRequest):
 
 
 @app.get("/api/chat/{conversation_id}/stream")
-async def chat_stream(conversation_id: str):
-    """SSE endpoint — streams chat events in real-time."""
+async def chat_stream(conversation_id: str, request: Request):
+    """SSE endpoint — streams chat events in real-time.
+
+    Supports resume via Last-Event-ID header (chunk offset).
+    Sends heartbeats every 10s to keep proxies/browsers alive.
+    """
     from chat_agent import (
         get_conversation_state, get_scene_config, _get_redis, _key
     )
     from fastapi.responses import StreamingResponse
     import asyncio
 
+    # Resume from Last-Event-ID if client reconnects
+    last_event_id = request.headers.get("Last-Event-ID", "")
+    resume_offset = 0
+    if last_event_id:
+        try:
+            resume_offset = int(last_event_id.split(":")[1])
+        except (ValueError, IndexError):
+            pass
+
     async def event_generator():
         r = _get_redis()
-        offset = 0
+        offset = resume_offset
+        event_seq = 0
         last_config_hash = ""
         last_custom_hash = ""
         started = time.time()
-        SSE_TIMEOUT = 180  # 3 min max — matches Celery time_limit
+        last_heartbeat = time.time()
+        SSE_TIMEOUT = 180      # 3 min max — matches Celery time_limit
+        HEARTBEAT_INTERVAL = 10  # seconds between keepalive pings
+        POLL_INTERVAL = 0.1    # 100ms for smooth streaming
+
+        # Initial connection acknowledgment
+        yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'connected'})}\n\n"
 
         while True:
+            now = time.time()
+
+            # Check if client disconnected
+            if await request.is_disconnected():
+                return
+
             # Timeout guard — prevent infinite hang if worker crashes
-            if time.time() - started > SSE_TIMEOUT:
+            if now - started > SSE_TIMEOUT:
                 from chat_agent import set_status as _set_status
                 _set_status(conversation_id, "error")
                 yield f"data: {json.dumps({'type': 'error', 'timeout': True})}\n\n"
                 return
+
             state = get_conversation_state(conversation_id)
             if not state:
                 yield f"data: {json.dumps({'type': 'idle'})}\n\n"
                 return
 
             status = state.get("status", "idle")
+            emitted = False
 
             # Stream new text chunks
             chunks = r.lrange(_key(conversation_id, "chunks"), offset, -1)
             if chunks:
                 text = "".join(chunks)
                 offset += len(chunks)
-                yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+                event_seq += 1
+                yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'text', 'content': text})}\n\n"
+                emitted = True
 
             # Stream scene config changes
             config = get_scene_config(conversation_id)
             config_str = json.dumps(config) if config else ""
             if config_str and config_str != last_config_hash:
                 last_config_hash = config_str
-                yield f"data: {json.dumps({'type': 'scene_config', 'config': config})}\n\n"
+                event_seq += 1
+                yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'scene_config', 'config': config})}\n\n"
+                emitted = True
 
             # Stream custom code changes
             custom_raw = r.get(_key(conversation_id, "custom_code"))
             if custom_raw and custom_raw != last_custom_hash:
                 last_custom_hash = custom_raw
-                yield f"data: {json.dumps({'type': 'custom_code', 'code': json.loads(custom_raw)})}\n\n"
+                event_seq += 1
+                yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'custom_code', 'code': json.loads(custom_raw)})}\n\n"
+                emitted = True
 
             # Check render requested
             render_req = r.get(_key(conversation_id, "render_requested"))
             if render_req:
                 r.delete(_key(conversation_id, "render_requested"))
                 yield f"data: {json.dumps({'type': 'render_requested'})}\n\n"
+                emitted = True
 
             # Stream settings
             settings = {
@@ -1347,7 +1382,12 @@ async def chat_stream(conversation_id: str):
                 yield f"data: {json.dumps({'type': 'idle', 'settings': settings})}\n\n"
                 return
 
-            await asyncio.sleep(0.3)
+            # Heartbeat — keep connection alive through proxies/browsers
+            if not emitted and (now - last_heartbeat) >= HEARTBEAT_INTERVAL:
+                yield f": heartbeat {int(now)}\n\n"
+                last_heartbeat = now
+
+            await asyncio.sleep(POLL_INTERVAL)
 
     return StreamingResponse(
         event_generator(),

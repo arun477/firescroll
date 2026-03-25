@@ -108,38 +108,97 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const inputRef = useRef(null)
   const streamRef = useRef('')
   const evtSourceRef = useRef(null)
+  const mountedRef = useRef(true)           // guard against post-unmount state updates
+  const recoveringRef = useRef(false)        // prevent concurrent recovery attempts
+  const retryCountRef = useRef(0)            // exponential backoff counter
+  const lastEventIdRef = useRef('')          // SSE resume support
+  const retryTimerRef = useRef(null)         // backoff timer handle
+  const statusRef = useRef('idle')           // stable status ref for async callbacks
+  const isResumeRef = useRef(false)          // track if SSE is a reconnect (skip streamRef reset)
 
-  // Close any active SSE stream
+  const MAX_RETRIES = 10                     // give up after ~30s of backoff (1+2+4+8+8+8...)
+
+  // Keep statusRef in sync with state
+  useEffect(() => { statusRef.current = status }, [status])
+
+  // Close any active SSE stream + pending retry timer
   const closeSSE = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current)
+      retryTimerRef.current = null
+    }
     if (evtSourceRef.current) {
       evtSourceRef.current.close()
       evtSourceRef.current = null
     }
+    recoveringRef.current = false
   }, [])
 
   // Recover full state from history endpoint — used on SSE drop and refresh
   const recoverFromHistory = useCallback((cid) => {
+    // Prevent concurrent recovery attempts (onerror can fire multiple times)
+    if (recoveringRef.current) return
+    recoveringRef.current = true
+
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
+      if (!mountedRef.current) { recoveringRef.current = false; return }
       if (data.messages?.length) {
         setMessages(data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started')))
       }
       if (data.scene_config) onSceneConfigUpdate(data.scene_config)
       if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
       if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
-      // If agent is still working, reconnect SSE
+      // If agent is still working, reconnect SSE with backoff
       if (data.status === 'thinking') {
-        streamRef.current = ''
-        setStreamText('')
-        openSSEStream(cid)
+        if (retryCountRef.current >= MAX_RETRIES) {
+          console.warn('[ChatPanel] Max SSE retries reached, giving up')
+          setStatus('idle')
+          retryCountRef.current = 0
+          recoveringRef.current = false
+          return
+        }
+        // Don't clear streamRef — keep showing what we have during backoff
+        const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 8000)
+        retryCountRef.current++
+        retryTimerRef.current = setTimeout(() => {
+          recoveringRef.current = false
+          if (mountedRef.current) {
+            isResumeRef.current = true
+            openSSEStream(cid)
+          }
+        }, delay)
       } else {
         streamRef.current = ''
         setStreamText('')
         setStatus('idle')
+        retryCountRef.current = 0
+        recoveringRef.current = false
       }
-    }).catch(() => {
-      streamRef.current = ''
-      setStreamText('')
-      setStatus('idle')
+    }).catch((err) => {
+      console.warn('[ChatPanel] Recovery fetch failed:', err)
+      if (!mountedRef.current) { recoveringRef.current = false; return }
+      // Retry recovery with backoff if we were thinking
+      if (statusRef.current === 'thinking') {
+        if (retryCountRef.current >= MAX_RETRIES) {
+          console.warn('[ChatPanel] Max recovery retries reached, giving up')
+          setStatus('idle')
+          retryCountRef.current = 0
+          recoveringRef.current = false
+          return
+        }
+        const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 8000)
+        retryCountRef.current++
+        retryTimerRef.current = setTimeout(() => {
+          recoveringRef.current = false
+          if (mountedRef.current) recoverFromHistory(cid)
+        }, delay)
+      } else {
+        streamRef.current = ''
+        setStreamText('')
+        setStatus('idle')
+        retryCountRef.current = 0
+        recoveringRef.current = false
+      }
     })
   }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate])
 
@@ -148,12 +207,29 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     closeSSE()
     const evtSource = new EventSource(`/api/chat/${cid}/stream`)
     evtSourceRef.current = evtSource
+    const isResume = isResumeRef.current
+    isResumeRef.current = false
 
     evtSource.onmessage = (event) => {
+      if (!mountedRef.current) { evtSource.close(); return }
+      // Track event ID for resume
+      if (event.lastEventId) lastEventIdRef.current = event.lastEventId
+
       try {
         const data = JSON.parse(event.data)
 
         switch (data.type) {
+          case 'connected':
+            // Connection acknowledged — reset backoff
+            retryCountRef.current = 0
+            // On resume: server replays all chunks from offset 0, so reset
+            // streamRef to avoid stacking old + replayed text
+            if (isResume) {
+              streamRef.current = ''
+              setStreamText('')
+            }
+            break
+
           case 'text':
             streamRef.current += data.content
             setStreamText(streamRef.current)
@@ -181,16 +257,21 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
             streamRef.current = ''
             setStreamText('')
             setStatus('idle')
+            retryCountRef.current = 0
+            lastEventIdRef.current = ''
             evtSource.close()
             evtSourceRef.current = null
             break
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[ChatPanel] SSE parse error:', err, event.data?.slice?.(0, 200))
+      }
     }
 
     evtSource.onerror = () => {
       evtSource.close()
       evtSourceRef.current = null
+      if (!mountedRef.current) return
       // Don't give up — recover from history + reconnect if still thinking
       recoverFromHistory(cid)
     }
@@ -200,6 +281,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   useEffect(() => {
     if (!segment) return
     closeSSE()
+    recoveringRef.current = false
+    retryCountRef.current = 0
+    lastEventIdRef.current = ''
     const cid = `conv_${topicId}_${segment.id}`
     setConversationId(cid)
     streamRef.current = ''
@@ -235,7 +319,13 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   }, [segment?.id])
 
   // Cleanup on unmount
-  useEffect(() => () => closeSSE(), [closeSSE])
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      closeSSE()
+    }
+  }, [closeSSE])
 
   // Auto-scroll
   useEffect(() => {
@@ -243,6 +333,12 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   }, [messages, streamText])
 
   const sendMessageDirect = useCallback(async (cid, text) => {
+    // Reset recovery state — user is sending a fresh message
+    closeSSE()
+    retryCountRef.current = 0
+    lastEventIdRef.current = ''
+    isResumeRef.current = false
+
     setStatus('thinking')
     streamRef.current = ''
     setStreamText('')
@@ -260,18 +356,24 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           language: settings?.language || null,
         }),
       })
+      if (!mountedRef.current) return
       const data = await resp.json()
       if (data.error) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${data.error}` }])
         setStatus('idle')
         return
       }
       // POST succeeded — server has set status="thinking" in Redis.
       // NOW open SSE — no race condition.
       openSSEStream(cid)
-    } catch {
-      setStatus('idle')
+    } catch (err) {
+      console.warn('[ChatPanel] Send failed:', err)
+      if (mountedRef.current) {
+        setMessages(prev => [...prev, { role: 'assistant', content: '⚠ Failed to send message. Check your connection.' }])
+        setStatus('idle')
+      }
     }
-  }, [topicId, segment, settings, openSSEStream])
+  }, [topicId, segment, settings, openSSEStream, closeSSE])
 
   const sendMessage = useCallback(async (text) => {
     if (status === 'thinking' || !conversationId) return

@@ -63,11 +63,28 @@ def set_scene_config(cid, config):
     _refresh_ttl(r, cid)
 
 
-def set_status(cid, status):
+def set_status(cid, new_status):
+    """Atomically update only the status field using WATCH/MULTI for safety."""
     r = _get_redis()
+    key = _key(cid, "state")
+    # Retry loop for optimistic locking
+    for _ in range(3):
+        try:
+            with r.pipeline() as pipe:
+                pipe.watch(key)
+                raw = pipe.get(key)
+                state = json.loads(raw) if raw else {}
+                state["status"] = new_status
+                pipe.multi()
+                pipe.set(key, json.dumps(state))
+                pipe.execute()
+                return
+        except redis.WatchError:
+            continue
+    # Fallback: non-atomic write (better than losing the update entirely)
     state = get_conversation_state(cid) or {}
-    state["status"] = status
-    r.set(_key(cid, "state"), json.dumps(state))
+    state["status"] = new_status
+    r.set(key, json.dumps(state))
 
 
 def push_chunk(cid, text):
