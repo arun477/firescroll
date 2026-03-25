@@ -9311,12 +9311,29 @@ a { color: var(--blue); text-decoration: none; }
 }
 
 /* ══════════════════════════════════════════════════════
-   AI MOTION STUDIO
+   AI MOTION STUDIO (reuses ve-* classes from Studio)
    ══════════════════════════════════════════════════════ */
 
-.rs { display: flex; gap: 0; height: calc(100vh - 64px); overflow: hidden; }
+/* Motion Studio prompt textarea */
+.rs-prompt {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px; color: var(--text-primary);
+  font-family: inherit; font-size: 12px; line-height: 1.5;
+  resize: vertical; min-height: 80px;
+  transition: border-color 0.15s;
+}
+.rs-prompt:focus {
+  outline: none; border-color: var(--blue);
+  background: rgba(255,255,255,0.05);
+}
+.rs-prompt::placeholder { color: var(--text-muted); }
 
-.rs-left {
+/* END: AI Motion Studio */
+
+/* Below is dead code marker to help locate for cleanup */
+.rs-dead-placeholder-do-not-use {
   width: 320px; min-width: 320px;
   border-right: 1px solid var(--border-subtle);
   display: flex; flex-direction: column;

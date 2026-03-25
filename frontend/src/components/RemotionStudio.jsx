@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  Play, Loader2, Square, Zap, Sparkles, Globe, Volume2,
-  Search, X, ChevronDown, Film, Eye, Code,
-  Wand2, CheckCircle2, AlertCircle,
+  Play, Loader2, Square, Sparkles, Globe, Volume2,
+  Search, X, ChevronDown, ChevronRight, Film, Eye,
+  CheckCircle2, AlertCircle,
 } from 'lucide-react'
 
 function isActive(s) { return !['done', 'failed'].includes(s) }
@@ -125,9 +125,18 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
       {selectedSeg && (
         <div className="ve-left">
           <div className="ve-left-head">
-            <Wand2 size={14} style={{ color: '#a855f7' }} />
+            <svg width="14" height="14" viewBox="0 0 64 64" fill="none" style={{ flexShrink: 0 }}>
+              <defs>
+                <linearGradient id="ms-fg" x1="0%" y1="100%" x2="50%" y2="0%">
+                  <stop offset="0%" stopColor="#ef4444"/>
+                  <stop offset="50%" stopColor="#f97316"/>
+                  <stop offset="100%" stopColor="#fbbf24"/>
+                </linearGradient>
+              </defs>
+              <path d="M32 4C24 16,14 22,14 36c0,11,8,20,18,20s18-9,18-20c0-8-5-15-10-20c0,10-5,15-8,15s-5-5-2-15z" fill="url(#ms-fg)"/>
+            </svg>
             <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, fontWeight: 700, color: '#a1a1aa', flex: 1 }}>
-              AI Motion Studio
+              Motion Studio
             </span>
           </div>
 
@@ -203,28 +212,21 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
             </Section>
           )}
 
-          </div>
-
-          {/* Bottom actions — pinned */}
+          {/* Generate — inside scroll area like Studio */}
           <div className="ve-gen">
-            <button className="ve-gen-btn" style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)' }}
-              onClick={handlePreview} disabled={previewLoading || !selectedSeg}>
-              {previewLoading
-                ? <><Loader2 size={15} className="spin" /> Composing...</>
-                : <><Eye size={15} /> Preview Scenes</>}
-            </button>
-            <button className="ve-gen-btn" style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', marginTop: 4 }}
+            <button className="ve-gen-btn"
               onClick={handleGenerate} disabled={generating || !!activeJob || !selectedSeg}>
               {activeJob
                 ? <><Loader2 size={15} className="spin" /> {STATUS_META[activeJob.status]?.label || activeJob.status}</>
                 : generating
                   ? <><Loader2 size={15} className="spin" /> Starting...</>
-                  : <><Zap size={15} /> Generate Motion Video</>}
+                  : <><Play size={15} /> Generate Motion Video</>}
             </button>
             <div className="ve-gen-meta">
               {style} · {voices.find(v => v.id === voiceId)?.name || 'Default'}{language ? ` · ${languages.find(l => l.code === language)?.name || language}` : ''}
             </div>
           </div>
+          </div>{/* close ve-left-scroll */}
         </div>
       )}
 
@@ -248,12 +250,12 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
                     <div className="ve-c-render-orb ve-c-render-orb2" />
                   </div>
                   <div className="ve-c-render-inner">
-                    <div className="ve-c-render-pct" style={{ color: '#a855f7' }}>
+                    <div className="ve-c-render-pct">
                       {activeJob.status === 'pending' ? '...' : `${activeJob.progress}%`}
                     </div>
                     <div className="ve-c-render-status">{STATUS_META[activeJob.status]?.label || activeJob.status}</div>
                     <div className="ve-c-render-bar">
-                      <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%`, background: 'linear-gradient(90deg, #a855f7, #6366f1)' }} />
+                      <div className="ve-c-render-fill" style={{ width: `${activeJob.progress}%` }} />
                     </div>
                     <button className="ve-c-render-cancel" onClick={() => handleCancel(activeJob.id)}>
                       <Square size={12} /> Cancel
@@ -271,15 +273,15 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
               {!activeJob && !doneJob && (
                 <div className="ve-c-empty">
                   <div className="ve-c-empty-bg">
-                    <Wand2 size={48} strokeWidth={1} />
+                    <Film size={48} strokeWidth={1} />
                   </div>
                   <div className="ve-c-empty-title">Ready to create</div>
                   <div className="ve-c-empty-desc">
                     Describe your creative vision and let AI compose cinema-quality animated scenes.
                   </div>
-                  <button className="ve-c-empty-btn" style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', color: '#fff', border: 'none' }}
+                  <button className="ve-c-empty-btn"
                     onClick={handleGenerate} disabled={generating}>
-                    <Zap size={14} /> Generate Motion Video
+                    <Play size={14} /> Generate Motion Video
                   </button>
                 </div>
               )}
@@ -302,7 +304,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
                 <div style={{ padding: '6px 8px' }}>
                   {previewConfig.scenes?.map((s, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8 }}>
-                      <div style={{ width: 8, height: 8, minWidth: 8, borderRadius: '50%', background: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,0.4)' }} />
+                      <div style={{ width: 8, height: 8, minWidth: 8, borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 8px var(--accent-glow)' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{s.template.replace(/_/g, ' ')}</div>
                         <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{Math.round(s.from / 30)}s – {Math.round((s.from + s.durationInFrames) / 30)}s</div>
@@ -325,24 +327,25 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
         )}
       </div>
 
-      {/* ══════ RIGHT: Segments ══════ */}
+      {/* ══════ RIGHT: Segments (exact same structure as Studio) ══════ */}
       <div className="ve-right">
-        <div className="ve-seg-head">
-          <span>Segments</span>
-          <span className="ve-seg-count">{readySegs.length}</span>
-        </div>
-        {readySegs.length > 8 && (
-          <div className="ve-search" style={{ margin: '0 10px 8px' }}>
-            <Search size={12} className="ve-search-i" />
-            <input className="ve-search-in" placeholder="Search segments..."
-              value={segSearch} onChange={e => setSegSearch(e.target.value)} />
+        <div className="ve-left-head">
+          <span className="ve-left-label">Segments</span>
+          <div className="ve-left-head-actions">
+            <span className="ve-seg-count">{readySegs.length}</span>
           </div>
-        )}
+        </div>
+        <div className="ve-seg-search-wrap">
+          <Search size={13} className="ve-seg-search-icon" />
+          <input className="ve-seg-search" placeholder="Search segments..."
+            value={segSearch} onChange={e => setSegSearch(e.target.value)} />
+        </div>
         <div className="ve-seg-list">
           {filteredSegs.map(seg => {
             const sj = jobs.filter(j => j.segment_id === seg.segment_num)
+            const latest = sj[sj.length - 1]
             const done = sj.find(j => j.status === 'done')
-            const act = sj.find(j => isActive(j.status))
+            const act = latest && isActive(latest?.status)
             const sel = seg.id === selectedSeg?.id
             return (
               <div key={seg.id}
@@ -351,10 +354,13 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
                 <div className="ve-seg-n">{seg.segment_num}</div>
                 <div className="ve-seg-info">
                   <div className="ve-seg-t">{seg.title}</div>
-                  <div className="ve-seg-h">{seg.hook?.slice(0, 60)}</div>
+                  <div className="ve-seg-h">{seg.hook}</div>
                 </div>
-                {done && <CheckCircle2 size={12} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />}
-                {act && <Loader2 size={12} className="spin" style={{ color: '#a855f7', flexShrink: 0 }} />}
+                <div className="ve-seg-st">
+                  {act && <><Loader2 size={13} className="spin" /><span className="ve-seg-pct">{latest.progress}%</span></>}
+                  {!act && done && <CheckCircle2 size={14} className="c-green" />}
+                  {!act && !done && <ChevronRight size={13} className="c-muted" />}
+                </div>
               </div>
             )
           })}

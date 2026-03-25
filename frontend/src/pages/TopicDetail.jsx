@@ -98,7 +98,7 @@ export default function TopicDetail() {
             </button>
             <button className={`td-tab ${tab === 'remotion' ? 'active' : ''}`}
               onClick={() => setTab('remotion')}>
-              <Zap size={14} /> Motion Studio
+              <Flame size={14} /> Motion Studio
             </button>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/feed?topic=${topicId}`)}>
