@@ -13,9 +13,9 @@ BADGE_BG = (50, 50, 50, 200)
 HOOK_BG = (20, 120, 255, 210)
 SCRIPT_BG = (30, 30, 30, 200)
 CAPTION_TEXT = (255, 255, 255)
-TEXT_PAD_X = 28
-TEXT_PAD_Y = 14
-PILL_RADIUS = 20
+TEXT_PAD_X = 36
+TEXT_PAD_Y = 18
+PILL_RADIUS = 24
 
 
 def center_x(draw, text, font):
@@ -86,26 +86,35 @@ def _draw_title(img, segment, t):
     font = get_font("title", 72)
     title = segment["title"].upper()
     draw = ImageDraw.Draw(img)
-    tw, th = text_size(draw, title, font)
-    tx = (WIDTH - tw) // 2
 
+    max_text_w = WIDTH - TEXT_PAD_X * 2 - 80
+    lines = wrap_lines(draw, title, font, max_text_w)
+
+    line_gap = 12
     y_base = 130
+
     if t < 0.4:
         progress = ease_out_back(min(1.0, t / 0.4))
         y_offset = int((1 - progress) * 80)
         alpha = min(1.0, t / 0.2)
         a = int(255 * alpha)
         bg_a = int(TITLE_BG[3] * alpha)
-        draw_pill(draw, tx - TEXT_PAD_X, y_base + y_offset - TEXT_PAD_Y,
+    else:
+        y_offset = 0
+        alpha = 1.0
+        a = 255
+        bg_a = TITLE_BG[3]
+
+    y_cursor = y_base + y_offset
+    for line in lines:
+        tw, th = text_size(draw, line, font)
+        lx = (WIDTH - tw) // 2
+        draw_pill(draw, lx - TEXT_PAD_X, y_cursor - TEXT_PAD_Y,
                   tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2,
                   fill=(*TITLE_BG[:3], bg_a))
-        draw_bold_text(draw, title, (tx, y_base + y_offset), font,
+        draw_bold_text(draw, line, (lx, y_cursor), font,
                        fill=(*TITLE_COLOR, a), stroke=4)
-    else:
-        draw_pill(draw, tx - TEXT_PAD_X, y_base - TEXT_PAD_Y,
-                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=TITLE_BG)
-        draw_bold_text(draw, title, (tx, y_base), font,
-                       fill=TITLE_COLOR, stroke=4)
+        y_cursor += th + TEXT_PAD_Y * 2 + line_gap
 
 
 def _draw_caption_block(img, lines, t_offset, duration, font, *,
@@ -210,12 +219,18 @@ def render_thumbnail(segment):
     font_title = get_font("title", 80)
     draw = ImageDraw.Draw(img)
     title = segment["title"].upper()
-    tw, th = text_size(draw, title, font_title)
-    tx = (WIDTH - tw) // 2
-    draw_pill(draw, tx - TEXT_PAD_X, 140 - TEXT_PAD_Y,
-              tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=TITLE_BG)
-    draw_bold_text(draw, title, (tx, 140), font_title,
-                   fill=TITLE_COLOR, stroke=5)
+    max_text_w = WIDTH - TEXT_PAD_X * 2 - 80
+    title_lines = wrap_lines(draw, title, font_title, max_text_w)
+    line_gap = 12
+    y_cursor = 140
+    for line in title_lines:
+        tw, th = text_size(draw, line, font_title)
+        lx = (WIDTH - tw) // 2
+        draw_pill(draw, lx - TEXT_PAD_X, y_cursor - TEXT_PAD_Y,
+                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2, fill=TITLE_BG)
+        draw_bold_text(draw, line, (lx, y_cursor), font_title,
+                       fill=TITLE_COLOR, stroke=5)
+        y_cursor += th + TEXT_PAD_Y * 2 + line_gap
 
     font_hook = get_font("bold", 52)
     lines = wrap_lines(draw, segment["hook"], font_hook, WIDTH - 180)

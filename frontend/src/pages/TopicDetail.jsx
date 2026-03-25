@@ -622,10 +622,10 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               )}
               {!activeJob && !doneJob && (
                 <div className="ve-c-empty">
-                  <Film size={40} />
+                  <Film size={28} />
                   <p>No video yet</p>
-                  <button className="btn btn-primary btn-sm" onClick={() => handleGenerate(selectedSeg)}>
-                    <Play size={14} /> Generate
+                  <button className="ve-gen-btn" onClick={() => handleGenerate(selectedSeg)}>
+                    <Play size={15} /> Generate Segment {selectedSeg.segment_num}
                   </button>
                 </div>
               )}
