@@ -234,8 +234,8 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
                 <button onClick={async () => {
                   await fetch(`/api/remotion/jobs/${failedJob.id}`, { method: 'DELETE' })
                   onRefresh()
-                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 10, fontWeight: 600, opacity: 0.7, whiteSpace: 'nowrap' }}>
-                  Dismiss
+                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, lineHeight: 1, opacity: 0.6 }}>
+                  ✕
                 </button>
               </div>
             )}
