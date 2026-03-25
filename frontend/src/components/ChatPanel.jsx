@@ -283,8 +283,8 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   }, [conversationId, status, sendMessageDirect])
 
   const handlePickerSelect = (type, value, label) => {
-    if (type === 'voice') sendMessage(`Use voice ${label}`)
-    else if (type === 'language') sendMessage(`Set language to ${label}`)
+    if (type === 'voice') sendMessage(`Use voice ${label} (id: ${value})`)
+    else if (type === 'language') sendMessage(`Set language to ${label} (code: ${value})`)
     else if (type === 'style') sendMessage(`Use ${label} style`)
     else if (type === 'template') sendMessage(`Add a ${label} scene`)
   }
