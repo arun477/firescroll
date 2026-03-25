@@ -48,5 +48,6 @@ elevenlabs>=1.0.0
 python-multipart>=0.0.6
 websockets==16.0
 celery[redis]==5.4.0
+openai-agents>=0.13.0
 redis==5.2.1
 yarl==1.23.0

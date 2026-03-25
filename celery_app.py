@@ -36,3 +36,13 @@ def remotion_generate_task(self, segment, output_dir, job_id, **kwargs):
     update_remotion_job(job_id, celery_task_id=self.request.id)
     from remotion_pipeline import run_remotion_pipeline
     return run_remotion_pipeline(segment, job_id, output_dir, **kwargs)
+
+
+@celery.task(name="firescroll.chat_agent", bind=True,
+             max_retries=0, reject_on_worker_lost=True,
+             soft_time_limit=120, time_limit=150)
+def chat_agent_task(self, conversation_id, user_message, topic_id,
+                    segment_id=None, **kwargs):
+    from chat_agent import run_chat_agent
+    return run_chat_agent(conversation_id, user_message, topic_id,
+                          segment_id, **kwargs)

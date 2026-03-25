@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Play, Loader2, Square, Sparkles, Globe, Volume2,
-  Search, X, ChevronDown, ChevronRight, Film, Eye,
+  Loader2, Square, Search, ChevronRight, Film,
   CheckCircle2, AlertCircle,
 } from 'lucide-react'
+import ChatPanel from './ChatPanel'
 
 function isActive(s) { return !['done', 'failed'].includes(s) }
 
@@ -12,27 +12,13 @@ const STATUS_META = {
   rendering: 'Rendering Video', encoding: 'Merging Audio', done: 'Complete', failed: 'Failed',
 }
 
-function Section({ icon: Icon, title, value, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div className="ve-sec">
-      <button className="ve-sec-head" onClick={() => setOpen(!open)}>
-        <Icon size={13} />
-        <span className="ve-sec-title">{title}</span>
-        <span className="ve-sec-val">{value}</span>
-        <ChevronDown size={13} className={`ve-sec-chev ${open ? 've-sec-chev-open' : ''}`} />
-      </button>
-      {open && <div className="ve-sec-body">{children}</div>}
-    </div>
-  )
-}
-
 export default function RemotionStudio({ topicId, topic, segments, onRefresh, searchParams, setSearchParams }) {
   const [styles, setStyles] = useState([])
   const [voices, setVoices] = useState([])
   const [languages, setLanguages] = useState([])
-  const [segStatus, setSegStatus] = useState({})  // {segmentNum: {active, done, failed}}
-  const [voicesLoading, setVoicesLoading] = useState(false)
+  const [templates, setTemplates] = useState([])
+  const [segStatus, setSegStatus] = useState({})
+
   const selectedSegId = searchParams?.get('seg') || null
   const setSelectedSegId = (id) => {
     const p = Object.fromEntries(searchParams.entries())
@@ -40,14 +26,9 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
     p.tab = 'remotion'
     setSearchParams(p)
   }
-  const [prompt, setPrompt] = useState('')
-  const [style, setStyle] = useState('cinematic')
-  const [voiceId, setVoiceId] = useState('')
-  const [language, setLanguage] = useState(null)
-  const [voiceSearch, setVoiceSearch] = useState('')
-  const [langSearch, setLangSearch] = useState('')
+
   const [previewConfig, setPreviewConfig] = useState(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
+  const [chatSettings, setChatSettings] = useState({ style: 'cinematic', voice_id: '', language: '' })
   const [generating, setGenerating] = useState(false)
   const [segSearch, setSegSearch] = useState('')
 
@@ -59,10 +40,8 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
 
   useEffect(() => {
     fetch('/api/remotion/styles').then(r => r.json()).then(d => setStyles(d.styles || []))
-    setVoicesLoading(true)
-    fetch('/api/voices/elevenlabs').then(r => r.json()).then(d => {
-      setVoices(d.voices || []); setVoicesLoading(false)
-    }).catch(() => setVoicesLoading(false))
+    fetch('/api/remotion/templates').then(r => r.json()).then(d => setTemplates(d.templates || []))
+    fetch('/api/voices/elevenlabs').then(r => r.json()).then(d => setVoices(d.voices || [])).catch(() => {})
     fetch('/api/languages').then(r => r.json()).then(d => setLanguages(d || []))
   }, [])
 
@@ -76,34 +55,23 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
     const hasActive = Object.values(segStatus).some(s => s?.active)
     const iv = setInterval(load, hasActive ? 2500 : 8000)
     return () => clearInterval(iv)
-  }, [topicId, Object.values(segStatus).some(s => s?.active)])
+  }, [topicId])
 
   const ss = selectedSeg ? (segStatus[selectedSeg.segment_num] || {}) : {}
   const activeJob = ss.active
   const doneJob = ss.done
   const failedJob = !activeJob ? ss.failed : null
 
-  const handlePreview = async () => {
-    if (!selectedSeg) return
-    setPreviewLoading(true)
-    try {
-      const res = await fetch(`/api/topics/${topicId}/remotion/preview-config`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_prompt: prompt, style, segment_id: selectedSeg.id }),
-      })
-      setPreviewConfig((await res.json()).scene_config || null)
-    } catch { setPreviewConfig(null) }
-    setPreviewLoading(false)
-  }
-
   const handleGenerate = async () => {
-    if (!selectedSeg) return
+    if (!selectedSeg || generating) return
     setGenerating(true)
     await fetch(`/api/topics/${topicId}/remotion/generate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_prompt: prompt, style, voice_id: voiceId || null,
-        language: language || null, segment_ids: [selectedSeg.segment_num],
+        user_prompt: '', style: chatSettings.style,
+        voice_id: chatSettings.voice_id || null,
+        language: chatSettings.language || null,
+        segment_ids: [selectedSeg.segment_num],
       }),
     })
     setGenerating(false)
@@ -117,122 +85,26 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   return (
     <div className="ve">
 
-      {/* ══════ LEFT — exact same structure as Studio ══════ */}
+      {/* ══════ LEFT — AI Chat Agent ══════ */}
       {selectedSeg && (
         <div className="ve-left">
-          <div className="ve-left-head">
-            <svg width="14" height="14" viewBox="0 0 64 64" fill="none" style={{ flexShrink: 0 }}>
-              <defs><linearGradient id="ms" x1="0%" y1="100%" x2="50%" y2="0%">
-                <stop offset="0%" stopColor="#ef4444"/><stop offset="50%" stopColor="#f97316"/><stop offset="100%" stopColor="#fbbf24"/>
-              </linearGradient></defs>
-              <path d="M32 4C24 16,14 22,14 36c0,11,8,20,18,20s18-9,18-20c0-8-5-15-10-20c0,10-5,15-8,15s-5-5-2-15z" fill="url(#ms)"/>
-            </svg>
-            <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, fontWeight: 700, color: '#a1a1aa', flex: 1 }}>
-              Motion Studio
-            </span>
-          </div>
-
-          <div className="ve-left-scroll">
-
-          {/* ── Creative Direction ── */}
-          <Section icon={Sparkles} title="Creative Direction" defaultOpen
-            value={prompt ? prompt.slice(0, 20) + '...' : ''}>
-            <textarea className="rs-prompt" rows={4} value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder="e.g. 'Dramatic opening with a big stat, then animated cards breaking down the science, end with a powerful CTA'" />
-          </Section>
-
-          {/* ── Style ── */}
-          <Section icon={Film} title="Style" value={styles.find(s => s.id === style)?.name || style}>
-            <div className="ve-presets">
-              <div className="ve-presets-row">
-                {styles.map(s => (
-                  <button key={s.id} className={`ve-preset ${style === s.id ? 've-preset-on' : ''}`}
-                    onClick={() => setStyle(s.id)} title={s.description}>
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          {/* ── Voice ── */}
-          <Section icon={Volume2} title="Voice"
-            value={voices.find(v => v.id === voiceId)?.name || 'Default'}>
-            <div className="ve-search">
-              <Search size={12} className="ve-search-i" />
-              <input className="ve-search-in" placeholder={`Search ${voices.length} voices...`}
-                value={voiceSearch} onChange={e => setVoiceSearch(e.target.value)} />
-              {voiceSearch && <button className="ve-search-x" onClick={() => setVoiceSearch('')}><X size={10} /></button>}
-            </div>
-            <div className="ve-voices">
-              {voicesLoading ? (
-                <div className="ve-voices-load"><Loader2 size={14} className="spin" /> Loading...</div>
-              ) : (<>
-                <button className={`ve-vc ${!voiceId ? 've-vc-on' : ''}`} onClick={() => setVoiceId('')}>
-                  <span className="ve-vc-name">Default</span>
-                </button>
-                {voices.filter(v => !voiceSearch || v.name.toLowerCase().includes(voiceSearch.toLowerCase())).map(v => (
-                  <button key={v.id} className={`ve-vc ${voiceId === v.id ? 've-vc-on' : ''}`}
-                    onClick={() => setVoiceId(v.id)}>
-                    <span className="ve-vc-name">{v.name}</span>
-                  </button>
-                ))}
-              </>)}
-            </div>
-          </Section>
-
-          {/* ── Language ── */}
-          {languages.length > 0 && (
-          <Section icon={Globe} title="Language"
-            value={language ? languages.find(l => l.code === language)?.name || language : 'English (Original)'}>
-            <div className="ve-search">
-              <Search size={12} className="ve-search-i" />
-              <input className="ve-search-in" placeholder={`Search ${languages.length} languages...`}
-                value={langSearch} onChange={e => setLangSearch(e.target.value)} />
-              {langSearch && <button className="ve-search-x" onClick={() => setLangSearch('')}><X size={10} /></button>}
-            </div>
-            <div className="ve-voices">
-              <button className={`ve-vc ${!language ? 've-vc-on' : ''}`} onClick={() => setLanguage(null)}>
-                <span className="ve-vc-name">English (Original)</span>
-              </button>
-              {languages.filter(l => l.code !== 'en')
-                .filter(l => !langSearch || l.name.toLowerCase().includes(langSearch.toLowerCase()))
-                .map(l => (
-                <button key={l.code} className={`ve-vc ${language === l.code ? 've-vc-on' : ''}`}
-                  onClick={() => setLanguage(l.code)}>
-                  <span className="ve-vc-name">{l.name}</span>
-                </button>
-              ))}
-            </div>
-          </Section>
-          )}
-          </div>
-
-          {/* ── Generate — pinned at bottom, outside scroll (same as Studio) ── */}
-          <div className="ve-gen">
-            <button className="ve-gen-btn"
-              onClick={handleGenerate} disabled={generating || !!activeJob || !selectedSeg}>
-              {activeJob
-                ? <><Loader2 size={15} className="spin" /> {STATUS_META[activeJob.status] || activeJob.status}</>
-                : generating
-                  ? <><Loader2 size={15} className="spin" /> Starting...</>
-                  : <><Play size={15} /> Generate Segment {selectedSeg.segment_num}</>}
-            </button>
-            <div className="ve-gen-meta">
-              {style} · {voices.find(v => v.id === voiceId)?.name || 'Default'}{language ? ` · ${languages.find(l => l.code === language)?.name || language}` : ''}
-            </div>
-            {failedJob && (
-              <div className="ve-gen-error">
-                <AlertCircle size={11} />
-                {failedJob.error?.slice(0, 120) || 'Generation failed'}
-              </div>
-            )}
-          </div>
+          <ChatPanel
+            topicId={topicId}
+            segment={selectedSeg}
+            voices={voices}
+            languages={languages}
+            styles={styles}
+            templates={templates}
+            sceneConfig={previewConfig}
+            settings={chatSettings}
+            onSceneConfigUpdate={setPreviewConfig}
+            onSettingsUpdate={setChatSettings}
+            onGenerate={handleGenerate}
+          />
         </div>
       )}
 
-      {/* ══════ CENTER — exact same structure as Studio ══════ */}
+      {/* ══════ CENTER ══════ */}
       <div className="ve-center">
         {selectedSeg && (
           <>
@@ -278,46 +150,27 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
                   <Film size={48} strokeWidth={1} style={{ opacity: 0.2 }} />
                   <div className="ve-c-empty-title">Ready to create</div>
                   <div className="ve-c-empty-desc">
-                    Describe your creative vision and let AI compose cinema-quality animated scenes.
-                  </div>
-                  <button className="ve-c-empty-btn"
-                    onClick={handleGenerate} disabled={generating}>
-                    <Play size={14} /> Generate Segment {selectedSeg.segment_num}
-                  </button>
-                  <div className="ve-c-empty-meta">
-                    {style} · {voices.find(v => v.id === voiceId)?.name || 'Default'}
+                    Chat with the Motion Director to compose your video scenes.
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Scene config preview (when Preview Scenes clicked) */}
-            {previewConfig && !activeJob && (
-              <div className="ve-c-script" style={{ maxHeight: 200 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Sparkles size={11} /> AI Scene Composition
-                  <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                    onClick={() => setPreviewConfig(null)}><X size={12} /></button>
-                </div>
-                {previewConfig.scenes?.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 11, color: 'var(--text-secondary)' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-                    <span style={{ flex: 1, textTransform: 'capitalize' }}>{s.template.replace(/_/g, ' ')}</span>
-                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{Math.round(s.durationInFrames / 30)}s</span>
-                  </div>
-                ))}
+            {failedJob && (
+              <div style={{ margin: '0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', fontSize: 11, display: 'flex', gap: 8 }}>
+                <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{failedJob.error?.slice(0, 150) || 'Generation failed'}</span>
               </div>
             )}
 
             <div className="ve-c-script">
               <div className="ve-c-script-text">{selectedSeg.script}</div>
-              <div className="ve-c-script-cue">{selectedSeg.visual_cue}</div>
             </div>
           </>
         )}
       </div>
 
-      {/* ══════ RIGHT — exact same structure as Studio ══════ */}
+      {/* ══════ RIGHT — Segments ══════ */}
       <div className="ve-right">
         <div className="ve-left-head">
           <span className="ve-left-label">Segments</span>

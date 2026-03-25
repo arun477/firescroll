@@ -1179,3 +1179,94 @@ def remotion_preview_config(topic_id: str, req: RemotionPreviewRequest):
 
     config = generate_scene_config(seg_data, req.user_prompt, req.style, est_duration)
     return {"scene_config": config, "estimated_duration": est_duration}
+
+
+# ══════════════════════════════════════════════════════
+# CHAT AGENT (AI-driven Motion Director)
+# ══════════════════════════════════════════════════════
+
+class ChatSendRequest(BaseModel):
+    conversation_id: str
+    message: str = ""
+    topic_id: str
+    segment_id: Optional[str] = None
+    style: Optional[str] = None
+    voice_id: Optional[str] = None
+    language: Optional[str] = None
+
+
+@app.post("/api/chat/send")
+def chat_send(req: ChatSendRequest):
+    from celery_app import chat_agent_task
+    from chat_agent import get_conversation_state, set_status
+
+    # Check if already thinking
+    state = get_conversation_state(req.conversation_id)
+    if state and state.get("status") == "thinking":
+        return {"error": "Agent is still thinking. Wait for completion."}
+
+    chat_agent_task.delay(
+        req.conversation_id, req.message, req.topic_id,
+        segment_id=req.segment_id,
+        style=req.style,
+        voice_id=req.voice_id,
+        language=req.language,
+    )
+    return {"conversation_id": req.conversation_id, "status": "thinking"}
+
+
+@app.get("/api/chat/{conversation_id}/poll")
+def chat_poll(conversation_id: str, offset: int = 0):
+    from chat_agent import (
+        get_conversation_state, get_scene_config, _get_redis, _key
+    )
+    r = _get_redis()
+    state = get_conversation_state(conversation_id)
+    if not state:
+        return {"status": "idle", "chunks": [], "total_chunks": 0,
+                "scene_config": None, "settings": None, "error": None}
+
+    # Get new chunks since offset
+    chunks = r.lrange(_key(conversation_id, "chunks"), offset, -1)
+    total = int(r.get(_key(conversation_id, "chunk_count")) or 0)
+
+    config = get_scene_config(conversation_id)
+
+    return {
+        "status": state.get("status", "idle"),
+        "chunks": chunks,
+        "total_chunks": total,
+        "scene_config": config,
+        "settings": {
+            "style": state.get("style", "cinematic"),
+            "voice_id": state.get("voice_id", ""),
+            "voice_name": state.get("voice_name", ""),
+            "language": state.get("language", ""),
+        },
+        "error": None,
+    }
+
+
+@app.get("/api/chat/{conversation_id}/history")
+def chat_history(conversation_id: str):
+    from chat_agent import (
+        get_conversation_history, get_scene_config, get_conversation_state
+    )
+    state = get_conversation_state(conversation_id)
+    return {
+        "messages": get_conversation_history(conversation_id),
+        "scene_config": get_scene_config(conversation_id),
+        "settings": {
+            "style": state.get("style", "cinematic") if state else "cinematic",
+            "voice_id": state.get("voice_id", "") if state else "",
+            "voice_name": state.get("voice_name", "") if state else "",
+            "language": state.get("language", "") if state else "",
+        },
+    }
+
+
+@app.delete("/api/chat/{conversation_id}")
+def chat_delete(conversation_id: str):
+    from chat_agent import delete_conversation
+    delete_conversation(conversation_id)
+    return {"status": "deleted"}
