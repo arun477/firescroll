@@ -194,8 +194,13 @@ def _make_tools(cid):
     from agents import function_tool
 
     @function_tool
-    def compose_scenes(scene_config: dict) -> str:
-        """Replace the entire scene composition. Use when proposing a full video layout."""
+    def compose_scenes(scene_config_json: str) -> str:
+        """Replace the entire scene composition. Pass the full scene config as a JSON string.
+        Format: {"fps":30,"width":1080,"height":1920,"scenes":[{"template":"...","from":0,"durationInFrames":120,"props":{...}}]}"""
+        try:
+            scene_config = json.loads(scene_config_json)
+        except (json.JSONDecodeError, TypeError):
+            return "Error: invalid JSON. Pass a valid scene config JSON string."
         if "scenes" not in scene_config or not scene_config["scenes"]:
             return "Error: scene_config must have a non-empty 'scenes' array."
         scene_config.setdefault("fps", 30)
@@ -207,30 +212,39 @@ def _make_tools(cid):
         return f"Scene config updated: {n} scenes, {total_s:.1f}s total. Include :::scene_config::: in your response to show it."
 
     @function_tool
-    def update_scene(scene_index: int, updates: dict) -> str:
-        """Update a specific scene's properties. Pass only the fields to change."""
+    def update_scene(scene_index: int, updates_json: str) -> str:
+        """Update a specific scene's properties. Pass updates as JSON string, e.g. '{"props":{"title":"New Title"}}'"""
+        try:
+            updates = json.loads(updates_json)
+        except (json.JSONDecodeError, TypeError):
+            return "Error: invalid JSON for updates."
         config = get_scene_config(cid)
         if not config or scene_index >= len(config.get("scenes", [])):
             return f"Error: scene index {scene_index} out of range."
-        config["scenes"][scene_index].update(updates)
+        scene = config["scenes"][scene_index]
+        if "props" in updates and "props" in scene:
+            scene["props"].update(updates.pop("props"))
+        scene.update(updates)
         set_scene_config(cid, config)
         return f"Scene {scene_index} updated. Include :::scene_config::: to show changes."
 
     @function_tool
-    def add_scene(position: int, template: str, duration_frames: int, props: dict) -> str:
-        """Insert a new scene at the given position (0-indexed)."""
+    def add_scene(position: int, template: str, duration_frames: int, props_json: str) -> str:
+        """Insert a new scene. props_json is a JSON string of the template props."""
         if template not in TEMPLATES:
             return f"Error: unknown template '{template}'. Available: {list(TEMPLATES.keys())}"
+        try:
+            props = json.loads(props_json)
+        except (json.JSONDecodeError, TypeError):
+            return "Error: invalid JSON for props."
         config = get_scene_config(cid) or {"fps": 30, "width": 1080, "height": 1920, "scenes": []}
         scenes = config["scenes"]
-        # Calculate 'from' based on position
         if position <= 0:
             start = 0
         elif position >= len(scenes):
             start = scenes[-1]["from"] + scenes[-1]["durationInFrames"] if scenes else 0
         else:
             start = scenes[position]["from"]
-            # Shift subsequent scenes forward
             for s in scenes[position:]:
                 s["from"] += duration_frames
         new_scene = {"template": template, "from": start,
@@ -254,8 +268,12 @@ def _make_tools(cid):
         return f"Removed scene {scene_index} ({removed['template']}). Include :::scene_config::: to show."
 
     @function_tool
-    def reorder_scenes(new_order: list) -> str:
-        """Reorder scenes. Provide list of current indices in desired order, e.g. [2,0,1,3]."""
+    def reorder_scenes(new_order_json: str) -> str:
+        """Reorder scenes. Pass JSON array of indices in desired order, e.g. '[2,0,1,3]'."""
+        try:
+            new_order = json.loads(new_order_json)
+        except (json.JSONDecodeError, TypeError):
+            return "Error: invalid JSON. Pass a JSON array of indices."
         config = get_scene_config(cid)
         if not config:
             return "Error: no scene config exists."
