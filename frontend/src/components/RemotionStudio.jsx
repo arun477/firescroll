@@ -148,7 +148,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             <div className="ve-c-preview" style={{ position: 'relative' }}>
               {/* Live Remotion Player Preview */}
               {previewConfig?.scenes?.length > 0 && !showVideo && (
-                <iframe ref={iframeRef} src="/remotion/preview"
+                <iframe ref={iframeRef} src="/api/preview"
                   style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12 }}
                   allow="autoplay" />
               )}
