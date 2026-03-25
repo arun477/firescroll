@@ -1033,11 +1033,16 @@ def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
     from celery_app import remotion_generate_task
     from db import create_remotion_job, update_remotion_job
 
-    # Pull pre-composed scene config from chat agent if conversation_id given
+    # Pull pre-composed scene config + custom code from chat agent
     pre_scene_config = None
+    pre_custom_code = None
     if req.conversation_id:
-        from chat_agent import get_scene_config as get_chat_scene_config
+        from chat_agent import get_scene_config as get_chat_scene_config, _get_redis, _key
         pre_scene_config = get_chat_scene_config(req.conversation_id)
+        r = _get_redis()
+        custom_raw = r.get(_key(req.conversation_id, "custom_code"))
+        if custom_raw:
+            pre_custom_code = json.loads(custom_raw)
 
     segments = get_segments_for_topic(topic_id)
     gen_data = _segments_to_gen_data(topic, segments)
@@ -1067,6 +1072,7 @@ def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
                 voice_settings=req.voice_settings,
                 music_track=req.music_track,
                 scene_config=pre_scene_config,
+                custom_code=pre_custom_code,
             )
             update_remotion_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)

@@ -86,6 +86,7 @@ app.post("/render", async (req, res) => {
       });
     }
     const sceneConfig = parsed.data;
+    const customCode = req.body.custom_code || {};
 
     // Compute total frames
     let totalFrames = 0;
@@ -95,14 +96,17 @@ app.post("/render", async (req, res) => {
     }
 
     const outputPath = path.join(OUTPUT_DIR, `remotion_${jobId}.mp4`);
-    console.log(`[Render] Starting: ${jobId} (${totalFrames} frames)`);
+    const hasCustom = Object.keys(customCode).length > 0;
+    console.log(`[Render] Starting: ${jobId} (${totalFrames} frames${hasCustom ? `, ${Object.keys(customCode).length} custom scenes` : ""})`);
 
     const serveUrl = await getBundled();
+
+    const inputProps = { sceneConfig, customCode };
 
     const composition = await selectComposition({
       serveUrl,
       id: "DynamicVideo",
-      inputProps: { sceneConfig },
+      inputProps,
     });
 
     let cancelled = false;
@@ -120,7 +124,7 @@ app.post("/render", async (req, res) => {
       serveUrl,
       codec: "h264",
       outputLocation: outputPath,
-      inputProps: { sceneConfig },
+      inputProps,
       chromiumOptions: {
         args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
       },

@@ -113,15 +113,16 @@ def generate_scene_config(segment, user_prompt, style, audio_duration):
     return config
 
 
-def render_remotion_video(scene_config, job_id):
+def render_remotion_video(scene_config, job_id, custom_code=None):
     """POST scene config to Remotion render server, return MP4 path."""
     url = f"{REMOTION_API_URL}/render"
     print(f"  [Remotion] Sending render request: {job_id}")
 
-    resp = requests.post(url, json={
-        "job_id": job_id,
-        "scene_config": scene_config,
-    }, timeout=600)
+    body = {"job_id": job_id, "scene_config": scene_config}
+    if custom_code:
+        body["custom_code"] = custom_code
+
+    resp = requests.post(url, json=body, timeout=600)
 
     if resp.status_code != 200:
         raise RuntimeError(f"Remotion render failed: {resp.text[:500]}")
@@ -156,11 +157,14 @@ def run_remotion_pipeline(segment, job_id, output_dir,
                           voice_provider=None, voice_id=None,
                           language=None, voice_style=None,
                           voice_settings=None, music_track=None,
-                          music_source=None, scene_config=None):
+                          music_source=None, scene_config=None,
+                          custom_code=None):
     """Full Remotion pipeline: audio → scene config → render → merge.
 
     If scene_config is provided (e.g. from Motion Director), Phase 2 is
     skipped and the pre-composed config is used directly.
+    If custom_code is provided, it's passed to the Remotion renderer
+    for code-based scenes (template: "custom_code").
     """
     from db import update_remotion_job
 
@@ -196,7 +200,7 @@ def run_remotion_pipeline(segment, job_id, output_dir,
         # Phase 3: Remotion Render
         update_remotion_job(job_id, status="rendering", progress=40)
         print(f"  [Remotion Seg {sid}] Rendering...")
-        video_path = render_remotion_video(scene_config, job_id)
+        video_path = render_remotion_video(scene_config, job_id, custom_code=custom_code)
         update_remotion_job(job_id, video_path=video_path, progress=85)
 
         # Phase 4: Merge audio + video

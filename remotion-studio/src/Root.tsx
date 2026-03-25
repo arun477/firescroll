@@ -53,7 +53,7 @@ export const RemotionRoot: React.FC = () => {
         fps={DEFAULT_CONFIG.fps}
         width={DEFAULT_CONFIG.width}
         height={DEFAULT_CONFIG.height}
-        defaultProps={{ sceneConfig: DEFAULT_CONFIG }}
+        defaultProps={{ sceneConfig: DEFAULT_CONFIG, customCode: {} as Record<string, string> }}
         calculateMetadata={({ props }) => {
           const config = props.sceneConfig;
           return {
