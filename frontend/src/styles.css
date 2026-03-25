@@ -4757,10 +4757,124 @@ a { color: var(--blue); text-decoration: none; }
   color: #e4e4e7 !important;
 }
 
+/* Segment search */
+.ve-seg-search-wrap {
+  position: relative;
+  padding: 0 10px 8px;
+  flex-shrink: 0;
+}
+
+.ve-seg-search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(calc(-50% - 4px));
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.ve-seg-search {
+  width: 100%;
+  padding: 7px 10px 7px 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ve-seg-search:focus {
+  border-color: rgba(255,255,255,0.12);
+}
+
+.ve-seg-search::placeholder {
+  color: var(--text-muted);
+}
+
+/* Segment count badge */
+.ve-seg-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* Segment pagination */
+.ve-seg-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 10px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.ve-seg-pager-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.ve-seg-pager-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.ve-seg-pager-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ve-seg-pager-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .ve-seg-list {
   flex: 1;
   overflow-y: auto;
   padding: 6px;
+}
+
+/* Preview nav buttons */
+.ve-c-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.1s;
+}
+
+.ve-c-nav-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.ve-c-nav-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
 }
 
 .ve-seg {
@@ -5266,7 +5380,9 @@ a { color: var(--blue); text-decoration: none; }
 
 .ve-right {
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 0;
 }
 
@@ -5870,43 +5986,104 @@ a { color: var(--blue); text-decoration: none; }
 
 /* old inline media styles removed — replaced by ml-drawer */
 
-/* ─── Background Video Picker Button ─── */
+/* ─── Background Video Picker ─── */
 
-.ve-bg-pick {
+.ve-bg-section {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.ve-bg-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 8px;
 }
 
-.ve-bg-pick-label {
+.ve-bg-label {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
 }
 
-.ve-bg-pick-btn {
+.ve-bg-change {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.1s;
+}
+.ve-bg-change:hover { color: var(--text); }
+
+.ve-bg-card {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 8px 5px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  font-family: inherit;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
   cursor: pointer;
-  transition: all 0.1s;
-  max-width: 180px;
+  transition: all 0.15s;
+}
+.ve-bg-card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.ve-bg-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.ve-bg-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ve-bg-thumb-stock {
+  background: rgba(255,255,255,0.06);
+}
+
+.ve-bg-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ve-bg-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.ve-bg-pick-btn:hover { background: rgba(255,255,255,0.07); }
+
+.ve-bg-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.ve-bg-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
 
 /* ═══ MEDIA LIBRARY DRAWER ═══ */
 

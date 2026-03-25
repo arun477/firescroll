@@ -4,7 +4,7 @@ import {
   Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
   BookOpen, Video, Music, Volume2, ChevronDown, Loader2,
-  Eye, Sparkles, X, Square, Search, Palette, ChevronRight, Zap, Download,
+  Eye, Sparkles, X, Square, Search, Palette, ChevronLeft, ChevronRight, Zap, Download,
 } from 'lucide-react'
 import ResearchPanel from '../components/ResearchPanel'
 
@@ -150,9 +150,22 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [voiceId, setVoiceId] = useState('')
   const [music, setMusic] = useState('')
   const [segSettings, setSegSettings] = useState(initialConfigs || {})
+  const [segSearch, setSegSearch] = useState('')
+  const [segPage, setSegPage] = useState(1)
+  const segPerPage = 8
 
   const readySegs = segments.filter(s => s.status === 'ready')
+  const filteredSegs = segSearch
+    ? readySegs.filter(s =>
+        s.title?.toLowerCase().includes(segSearch.toLowerCase()) ||
+        s.hook?.toLowerCase().includes(segSearch.toLowerCase()))
+    : readySegs
+  const segTotalPages = Math.max(1, Math.ceil(filteredSegs.length / segPerPage))
+  const pagedSegs = filteredSegs.slice((segPage - 1) * segPerPage, segPage * segPerPage)
   const selectedSeg = readySegs.find(s => s.id === selectedSegId) || readySegs[0] || null
+  const selectedSegIdx = readySegs.findIndex(s => s.id === selectedSeg?.id)
+  const prevSeg = selectedSegIdx > 0 ? readySegs[selectedSegIdx - 1] : null
+  const nextSeg = selectedSegIdx < readySegs.length - 1 ? readySegs[selectedSegIdx + 1] : null
 
   const jobMap = {}
   for (const j of jobs) {
@@ -478,18 +491,46 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             </div>
 
             {/* Background video (for video/split modes) */}
-            {(mode === 'video' || mode === 'split') && (
-              <div className="ve-bg-pick">
-                <span className="ve-bg-pick-label">Background</span>
-                <button className="ve-bg-pick-btn"
-                  onClick={() => setMediaDrawerOpen(true)}>
-                  {settings.bg_video_id
-                    ? <><Film size={11} /> {mediaLibrary.find(m => m.id === settings.bg_video_id)?.original_name || 'Custom video'}</>
-                    : <><Shuffle size={11} /> Random stock</>}
-                  <ChevronRight size={12} />
-                </button>
-              </div>
-            )}
+            {(mode === 'video' || mode === 'split') && (() => {
+              const selMedia = settings.bg_video_id
+                ? mediaLibrary.find(m => m.id === settings.bg_video_id) : null
+              return (
+                <div className="ve-bg-section">
+                  <div className="ve-bg-header">
+                    <span className="ve-bg-label">Background</span>
+                    <button className="ve-bg-change" onClick={() => setMediaDrawerOpen(true)}>
+                      Change
+                    </button>
+                  </div>
+                  <div className="ve-bg-card" onClick={() => setMediaDrawerOpen(true)}>
+                    {selMedia ? (
+                      <>
+                        <div className="ve-bg-thumb">
+                          {selMedia.thumb_url
+                            ? <img src={selMedia.thumb_url} alt="" />
+                            : <Film size={20} />}
+                        </div>
+                        <div className="ve-bg-info">
+                          <div className="ve-bg-name">{selMedia.original_name || selMedia.filename}</div>
+                          <div className="ve-bg-meta">Custom video</div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="ve-bg-thumb ve-bg-thumb-stock">
+                          <Shuffle size={18} />
+                        </div>
+                        <div className="ve-bg-info">
+                          <div className="ve-bg-name">Random Stock</div>
+                          <div className="ve-bg-meta">From built-in library</div>
+                        </div>
+                      </>
+                    )}
+                    <ChevronRight size={14} className="ve-bg-chevron" />
+                  </div>
+                </div>
+              )
+            })()}
           </Section>
 
           {/* ── Music ── */}
@@ -671,13 +712,19 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
         <div className="ve-left-head">
           <span className="ve-left-label">Segments</span>
           <div className="ve-left-head-actions">
+            <span className="ve-seg-count">{filteredSegs.length}</span>
             <button className="btn btn-primary btn-xs" onClick={handleGenerateAll}>
               <Sparkles size={11} /> All
             </button>
           </div>
         </div>
+        <div className="ve-seg-search-wrap">
+          <Search size={13} className="ve-seg-search-icon" />
+          <input className="ve-seg-search" placeholder="Search segments..."
+            value={segSearch} onChange={e => { setSegSearch(e.target.value); setSegPage(1) }} />
+        </div>
         <div className="ve-seg-list">
-          {readySegs.map(seg => {
+          {pagedSegs.map(seg => {
             const sj = jobMap[seg.segment_num] || []
             const latest = sj[sj.length - 1]
             const act = latest && isActive(latest.status)
@@ -701,7 +748,19 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             )
           })}
         </div>
-
+        {segTotalPages > 1 && (
+          <div className="ve-seg-pager">
+            <button className="ve-seg-pager-btn" disabled={segPage <= 1}
+              onClick={() => setSegPage(p => p - 1)}>
+              <ChevronLeft size={14} />
+            </button>
+            <span className="ve-seg-pager-info">{segPage} / {segTotalPages}</span>
+            <button className="ve-seg-pager-btn" disabled={segPage >= segTotalPages}
+              onClick={() => setSegPage(p => p + 1)}>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ══════ MEDIA LIBRARY DRAWER ══════ */}
