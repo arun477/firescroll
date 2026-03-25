@@ -330,6 +330,19 @@ a { color: var(--blue); text-decoration: none; }
   pointer-events: none;
 }
 
+.feed-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed-loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #52525b;
+}
+
 /* ── Video Card ── */
 .vc {
   height: 100vh;
