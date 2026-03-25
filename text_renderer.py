@@ -40,7 +40,22 @@ def wrap_lines(draw, text, font, max_width):
         else:
             if current:
                 lines.append(current)
-            current = word
+            # If a single word exceeds max_width, force-break it
+            word_w = draw.textbbox((0, 0), word, font=font)
+            if word_w[2] - word_w[0] > max_width:
+                # Character-level break for oversized words
+                chunk = ""
+                for ch in word:
+                    test_ch = chunk + ch
+                    ch_w = draw.textbbox((0, 0), test_ch, font=font)
+                    if ch_w[2] - ch_w[0] > max_width and chunk:
+                        lines.append(chunk)
+                        chunk = ch
+                    else:
+                        chunk = test_ch
+                current = chunk
+            else:
+                current = word
     if current:
         lines.append(current)
     return lines
@@ -61,8 +76,10 @@ def draw_pill(draw, x, y, w, h, *, fill, radius=PILL_RADIUS):
 
 
 def draw_bold_text(draw, text, pos, font, *, fill=CAPTION_TEXT, stroke=5):
+    # Match stroke alpha to text alpha so fade-ins don't show a dark halo
+    stroke_alpha = fill[3] if len(fill) == 4 else 255
     draw.text(pos, text, font=font, fill=fill,
-              stroke_width=stroke, stroke_fill=(0, 0, 0, 255))
+              stroke_width=stroke, stroke_fill=(0, 0, 0, stroke_alpha))
 
 
 def _draw_series_badge(img, segment, t):
