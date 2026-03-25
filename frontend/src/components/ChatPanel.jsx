@@ -107,43 +107,21 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const streamRef = useRef('')
+  const evtSourceRef = useRef(null)
 
-  // Stable conversation ID per segment — survives page refresh
-  useEffect(() => {
-    if (!segment) return
-    const cid = `conv_${topicId}_${segment.id}`
-    setConversationId(cid)
-    streamRef.current = ''
-    setStreamText('')
-    setStatus('idle')
+  // Close any active SSE stream
+  const closeSSE = useCallback(() => {
+    if (evtSourceRef.current) {
+      evtSourceRef.current.close()
+      evtSourceRef.current = null
+    }
+  }, [])
 
-    // Try to load existing conversation history
-    fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
-      if (data.messages?.length > 0) {
-        const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
-        setMessages(msgs)
-        if (data.scene_config) onSceneConfigUpdate(data.scene_config)
-        if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
-      } else {
-        // No history — show static welcome, don't call the agent
-        setMessages([{
-          role: 'assistant',
-          content: `I'm ready to help you create a motion video for **"${segment.title}"**.\n\nDescribe what you'd like — the tone, style, specific visuals — or just say "compose scenes" and I'll propose a layout based on the segment content.`
-        }])
-      }
-    }).catch(() => {
-      setMessages([{
-        role: 'assistant',
-        content: `Ready to compose your video. Describe your vision or say "compose scenes" to get started.`
-      }])
-    })
-  }, [segment?.id])
-
-  // SSE stream — real-time events from the agent
-  useEffect(() => {
-    if (status !== 'thinking' || !conversationId) return
-
-    const evtSource = new EventSource(`/api/chat/${conversationId}/stream`)
+  // Open SSE stream imperatively — called AFTER POST succeeds
+  const openSSEStream = useCallback((cid) => {
+    closeSSE()
+    const evtSource = new EventSource(`/api/chat/${cid}/stream`)
+    evtSourceRef.current = evtSource
 
     evtSource.onmessage = (event) => {
       try {
@@ -170,9 +148,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           case 'done':
           case 'error':
           case 'idle':
-            // Propagate agent-driven settings changes to parent
             if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
-            // Finalize — move stream into a proper message
             if (streamRef.current) {
               setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
             }
@@ -180,13 +156,13 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
             setStreamText('')
             setStatus('idle')
             evtSource.close()
+            evtSourceRef.current = null
             break
         }
       } catch {}
     }
 
     evtSource.onerror = () => {
-      // Finalize on error
       if (streamRef.current) {
         setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
       }
@@ -194,10 +170,43 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
       setStreamText('')
       setStatus('idle')
       evtSource.close()
+      evtSourceRef.current = null
     }
+  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate, onGenerate, closeSSE])
 
-    return () => evtSource.close()
-  }, [status, conversationId])
+  // Stable conversation ID per segment — survives page refresh
+  useEffect(() => {
+    if (!segment) return
+    closeSSE()
+    const cid = `conv_${topicId}_${segment.id}`
+    setConversationId(cid)
+    streamRef.current = ''
+    setStreamText('')
+    setStatus('idle')
+
+    // Try to load existing conversation history
+    fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
+      if (data.messages?.length > 0) {
+        const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
+        setMessages(msgs)
+        if (data.scene_config) onSceneConfigUpdate(data.scene_config)
+        if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
+      } else {
+        setMessages([{
+          role: 'assistant',
+          content: `I'm ready to help you create a motion video for **"${segment.title}"**.\n\nDescribe what you'd like — the tone, style, specific visuals — or just say "compose scenes" and I'll propose a layout based on the segment content.`
+        }])
+      }
+    }).catch(() => {
+      setMessages([{
+        role: 'assistant',
+        content: `Ready to compose your video. Describe your vision or say "compose scenes" to get started.`
+      }])
+    })
+  }, [segment?.id])
+
+  // Cleanup on unmount
+  useEffect(() => () => closeSSE(), [closeSSE])
 
   // Auto-scroll
   useEffect(() => {
@@ -205,12 +214,11 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   }, [messages, streamText])
 
   const sendMessageDirect = useCallback(async (cid, text) => {
-    // Low-level send — used for init and when conversationId isn't in state yet
     setStatus('thinking')
     streamRef.current = ''
     setStreamText('')
     try {
-      await fetch('/api/chat/send', {
+      const resp = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,10 +231,18 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           language: settings?.language || null,
         }),
       })
+      const data = await resp.json()
+      if (data.error) {
+        setStatus('idle')
+        return
+      }
+      // POST succeeded — server has set status="thinking" in Redis.
+      // NOW open SSE — no race condition.
+      openSSEStream(cid)
     } catch {
       setStatus('idle')
     }
-  }, [topicId, segment, settings])
+  }, [topicId, segment, settings, openSSEStream])
 
   const sendMessage = useCallback(async (text) => {
     if (status === 'thinking' || !conversationId) return
