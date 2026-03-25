@@ -628,7 +628,7 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
             name="Motion Director",
             instructions=system_prompt,
             tools=tools,
-            model="gpt-4.1",
+            model="gpt-5.4",
         )
 
         # Build input messages
