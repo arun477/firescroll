@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 from typing import Optional
@@ -1283,7 +1284,7 @@ async def chat_stream(conversation_id: str):
                 yield f"data: {json.dumps({'type': 'idle', 'settings': settings})}\n\n"
                 return
 
-            await asyncio.sleep(0.3)  # 300ms — much faster than 1.5s polling
+            await asyncio.sleep(0.3)
 
     return StreamingResponse(
         event_generator(),
