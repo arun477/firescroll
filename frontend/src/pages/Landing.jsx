@@ -711,7 +711,8 @@ function StudioPreviewPhone({ videoRefOut }) {
   const videoRef = useRef(null)
 
   useState(() => {
-    fetch('/api/feed').then(r => r.json()).then(items => {
+    fetch('/api/feed').then(r => r.json()).then(data => {
+      const items = data.items || data
       if (items.length > 0) setVideo(items[0])
     }).catch(() => {})
   })

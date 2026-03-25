@@ -8704,15 +8704,84 @@ a { color: var(--blue); text-decoration: none; }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .ln-h1 { font-size: 44px; letter-spacing: -2px; }
-  .ln-hero { padding: 140px 20px 60px; }
+  /* ── Nav ── */
+  .ln-nav { padding: 10px 16px; }
+  .ln-nav-name { font-size: 13px; }
+  .ln-nav-btn { display: none; }
+  .ln-nav-go { font-size: 11px; padding: 6px 12px; }
+
+  /* ── Hero ── */
+  .ln-hero { min-height: auto; padding: 0; }
+  .ln-hero-content { padding: 120px 20px 60px; max-width: 100%; background: radial-gradient(ellipse 90% 60% at 50% 45%, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.7) 60%, transparent 100%); }
+  .ln-h1 { font-size: 40px; letter-spacing: -2px; }
+  .ln-p { font-size: 15px; max-width: 100%; }
+  .ln-tagline { font-size: 11px; }
+  .ln-actions { flex-direction: column; gap: 10px; width: 100%; }
+  .ln-go, .ln-ghost { width: 100%; justify-content: center; padding: 14px 20px; }
+
+  /* ── Partners ── */
+  .ln-partners { margin-bottom: 24px; }
+  .ln-partner { font-size: 13px; }
+  .ln-partner-img { height: 20px; }
+
+  /* ── Showcase (hero background phones) ── */
+  .ln-showcase { height: 350px; }
+  .ln-phone { width: 100px; height: 175px; border-radius: 12px; }
+  .ln-showcase-cols { gap: 6px; }
+
+  /* ── Features sticky scroll ── */
+  .ln-fs { grid-template-columns: 1fr; gap: 0; padding: 40px 20px 0; }
+  .ln-fs-text { padding-top: 4vh; }
+  .ln-fs-sticky { position: relative; top: 0; height: auto; margin-bottom: 32px; order: -1; }
+  .ln-fs-visuals { height: 340px; }
+  .ln-fs-step { min-height: 20vh; padding: 24px 0; }
+  .ln-fs-spacer { min-height: 10vh; }
+  .ln-fs-title { font-size: 28px; letter-spacing: -1px; }
+  .ln-fs-h3 { font-size: 20px; }
+  .ln-fs-desc { font-size: 13px; }
+  .ln-fs-num { font-size: 10px; }
+  .ln-fs-intro { margin-bottom: 16px; }
+
+  /* ── Feature visuals — hide complex floating elements ── */
+  .ln-grp, .ln-gen-btn { display: none; }
+  .ln-sm-phone { width: 180px; height: 320px; border-radius: 20px; }
+  .ln-vp-modes, .ln-vp-hook-badge, .ln-vp-caps, .ln-vp-stats { display: none; }
+  .ln-ml-badge { display: none; }
+  .ln-r-tools { gap: 4px; }
+  .ln-r-tool { padding: 6px 8px; }
+
+  /* ── Voice cards ── */
+  .ln-v-card { padding: 8px 10px; }
+  .ln-v-styles-row { gap: 4px; }
+  .ln-v-style { font-size: 9px; padding: 3px 7px; }
+  .ln-v-sec-label { font-size: 9px; }
+
+  /* ── Flow / How it works ── */
+  .ln-flow { padding: 40px 20px 60px; }
+  .ln-h2 { font-size: 28px; letter-spacing: -1px; margin-bottom: 32px; }
+  .ln-flow-steps { flex-direction: column; gap: 0; }
+  .ln-flow-step { font-size: 12px; padding: 10px 14px; }
+  .ln-flow-arrow { transform: rotate(90deg); padding: 4px 0; }
+
+  /* ── CTA ── */
+  .ln-cta { padding: 60px 20px 80px; }
+  .ln-cta .ln-h2 { font-size: 28px; }
+  .ln-go-lg { padding: 14px 28px; font-size: 15px; width: auto; }
+  .ln-fine { font-size: 11px; }
+
+  /* ── Bento (if still used) ── */
   .ln-bento { grid-template-columns: 1fr; padding: 0 16px 40px; }
   .ln-bento-wide { grid-column: span 1; grid-template-columns: 1fr; }
-  .ln-flow-steps { flex-direction: column; }
-  .ln-flow-arrow { transform: rotate(90deg); }
-  .ln-nav { padding: 10px 16px; }
-  .ln-showcase { height: 350px; }
-  .ln-phone { width: 110px; height: 190px; border-radius: 12px; }
+}
+
+/* Extra small — very narrow phones */
+@media (max-width: 400px) {
+  .ln-h1 { font-size: 32px; letter-spacing: -1.5px; }
+  .ln-hero-content { padding: 100px 16px 48px; }
+  .ln-p { font-size: 14px; }
+  .ln-phone { width: 80px; height: 140px; border-radius: 10px; }
+  .ln-h2 { font-size: 24px; }
+  .ln-fs-visuals { height: 280px; }
 }
 
 /* ─── Scrolling Video Showcase (hero background) ─── */
