@@ -8,7 +8,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: backend/Dockerfile
     ports:
       - "8500:8500"
     volumes:
@@ -29,7 +29,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: backend/Dockerfile
     command: celery -A celery_app worker --loglevel=info --pool=solo -Q celery
     volumes:
       - ./data:/app/data
@@ -50,7 +50,7 @@ services:
   chat-worker:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: backend/Dockerfile
     command: celery -A celery_app worker --loglevel=info --pool=solo -Q chat -c 1
     volumes:
       - ./data:/app/data

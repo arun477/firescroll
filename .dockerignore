@@ -1,0 +1,10 @@
+.git
+__pycache__
+frontend/node_modules
+frontend/dist
+remotion-studio/node_modules
+output
+dbdata
+demo
+.env
+.DS_Store
