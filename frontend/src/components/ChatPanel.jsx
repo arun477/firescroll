@@ -49,22 +49,32 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const inputRef = useRef(null)
   const pollRef = useRef(null)
 
-  // Generate conversation ID on segment change
+  // Stable conversation ID per segment — survives page refresh
   useEffect(() => {
     if (!segment) return
-    const cid = `conv_${topicId}_${segment.id}_${Date.now().toString(36)}`
+    const cid = `conv_${topicId}_${segment.id}`
     setConversationId(cid)
-    setMessages([])
     setStreamText('')
     setChunkOffset(0)
     setStatus('idle')
-  }, [segment?.id])
 
-  // Send init message once conversationId is set
-  useEffect(() => {
-    if (!conversationId || messages.length > 0 || status !== 'idle') return
-    sendMessage('')
-  }, [conversationId])
+    // Try to load existing conversation history
+    fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
+      if (data.messages?.length > 0) {
+        // Filter out system init messages
+        const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
+        setMessages(msgs)
+        if (data.scene_config) onSceneConfigUpdate(data.scene_config)
+      } else {
+        // New conversation — send init message
+        setMessages([])
+        sendMessageDirect(cid, '')
+      }
+    }).catch(() => {
+      setMessages([])
+      sendMessageDirect(cid, '')
+    })
+  }, [segment?.id])
 
   // Poll for response chunks
   useEffect(() => {
@@ -111,22 +121,17 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamText])
 
-  const sendMessage = useCallback(async (text) => {
-    if (status === 'thinking') return
-    if (text) {
-      setMessages(prev => [...prev, { role: 'user', content: text }])
-    }
-    setInput('')
+  const sendMessageDirect = useCallback(async (cid, text) => {
+    // Low-level send — used for init and when conversationId isn't in state yet
     setStatus('thinking')
     setStreamText('')
     setChunkOffset(0)
-
     try {
       await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversation_id: conversationId,
+          conversation_id: cid,
           message: text,
           topic_id: topicId,
           segment_id: segment?.id || null,
@@ -135,7 +140,16 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     } catch {
       setStatus('idle')
     }
-  }, [conversationId, topicId, segment, status])
+  }, [topicId, segment])
+
+  const sendMessage = useCallback(async (text) => {
+    if (status === 'thinking' || !conversationId) return
+    if (text) {
+      setMessages(prev => [...prev, { role: 'user', content: text }])
+    }
+    setInput('')
+    await sendMessageDirect(conversationId, text)
+  }, [conversationId, status, sendMessageDirect])
 
   const handlePickerSelect = (type, value, label) => {
     if (type === 'voice') sendMessage(`Use voice ${label}`)
