@@ -622,13 +622,24 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               )}
               {!activeJob && !doneJob && (
                 <div className="ve-c-empty">
-                  <Film size={28} />
-                  <p>No video yet</p>
-                  <div className="ve-gen">
-                    <button className="ve-gen-btn"
-                      onClick={() => handleGenerate(selectedSeg)} disabled={!!activeJob}>
-                      <Play size={15} /> Generate Segment {selectedSeg.segment_num}
-                    </button>
+                  <div className="ve-c-empty-bg">
+                    <div className="ve-c-empty-orb ve-c-empty-orb1" />
+                    <div className="ve-c-empty-orb ve-c-empty-orb2" />
+                    <div className="ve-c-empty-orb ve-c-empty-orb3" />
+                  </div>
+                  <div className="ve-c-empty-icon">
+                    <Film size={32} />
+                  </div>
+                  <div className="ve-c-empty-text">
+                    <h3>Ready to create</h3>
+                    <p>Generate a short-form video with AI backgrounds, voice, and music</p>
+                  </div>
+                  <button className="ve-c-empty-btn"
+                    onClick={() => handleGenerate(selectedSeg)} disabled={!!activeJob}>
+                    <Play size={14} /> Generate Segment {selectedSeg.segment_num}
+                  </button>
+                  <div className="ve-c-empty-meta">
+                    {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}
                   </div>
                 </div>
               )}
