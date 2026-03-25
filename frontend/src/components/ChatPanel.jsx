@@ -83,6 +83,11 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           onSceneConfigUpdate(data.scene_config)
         }
 
+        // Agent requested a render via trigger_render tool
+        if (data.render_requested && onGenerate) {
+          onGenerate()
+        }
+
         if (data.status === 'done' || data.status === 'error') {
           // Finalize the streaming message
           const finalText = streamText + (data.chunks || []).join('')

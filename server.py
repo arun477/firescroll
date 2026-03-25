@@ -1232,6 +1232,11 @@ def chat_poll(conversation_id: str, offset: int = 0):
 
     config = get_scene_config(conversation_id)
 
+    # Check if agent requested a render
+    render_requested = r.get(_key(conversation_id, "render_requested"))
+    if render_requested:
+        r.delete(_key(conversation_id, "render_requested"))
+
     return {
         "status": state.get("status", "idle"),
         "chunks": chunks,
@@ -1243,6 +1248,7 @@ def chat_poll(conversation_id: str, offset: int = 0):
             "voice_name": state.get("voice_name", ""),
             "language": state.get("language", ""),
         },
+        "render_requested": bool(render_requested),
         "error": None,
     }
 

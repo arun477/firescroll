@@ -343,9 +343,22 @@ def _make_tools(cid):
         lang_text = "\n".join(f"  • {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
         return f"Available languages:\n{lang_text}\n\nInclude :::language_picker::: to show the selection UI."
 
+    @function_tool
+    def trigger_render() -> str:
+        """Start rendering the video with the current scene config, voice, and language settings. Call this when the user confirms they want to render."""
+        config = get_scene_config(cid)
+        if not config or not config.get("scenes"):
+            return "Error: no scene config to render. Compose scenes first."
+        state = get_conversation_state(cid)
+        # Store render flag — the frontend will pick this up and trigger the actual render
+        r = _get_redis()
+        r.set(_key(cid, "render_requested"), "1")
+        r.expire(_key(cid, "render_requested"), 300)
+        return "Render requested! The video will start generating now."
+
     return [compose_scenes, update_scene, add_scene, remove_scene,
             reorder_scenes, set_style, set_voice, set_language,
-            list_voices, list_languages]
+            list_voices, list_languages, trigger_render]
 
 
 # ── Main agent runner ──
