@@ -228,9 +228,15 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             </div>
 
             {failedJob && (
-              <div style={{ margin: '0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', fontSize: 11, display: 'flex', gap: 8 }}>
+              <div style={{ margin: '0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', fontSize: 11, display: 'flex', alignItems: 'start', gap: 8 }}>
                 <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>{failedJob.error?.slice(0, 150) || 'Generation failed'}</span>
+                <span style={{ flex: 1 }}>{failedJob.error?.slice(0, 150) || 'Generation failed'}</span>
+                <button onClick={async () => {
+                  await fetch(`/api/remotion/jobs/${failedJob.id}`, { method: 'DELETE' })
+                  onRefresh()
+                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 10, fontWeight: 600, opacity: 0.7, whiteSpace: 'nowrap' }}>
+                  Dismiss
+                </button>
               </div>
             )}
 
