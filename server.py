@@ -1276,3 +1276,41 @@ def chat_delete(conversation_id: str):
     from chat_agent import delete_conversation
     delete_conversation(conversation_id)
     return {"status": "deleted"}
+
+
+# ══════════════════════════════════════════════════════
+# REMOTION PREVIEW PROXY (scalable, backend-routed)
+# ══════════════════════════════════════════════════════
+
+REMOTION_API = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
+
+
+@app.get("/api/preview")
+def preview_page():
+    """Proxy the Remotion preview HTML page."""
+    import requests as _req
+    try:
+        resp = _req.get(f"{REMOTION_API}/preview", timeout=10)
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=resp.text, status_code=resp.status_code)
+    except Exception as e:
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(
+            content=f"<html><body style='background:#0a0a0f;color:#fff;padding:40px;font-family:sans-serif'>"
+                    f"<h2>Preview unavailable</h2><p>{e}</p></body></html>",
+            status_code=502)
+
+
+@app.get("/api/preview-bundle.js")
+def preview_bundle():
+    """Proxy the Remotion preview JS bundle."""
+    import requests as _req
+    try:
+        resp = _req.get(f"{REMOTION_API}/preview-bundle.js", timeout=10)
+        from fastapi.responses import Response
+        return Response(
+            content=resp.content,
+            media_type="application/javascript",
+            status_code=resp.status_code)
+    except Exception as e:
+        return {"error": str(e)}

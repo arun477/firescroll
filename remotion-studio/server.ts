@@ -174,7 +174,7 @@ app.get("/preview", (_req, res) => {
 </style>
 </head><body>
 <div id="root"></div>
-<script src="/preview-bundle.js"></script>
+<script src="/api/preview-bundle.js"></script>
 </body></html>`);
 });
 
