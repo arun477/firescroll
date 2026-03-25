@@ -187,6 +187,14 @@ def init_db(db_path=DB_PATH):
         CREATE INDEX IF NOT EXISTS idx_media_status ON media_library(status);
     """)
     conn.commit()
+
+    # Migration: add celery_task_id to jobs table
+    try:
+        conn.execute("ALTER TABLE jobs ADD COLUMN celery_task_id TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
     conn.close()
 
 

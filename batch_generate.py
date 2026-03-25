@@ -58,6 +58,26 @@ def _run_ffmpeg(cmd):
         raise RuntimeError(f"FFmpeg error: {result.stderr[:500]}")
 
 
+def _run_ffmpeg_cancellable(cmd, job_id, poll_interval=2):
+    """Run FFmpeg as a subprocess, polling for cancellation."""
+    import subprocess
+    import time
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    while proc.poll() is None:
+        time.sleep(poll_interval)
+        if _is_cancelled(job_id):
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            print(f"  [Job {job_id}] FFmpeg killed — cancelled by user")
+            return
+    if proc.returncode != 0:
+        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+        raise RuntimeError(f"FFmpeg error: {stderr[:500]}")
+
+
 def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
                   music_track=None, music_source=None, music_prompt=None,
                   voice_style=None, voice_settings=None,
@@ -213,10 +233,29 @@ def _safe_vid(vid_dir, frame_num):
     return path
 
 
+class CancelledError(Exception):
+    pass
+
+
+def _cleanup_temps(*paths):
+    for p in paths:
+        try:
+            if p and os.path.exists(p):
+                os.remove(p)
+        except OSError:
+            pass
+
+
 def _is_cancelled(job_id):
     from db import get_job, STATUS_FAILED
     job = get_job(job_id)
     return job and job["status"] == STATUS_FAILED
+
+
+def _check_cancel(job_id):
+    """Check and raise if cancelled. Use inside long-running phases."""
+    if _is_cancelled(job_id):
+        raise CancelledError(f"Job {job_id} cancelled by user")
 
 
 def _generate_single(segment, mode, caption, output_dir, job_id,
@@ -235,9 +274,12 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             suffix += "_karaoke"
         video_path = os.path.join(seg_dir, f"part{sid}{suffix}.mp4")
         thumb_path = os.path.join(seg_dir, f"part{sid}{suffix}_thumb.png")
+        # Write to temp files first — only move to final path on success
+        # This prevents destroying an existing working video during re-generation
+        video_tmp = os.path.join(seg_dir, f"part{sid}{suffix}_tmp_{job_id}.mp4")
+        thumb_tmp = os.path.join(seg_dir, f"part{sid}{suffix}_tmp_{job_id}.png")
 
-        if _is_cancelled(job_id):
-            return job_id, None
+        _check_cancel(job_id)
 
         update_job(job_id, status=STATUS_AUDIO, progress=5)
         print(f"  [Seg {sid}] Audio...")
@@ -264,8 +306,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         total_frames = math.ceil(timing["total_duration"] * FPS)
         extra = {"word_ts": word_ts}
 
-        if _is_cancelled(job_id):
-            return job_id, None
+        _check_cancel(job_id)
 
         needs_bg = mode in ("full", "split")
         needs_vid = mode in ("video", "split")
@@ -286,8 +327,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                            target_h=target_h, total_frames=total_frames)
             extra["vid_dir"] = vid_dir
 
-        if _is_cancelled(job_id):
-            return job_id, None
+        _check_cancel(job_id)
 
         update_job(job_id, status=STATUS_RENDERING, progress=45)
         print(f"  [Seg {sid}] Rendering {total_frames} frames...")
@@ -301,35 +341,55 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             ]
 
             workers = min(cpu_count(), 8)
+            cancel_check_interval = FPS * 2  # check every ~2 seconds of video
             with Pool(workers) as pool:
                 done = 0
                 for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
                     done += 1
+                    if done % cancel_check_interval == 0:
+                        if _is_cancelled(job_id):
+                            pool.terminate()
+                            pool.join()
+                            print(f"  [Seg {sid}] Cancelled during rendering")
+                            return job_id, None
                     if done % (FPS * 3) == 0 or done == total_frames:
                         pct = 45 + int(done / total_frames * 45)
                         update_job(job_id, progress=pct)
 
+            _check_cancel(job_id)
+
             update_job(job_id, status=STATUS_ENCODING, progress=92)
             print(f"  [Seg {sid}] Encoding...")
-            _run_ffmpeg([
+            _run_ffmpeg_cancellable([
                 "ffmpeg", "-y",
                 "-framerate", str(FPS),
                 "-i", os.path.join(tmp_dir, "frame_%05d.png"),
                 "-i", audio_result["audio_path"],
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-shortest",
-                video_path,
-            ])
+                video_tmp,
+            ], job_id)
+
+        _check_cancel(job_id)
 
         thumb = render_thumbnail(segment)
-        thumb.save(thumb_path)
+        thumb.save(thumb_tmp)
+
+        # Atomic swap — old video stays intact until new one is fully ready
+        os.replace(video_tmp, video_path)
+        os.replace(thumb_tmp, thumb_path)
 
         update_job(job_id, status=STATUS_DONE, progress=100,
                    video_path=video_path, thumb_path=thumb_path)
         print(f"  [Seg {sid}] Done! → {video_path}")
         return job_id, video_path
 
+    except CancelledError:
+        _cleanup_temps(video_tmp, thumb_tmp)
+        print(f"  [Seg {sid}] Cancelled")
+        return job_id, None
     except Exception as exc:  # pylint: disable=broad-exception-caught
+        _cleanup_temps(video_tmp, thumb_tmp)
         # Extract the most useful error info
         err_msg = ""
         # ElevenLabs / httpx errors: pull out status + body, not headers

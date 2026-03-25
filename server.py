@@ -231,36 +231,38 @@ def generate_segment(topic_id: str, req: GenerateRequest):
     if not topic:
         return {"error": "not found"}
 
-    def run():
-        from batch_generate import _generate_single
-        from db import create_job, has_active_job
-        segments = get_segments_for_topic(topic_id)
-        gen_data = _segments_to_gen_data(topic, segments)
-        for seg in gen_data:
-            if req.segment_ids and seg["id"] not in req.segment_ids:
-                continue
-            if has_active_job(topic_id, seg["id"]):
-                continue
-            job_id = create_job(topic_id, seg["id"], req.mode, req.caption,
-                                voice_provider=req.voice_provider or "",
-                                voice_id=req.voice_id or "",
-                                music_track=req.music_track or "")
-            if job_id:
-                _generate_single(seg, req.mode, req.caption, OUTPUT_DIR, job_id,
-                                 voice_provider=req.voice_provider,
-                                 voice_id=req.voice_id,
-                                 music_track=req.music_track,
-                                 music_source=req.music_source,
-                                 music_prompt=req.music_prompt,
-                                 voice_style=req.voice_style,
-                                 voice_settings=req.voice_settings,
-                                 intro_sfx_prompt=req.intro_sfx_prompt,
-                                 bg_video_id=req.bg_video_id)
-            if not req.segment_ids:
-                break
+    from celery_app import generate_single_task
+    from db import create_job, has_active_job
+    segments = get_segments_for_topic(topic_id)
+    gen_data = _segments_to_gen_data(topic, segments)
+    dispatched = []
+    for seg in gen_data:
+        if req.segment_ids and seg["id"] not in req.segment_ids:
+            continue
+        if has_active_job(topic_id, seg["id"]):
+            continue
+        job_id = create_job(topic_id, seg["id"], req.mode, req.caption,
+                            voice_provider=req.voice_provider or "",
+                            voice_id=req.voice_id or "",
+                            music_track=req.music_track or "")
+        if job_id:
+            generate_single_task.delay(
+                seg, req.mode, req.caption, OUTPUT_DIR, job_id,
+                voice_provider=req.voice_provider,
+                voice_id=req.voice_id,
+                music_track=req.music_track,
+                music_source=req.music_source,
+                music_prompt=req.music_prompt,
+                voice_style=req.voice_style,
+                voice_settings=req.voice_settings,
+                intro_sfx_prompt=req.intro_sfx_prompt,
+                bg_video_id=req.bg_video_id,
+            )
+            dispatched.append(job_id)
+        if not req.segment_ids:
+            break
 
-    threading.Thread(target=run, daemon=True).start()
-    return {"status": "started"}
+    return {"status": "started", "jobs": dispatched}
 
 
 @app.post("/api/topics/{topic_id}/generate-all")
@@ -271,40 +273,36 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
     if req is None:
         req = GenerateAllRequest()
 
-    def run():
-        import random
-        from concurrent.futures import ThreadPoolExecutor
-        from batch_generate import _generate_single
-        from db import create_job
-        segments = get_segments_for_topic(topic_id)
-        gen_data = _segments_to_gen_data(topic, segments)
-        modes = ["full", "video", "split"]
-        captions = ["default", "karaoke"]
+    import random
+    from celery_app import generate_single_task
+    from db import create_job
+    segments = get_segments_for_topic(topic_id)
+    gen_data = _segments_to_gen_data(topic, segments)
+    modes = ["full", "video", "split"]
+    captions = ["default", "karaoke"]
 
-        planned = []
-        for seg in gen_data:
-            mode = random.choice(modes)
-            caption = random.choice(captions)
-            job_id = create_job(topic_id, seg["id"], mode, caption,
-                                voice_provider=req.voice_provider or "",
-                                voice_id=req.voice_id or "",
-                                music_track=req.music_track or "")
-            if job_id:
-                planned.append((seg, mode, caption, job_id))
+    dispatched = []
+    for seg in gen_data:
+        mode = random.choice(modes)
+        caption = random.choice(captions)
+        job_id = create_job(topic_id, seg["id"], mode, caption,
+                            voice_provider=req.voice_provider or "",
+                            voice_id=req.voice_id or "",
+                            music_track=req.music_track or "")
+        if job_id:
+            generate_single_task.delay(
+                seg, mode, caption, OUTPUT_DIR, job_id,
+                voice_provider=req.voice_provider,
+                voice_id=req.voice_id,
+                music_track=req.music_track,
+                music_source=req.music_source,
+                music_prompt=req.music_prompt,
+                voice_style=req.voice_style,
+                voice_settings=req.voice_settings,
+            )
+            dispatched.append(job_id)
 
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            for seg, mode, caption, job_id in planned:
-                pool.submit(_generate_single, seg, mode, caption, OUTPUT_DIR,
-                            job_id, voice_provider=req.voice_provider,
-                            voice_id=req.voice_id,
-                            music_track=req.music_track,
-                            music_source=req.music_source,
-                            music_prompt=req.music_prompt,
-                            voice_style=req.voice_style,
-                            voice_settings=req.voice_settings)
-
-    threading.Thread(target=run, daemon=True).start()
-    return {"status": "started"}
+    return {"status": "started", "jobs": dispatched}
 
 
 class FcSearchRequest(BaseModel):
@@ -573,6 +571,11 @@ def cancel_job(job_id: str):
         return {"error": "not found"}
     if job["status"] in ACTIVE_STATUSES:
         update_job(job_id, status=STATUS_FAILED, error="Cancelled by user")
+        # Revoke the Celery task to hard-kill the worker process
+        celery_task_id = job.get("celery_task_id")
+        if celery_task_id:
+            from celery_app import celery
+            celery.control.revoke(celery_task_id, terminate=True, signal="SIGTERM")
         return {"status": "cancelled"}
     return {"status": "not_active"}
 

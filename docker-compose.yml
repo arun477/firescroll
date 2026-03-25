@@ -1,4 +1,12 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -11,8 +19,31 @@ services:
       - ./assets:/app/assets
       - ./.env:/app/.env
       - dbdata:/app/dbdata
+      - ./media_library:/app/media_library
     environment:
       - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: celery -A celery_app worker --loglevel=info --concurrency=2 --pool=prefork
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+      - ./assets:/app/assets
+      - ./.env:/app/.env
+      - dbdata:/app/dbdata
+      - ./media_library:/app/media_library
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
     restart: unless-stopped
 
   frontend:
@@ -27,3 +58,4 @@ services:
 
 volumes:
   dbdata:
+  redis_data:

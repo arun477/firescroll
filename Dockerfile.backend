@@ -14,7 +14,7 @@ COPY assets/ assets/
 COPY data/ data/
 COPY templates/ templates/
 
-RUN mkdir -p output
+RUN mkdir -p output media_library
 
 EXPOSE 8500
 

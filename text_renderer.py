@@ -183,7 +183,7 @@ def _draw_caption_block(img, lines, t_offset, duration, font, *,
         font_size = int(font.size * scale)
         scaled_font = get_font("bold", font_size)
         tw, th = text_size(draw, line, scaled_font)
-        lx = (WIDTH - tw) // 2
+        lx = max(TEXT_PAD_X, (WIDTH - tw) // 2)
 
         pill_a = int(pill_fill[3] * alpha)
         draw_pill(draw, lx - TEXT_PAD_X, y_pos - TEXT_PAD_Y,

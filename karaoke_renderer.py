@@ -100,9 +100,10 @@ def _draw_karaoke_captions(img, word_timestamps, t):
         is_current = line_idx == current_line_idx
         use_font = font if is_current else small_font
 
-        full_text = line["text"]
-        tw, th = text_size(draw, full_text, use_font)
-        lx = (WIDTH - tw) // 2
+        word_texts = [wi["word"] for wi in line["words"]]
+        rendered_w = _word_by_word_width(word_texts, use_font, draw)
+        _, th = text_size(draw, line["text"], use_font)
+        lx = max(STROKE_W, (WIDTH - rendered_w) // 2)
         y_pos = y_start + vi * LINE_H
 
         if line["start"] > t:
@@ -121,14 +122,15 @@ def _draw_karaoke_captions(img, word_timestamps, t):
         pill_a = int(pill_bg[3] * alpha)
 
         draw_pill(draw, lx - TEXT_PAD_X, y_pos + y_slide - TEXT_PAD_Y,
-                  tw + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2,
+                  rendered_w + TEXT_PAD_X * 2, th + TEXT_PAD_Y * 2,
                   fill=(*pill_bg[:3], pill_a))
 
+        space_w, _ = text_size(draw, " ", use_font)
         cursor_x = lx
+        stroke_w = STROKE_W if is_current else 3
         for word_info in line["words"]:
             word = word_info["word"]
             ww, _ = text_size(draw, word, use_font)
-            space_w, _ = text_size(draw, " ", use_font)
 
             if t >= word_info["end"]:
                 color = (*SPOKEN_COLOR, a)
@@ -138,7 +140,7 @@ def _draw_karaoke_captions(img, word_timestamps, t):
                 color = (*UNSPOKEN_COLOR, a)
 
             draw.text((cursor_x, y_pos + y_slide), word, font=use_font, fill=color,
-                      stroke_width=4 if is_current else 3,
+                      stroke_width=stroke_w,
                       stroke_fill=(0, 0, 0, a))
             cursor_x += ww + space_w
 
