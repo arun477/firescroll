@@ -1,74 +1,83 @@
 <h1 align="center"><img src="assets/logo.svg" alt="" width="28" style="vertical-align: middle;" /> FireScroll</h1>
-<p align="center">Short video creation platform. Type any topic. AI researches, writes, and renders addictive short-form videos with ultra-realistic voices and custom music.</p>
+<p align="center">Brain rot, but educational. AI-powered short video creation from any topic.</p>
+
+<br />
 
 <p align="center">
   <img src="assets/hero.png" alt="FireScroll" width="800" />
 </p>
 
----
+<br />
 
-## What It Does
+## Overview
 
-FireScroll takes a topic and turns it into publish-ready short-form video content. The pipeline is fully automated:
+FireScroll is an end-to-end platform for creating short-form educational videos. Give it a topic and it handles the rest -- research, scriptwriting, scene composition, voice narration, and final render.
 
-1. **Research** -- Crawls the web using Firecrawl, extracts sources, and builds a knowledge base for the topic.
-2. **Write** -- AI generates segmented scripts with hooks, visual cues, and series structure.
-3. **Motion Director** -- A conversational AI agent composes animated scenes by writing React/Remotion code in real-time. You direct, it builds.
-4. **Render** -- Remotion renders the final video with ElevenLabs voice narration, translated to 30+ languages.
+The core workflow:
 
-## Architecture
+- **Research** -- Crawl the web with [Firecrawl](https://firecrawl.dev), pull sources, build context.
+- **Script** -- AI breaks the topic into segments, each with a hook, script, and visual direction.
+- **Motion Director** -- Chat with an AI agent that writes and previews animated scenes in real-time using React/Remotion. You direct, it codes.
+- **Render** -- One click to render with [ElevenLabs](https://elevenlabs.io) voice narration in 30+ languages.
 
-```
-Frontend (React)  -->  Backend (FastAPI)  -->  Workers (Celery + Redis)
-                                           -->  Remotion Studio (Node/TypeScript)
-```
-
-| Service | Role |
-|---------|------|
-| **frontend** | React SPA served via nginx (port 3500) |
-| **backend** | FastAPI server handling API, SSE streaming, job management (port 8500) |
-| **worker** | Celery worker for video generation tasks |
-| **chat-worker** | Dedicated Celery worker for the Motion Director AI agent |
-| **remotion-studio** | Remotion rendering API and live preview server |
-| **redis** | Message broker, task queue, and conversation state |
-
-## Requirements
-
-- Docker and Docker Compose
-- API keys (configured through the Settings page after first launch):
-  - **OpenAI** -- powers the Motion Director agent and script generation
-  - **ElevenLabs** -- voice synthesis and multilingual narration
-  - **Firecrawl** (optional) -- web research and source crawling
-
-## Getting Started
+## Quick Start
 
 ```bash
-git clone <repo-url> && cd firescroll
+git clone https://github.com/arun477/firescroll.git
+cd firescroll
 docker compose up --build
 ```
 
-Open `http://localhost:3500`. Go to **Settings** and add your API keys.
+Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings**.
 
-## Usage
+**Required keys:**
 
-1. **Create a topic** from the dashboard.
-2. **Research** -- run web crawls to gather source material, or skip to write directly.
-3. **Studio** -- review and edit generated segments (scripts, hooks, visual direction).
-4. **Motion Director** -- open the chat panel, describe your vision or say "compose scenes." The AI writes animated scene code, preview updates live. Iterate conversationally, then hit Render.
+| Key | Purpose |
+|-----|---------|
+| OpenAI | Script generation, Motion Director agent |
+| ElevenLabs | Voice narration, multilingual TTS |
+| Firecrawl | Web research (optional) |
 
-## Project Structure
+## How It Works
 
 ```
-server.py              FastAPI application
-chat_agent.py          Motion Director AI agent (OpenAI Agents SDK)
-celery_app.py          Task queue definitions
-db.py                  SQLite database layer
-remotion_pipeline.py   Render orchestration (audio + video merge)
-frontend/              React application
-remotion-studio/       Remotion preview and render server
-docker-compose.yml     Service orchestration
+Topic  ->  Research  ->  Script  ->  Motion Director  ->  Render  ->  Video
 ```
+
+Six services running in Docker:
+
+| Service | Stack | What it does |
+|---------|-------|--------------|
+| frontend | React, Vite, nginx | UI on port 3500 |
+| backend | FastAPI, SQLite | API, SSE streaming, job coordination on port 8500 |
+| worker | Celery | Video generation pipeline |
+| chat-worker | Celery | Motion Director AI agent (dedicated queue) |
+| remotion-studio | Remotion, TypeScript | Scene rendering and live preview |
+| redis | Redis | Broker, queue, conversation state |
+
+The Motion Director is a conversational agent (OpenAI Agents SDK) that writes React.createElement code for each scene. Scenes render in an iframe preview and update live as you iterate. When ready, the backend orchestrates audio generation, scene rendering via Remotion, and final video assembly.
+
+## Project Layout
+
+```
+server.py              API server and endpoints
+chat_agent.py          Motion Director agent and tools
+celery_app.py          Task queue config
+db.py                  Database layer
+remotion_pipeline.py   Render pipeline (TTS + video + merge)
+voice.py               Voice provider abstraction
+frontend/              React SPA
+remotion-studio/       Remotion renderer and preview server
+docker-compose.yml     All services
+```
+
+## Built With
+
+- [Remotion](https://remotion.dev) -- Programmatic video rendering
+- [ElevenLabs](https://elevenlabs.io) -- Voice synthesis
+- [Firecrawl](https://firecrawl.dev) -- Web scraping and research
+- [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) -- Motion Director agent
 
 ## License
 
-Private. All rights reserved.
+All rights reserved.
