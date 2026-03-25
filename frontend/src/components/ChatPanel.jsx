@@ -284,8 +284,8 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
         return <TemplateShowcase key={i} templateIds={part.args}
           templates={templates} onSelect={handlePickerSelect} />
       default:
-        return part.content ? (
-          <div key={i} className="vc-msg-text">{renderMarkdown(part.content)}</div>
+        return part.content?.trim() ? (
+          <div key={i} className="vc-msg-text">{renderMarkdown(part.content.trim())}</div>
         ) : null
     }
   }
@@ -310,7 +310,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
       {/* Messages */}
       <div className="vc-messages">
-        {messages.map((msg, i) => (
+        {messages.filter(m => m.content?.trim()).map((msg, i) => (
           <div key={i} className={`vc-msg ${msg.role === 'user' ? 'vc-msg-user' : 'vc-msg-assistant'}`}>
             {msg.role === 'assistant'
               ? parseMessage(msg.content).map(renderPart)
@@ -319,8 +319,8 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           </div>
         ))}
 
-        {/* Streaming message */}
-        {streamText && (
+        {/* Streaming message — only show if there's visible text */}
+        {streamText?.trim() && (
           <div className="vc-msg vc-msg-assistant">
             {parseMessage(streamText).map(renderPart)}
           </div>
