@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import {
   Loader2, Square, Search, ChevronRight, Film, Play,
   CheckCircle2, AlertCircle,
@@ -36,11 +36,35 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   const iframeRef = useRef(null)
   const iframeReady = useRef(false)
 
+  // Per-segment cache so config/code survives parent re-renders and segment switching
+  const segCacheRef = useRef({})
+
   const readySegs = segments.filter(s => s.status === 'ready')
   const filteredSegs = segSearch
     ? readySegs.filter(s => s.title?.toLowerCase().includes(segSearch.toLowerCase()))
     : readySegs
   const selectedSeg = readySegs.find(s => s.id === selectedSegId) || readySegs[0] || null
+
+  // Stable ref for selectedSeg.id so callbacks don't churn
+  const selectedSegIdRef = useRef(selectedSeg?.id)
+  selectedSegIdRef.current = selectedSeg?.id
+
+  // Wrapped setters that cache per-segment — stable identity via useCallback
+  const handleSceneConfigUpdate = useCallback((config) => {
+    setPreviewConfig(config)
+    const sid = selectedSegIdRef.current
+    if (sid) segCacheRef.current[sid] = { ...segCacheRef.current[sid], config }
+  }, [])
+  const handleCustomCodeUpdate = useCallback((code) => {
+    setCustomCode(code)
+    const sid = selectedSegIdRef.current
+    if (sid) segCacheRef.current[sid] = { ...segCacheRef.current[sid], code }
+  }, [])
+  const handleSettingsUpdate = useCallback((s) => {
+    setChatSettings(s)
+    const sid = selectedSegIdRef.current
+    if (sid) segCacheRef.current[sid] = { ...segCacheRef.current[sid], settings: s }
+  }, [])
 
   useEffect(() => {
     fetch('/api/remotion/styles').then(r => r.json()).then(d => setStyles(d.styles || []))
@@ -145,9 +169,9 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             templates={templates}
             sceneConfig={previewConfig}
             settings={chatSettings}
-            onSceneConfigUpdate={setPreviewConfig}
-            onCustomCodeUpdate={setCustomCode}
-            onSettingsUpdate={setChatSettings}
+            onSceneConfigUpdate={handleSceneConfigUpdate}
+            onCustomCodeUpdate={handleCustomCodeUpdate}
+            onSettingsUpdate={handleSettingsUpdate}
             onGenerate={handleGenerate}
           />
         </div>
@@ -267,7 +291,21 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             return (
               <div key={seg.id}
                 className={`ve-seg ${sel ? 've-seg-sel' : ''} ${s.active ? 've-seg-act' : ''}`}
-                onClick={() => { setSelectedSegId(seg.id); setPreviewConfig(null) }}>
+                onClick={() => {
+                  if (seg.id === selectedSeg?.id) return  // already selected
+                  // Save current segment state before switching
+                  if (selectedSeg) {
+                    segCacheRef.current[selectedSeg.id] = {
+                      config: previewConfig, code: customCode, settings: chatSettings,
+                    }
+                  }
+                  setSelectedSegId(seg.id)
+                  // Restore cached state for new segment, or clear
+                  const cached = segCacheRef.current[seg.id]
+                  setPreviewConfig(cached?.config || null)
+                  setCustomCode(cached?.code || null)
+                  if (cached?.settings) setChatSettings(cached.settings)
+                }}>
                 <div className="ve-seg-n">{seg.segment_num}</div>
                 <div className="ve-seg-info">
                   <div className="ve-seg-t">{seg.title}</div>
