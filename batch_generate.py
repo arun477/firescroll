@@ -285,26 +285,27 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         _check_cancel(job_id)
 
         update_job(job_id, status=STATUS_RENDERING, progress=45)
-        print(f"  [Seg {sid}] Rendering {total_frames} frames...")
+        print(f"  [Seg {sid}] Rendering + encoding {total_frames} frames...")
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            # Prepare args for the render subprocess
-            render_args = {
-                "mode": mode,
-                "segment": segment,
-                "total_frames": total_frames,
-                "timing": timing,
-                "frame_dir": tmp_dir,
-                "word_ts": word_ts,
-                "bg_paths": extra.get("bg_paths", []),
-                "vid_dir": extra.get("vid_dir"),
-            }
-            args_file = os.path.join(tmp_dir, "render_args.json")
-            with open(args_file, "w") as f:
-                json.dump(render_args, f)
+        # Prepare args for the render subprocess
+        render_args = {
+            "mode": mode,
+            "segment": segment,
+            "total_frames": total_frames,
+            "timing": timing,
+            "word_ts": word_ts,
+            "bg_paths": extra.get("bg_paths", []),
+            "vid_dir": extra.get("vid_dir"),
+            "video_out": video_tmp,
+            "audio_path": audio_result["audio_path"],
+        }
+        args_file = os.path.join(seg_dir, f"render_args_{job_id}.json")
+        with open(args_file, "w") as f:
+            json.dump(render_args, f)
 
-            # Spawn a fresh process for rendering — not a daemon, so it can
-            # use multiprocessing.Pool freely (8 parallel workers)
+        try:
+            # Spawn a fresh process — not a daemon, so it can use
+            # multiprocessing.Pool (8 workers) and pipe frames to FFmpeg
             import subprocess as sp
             render_script = os.path.join(os.path.dirname(__file__), "render_subprocess.py")
             proc = sp.Popen(
@@ -313,7 +314,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                 text=True, bufsize=1,
             )
 
-            # Read stdout for progress, check for cancellation
+            # Drain stderr in background to avoid pipe deadlock
             import threading
             stderr_lines = []
             def _drain_stderr():
@@ -322,11 +323,13 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             drain = threading.Thread(target=_drain_stderr, daemon=True)
             drain.start()
 
+            # Read stdout for progress, check for cancellation
             for line in proc.stdout:
                 line = line.strip()
                 if line.startswith("PROGRESS:"):
                     pct_render = int(line.split(":")[1])
-                    pct = 45 + int(pct_render * 0.45)
+                    # Map 0-100 render progress to 45-95 job progress
+                    pct = 45 + int(pct_render * 0.50)
                     update_job(job_id, progress=pct)
                 if _is_cancelled(job_id):
                     proc.terminate()
@@ -343,20 +346,10 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
             if proc.returncode != 0:
                 err = "".join(stderr_lines)[:500]
                 raise RuntimeError(f"Render subprocess failed: {err}")
-
-            _check_cancel(job_id)
-
-            update_job(job_id, status=STATUS_ENCODING, progress=92)
-            print(f"  [Seg {sid}] Encoding...")
-            _run_ffmpeg_cancellable([
-                "ffmpeg", "-y",
-                "-framerate", str(FPS),
-                "-i", os.path.join(tmp_dir, "frame_%05d.png"),
-                "-i", audio_result["audio_path"],
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-shortest",
-                video_tmp,
-            ], job_id)
+        finally:
+            # Clean up args file
+            if os.path.exists(args_file):
+                os.remove(args_file)
 
         _check_cancel(job_id)
 
