@@ -1030,14 +1030,37 @@ def remotion_generate(topic_id: str, req: RemotionGenerateRequest):
 
 @app.get("/api/topics/{topic_id}/remotion/jobs")
 def remotion_jobs_list(topic_id: str):
-    from db import get_remotion_jobs_for_topic
+    """Returns per-segment status: active job, latest video, latest error."""
+    from db import get_remotion_jobs_for_topic, REMOTION_ACTIVE
     jobs = get_remotion_jobs_for_topic(topic_id)
+
+    # Build per-segment map: {segment_id: {active, done, failed}}
+    seg_map = {}
     for j in jobs:
-        if j.get("final_path") and os.path.exists(j["final_path"]):
-            j["video_url"] = f"/static/{os.path.relpath(j['final_path'], OUTPUT_DIR)}"
-        else:
-            j["video_url"] = None
-    return {"jobs": jobs}
+        sid = j["segment_id"]
+        if sid not in seg_map:
+            seg_map[sid] = {"active": None, "done": None, "failed": None}
+
+        if j["status"] in REMOTION_ACTIVE and seg_map[sid]["active"] is None:
+            seg_map[sid]["active"] = {
+                "id": j["id"], "status": j["status"],
+                "progress": j["progress"],
+            }
+        elif j["status"] == "done" and seg_map[sid]["done"] is None:
+            video_url = None
+            if j.get("final_path") and os.path.exists(j["final_path"]):
+                video_url = f"/static/{os.path.relpath(j['final_path'], OUTPUT_DIR)}"
+            if video_url:
+                seg_map[sid]["done"] = {
+                    "id": j["id"], "video_url": video_url,
+                    "scene_config": j.get("scene_config"),
+                }
+        elif j["status"] == "failed" and seg_map[sid]["failed"] is None:
+            seg_map[sid]["failed"] = {
+                "id": j["id"], "error": j.get("error", ""),
+            }
+
+    return {"segments": seg_map}
 
 
 @app.get("/api/remotion/jobs/{job_id}")

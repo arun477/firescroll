@@ -31,7 +31,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   const [styles, setStyles] = useState([])
   const [voices, setVoices] = useState([])
   const [languages, setLanguages] = useState([])
-  const [jobs, setJobs] = useState([])
+  const [segStatus, setSegStatus] = useState({})  // {segmentNum: {active, done, failed}}
   const [voicesLoading, setVoicesLoading] = useState(false)
   const selectedSegId = searchParams?.get('seg') || null
   const setSelectedSegId = (id) => {
@@ -71,16 +71,17 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   }, [readySegs.length])
 
   useEffect(() => {
-    const load = () => fetch(`/api/topics/${topicId}/remotion/jobs`).then(r => r.json()).then(d => setJobs(d.jobs || []))
+    const load = () => fetch(`/api/topics/${topicId}/remotion/jobs`).then(r => r.json()).then(d => setSegStatus(d.segments || {}))
     load()
-    const iv = setInterval(load, 3000)
+    const hasActive = Object.values(segStatus).some(s => s?.active)
+    const iv = setInterval(load, hasActive ? 2500 : 8000)
     return () => clearInterval(iv)
-  }, [topicId])
+  }, [topicId, Object.values(segStatus).some(s => s?.active)])
 
-  const segJobs = selectedSeg ? jobs.filter(j => j.segment_id === selectedSeg.segment_num) : []
-  const activeJob = segJobs.find(j => isActive(j.status))
-  const doneJob = [...segJobs].reverse().find(j => j.status === 'done' && j.video_url)
-  const failedJob = !activeJob && segJobs.find(j => j.status === 'failed')
+  const ss = selectedSeg ? (segStatus[selectedSeg.segment_num] || {}) : {}
+  const activeJob = ss.active
+  const doneJob = ss.done
+  const failedJob = !activeJob ? ss.failed : null
 
   const handlePreview = async () => {
     if (!selectedSeg) return
@@ -331,14 +332,11 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
         </div>
         <div className="ve-seg-list">
           {filteredSegs.map(seg => {
-            const sj = jobs.filter(j => j.segment_id === seg.segment_num)
-            const latest = sj[sj.length - 1]
-            const done = sj.find(j => j.status === 'done')
-            const act = latest && isActive(latest?.status)
+            const s = segStatus[seg.segment_num] || {}
             const sel = seg.id === selectedSeg?.id
             return (
               <div key={seg.id}
-                className={`ve-seg ${sel ? 've-seg-sel' : ''} ${act ? 've-seg-act' : ''}`}
+                className={`ve-seg ${sel ? 've-seg-sel' : ''} ${s.active ? 've-seg-act' : ''}`}
                 onClick={() => { setSelectedSegId(seg.id); setPreviewConfig(null) }}>
                 <div className="ve-seg-n">{seg.segment_num}</div>
                 <div className="ve-seg-info">
@@ -346,9 +344,9 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
                   <div className="ve-seg-h">{seg.hook}</div>
                 </div>
                 <div className="ve-seg-st">
-                  {act && <><Loader2 size={13} className="spin" /><span className="ve-seg-pct">{latest.progress}%</span></>}
-                  {!act && done && <CheckCircle2 size={14} className="c-green" />}
-                  {!act && !done && <ChevronRight size={13} className="c-muted" />}
+                  {s.active && <><Loader2 size={13} className="spin" /><span className="ve-seg-pct">{s.active.progress}%</span></>}
+                  {!s.active && s.done && <CheckCircle2 size={14} className="c-green" />}
+                  {!s.active && !s.done && <ChevronRight size={13} className="c-muted" />}
                 </div>
               </div>
             )
