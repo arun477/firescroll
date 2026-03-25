@@ -4902,8 +4902,8 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 68px;
-  padding: 0 20px;
+  min-height: 52px;
+  padding: 14px 20px;
   flex-shrink: 0;
 }
 
@@ -5124,63 +5124,135 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(8, 8, 12, 0.92);
+  backdrop-filter: blur(16px);
   z-index: 2;
+  overflow: hidden;
+}
+
+.ve-c-render-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ve-c-render-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: veOrbFloat 10s ease-in-out infinite alternate;
+}
+
+.ve-c-render-orb1 {
+  width: 220px; height: 220px;
+  top: -10%; left: 15%;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.ve-c-render-orb2 {
+  width: 180px; height: 180px;
+  bottom: -5%; right: 10%;
+  background: rgba(139, 92, 246, 0.12);
+  animation-delay: -5s;
+  animation-duration: 14s;
 }
 
 .ve-c-render-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  color: var(--blue);
+  gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
-.ve-c-render-status {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
+/* Circular progress ring */
+.ve-c-render-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.ve-c-render-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ve-c-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 5;
+}
+
+.ve-c-ring-fill {
+  fill: none;
+  stroke: url(#veRingGrad);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 327;
+  transition: stroke-dashoffset 0.6s ease;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
 }
 
 .ve-c-render-pct {
-  font-size: 28px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.ve-c-render-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
 }
 
 .ve-c-render-bar {
   width: 200px;
-  height: 4px;
-  background: rgba(59,130,246,0.15);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .ve-c-render-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--blue), #818cf8);
+  background: linear-gradient(90deg, #3b82f6, #818cf8, #a78bfa);
   border-radius: 2px;
-  transition: width 0.5s ease;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
 }
 
 .ve-c-render-cancel {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 8px;
-  padding: 5px 14px;
-  border-radius: 6px;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 7px 18px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   font-family: inherit;
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.2);
-  color: #f87171;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.1s;
+  transition: all 0.15s ease;
 }
-.ve-c-render-cancel:hover { background: rgba(239,68,68,0.2); }
+.ve-c-render-cancel:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
 
 /* Script bar below preview */
 .ve-c-script {
