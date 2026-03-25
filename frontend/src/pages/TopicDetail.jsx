@@ -121,7 +121,8 @@ export default function TopicDetail() {
       )}
       {tab === 'remotion' && (
         <RemotionStudioPanel topicId={topicId} topic={topic}
-          segments={segments || []} onRefresh={load} />
+          segments={segments || []} onRefresh={load}
+          searchParams={searchParams} setSearchParams={setSearchParams} />
       )}
     </div>
   )

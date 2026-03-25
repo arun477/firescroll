@@ -27,13 +27,19 @@ function Section({ icon: Icon, title, value, children, defaultOpen = false }) {
   )
 }
 
-export default function RemotionStudio({ topicId, topic, segments, onRefresh }) {
+export default function RemotionStudio({ topicId, topic, segments, onRefresh, searchParams, setSearchParams }) {
   const [styles, setStyles] = useState([])
   const [voices, setVoices] = useState([])
   const [languages, setLanguages] = useState([])
   const [jobs, setJobs] = useState([])
   const [voicesLoading, setVoicesLoading] = useState(false)
-  const [selectedSegId, setSelectedSegId] = useState(null)
+  const selectedSegId = searchParams?.get('seg') || null
+  const setSelectedSegId = (id) => {
+    const p = Object.fromEntries(searchParams.entries())
+    if (id) p.seg = id; else delete p.seg
+    p.tab = 'remotion'
+    setSearchParams(p)
+  }
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState('cinematic')
   const [voiceId, setVoiceId] = useState('')
