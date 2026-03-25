@@ -83,6 +83,10 @@ class ElevenLabsVoice(VoiceProvider):
             "model_id": self.model,
             "output_format": "mp3_44100_128",
         }
+        # Set language code for multilingual TTS
+        language_code = kwargs.get("language_code")
+        if language_code:
+            call_kwargs["language_code"] = language_code
         # Apply voice settings if provided
         stability = kwargs.get("stability")
         if stability is not None:

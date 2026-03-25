@@ -6962,6 +6962,9 @@ a { color: var(--blue); text-decoration: none; }
   align-self: start;
 }
 
+/* Mobile visual — hidden on desktop */
+.ln-fs-sticky-mob { display: none; }
+
 .ln-fs-visuals {
   position: relative;
   width: 100%;
@@ -8611,14 +8614,14 @@ a { color: var(--blue); text-decoration: none; }
   flex-shrink: 0;
 }
 
-/* Features responsive — stack on mobile */
-@media (max-width: 900px) {
-  .ln-fs { grid-template-columns: 1fr; gap: 0; padding: 40px 20px 0; }
-  .ln-fs-sticky { position: relative; top: 0; height: auto; margin-bottom: 40px; }
+/* Features responsive — tablet */
+@media (max-width: 900px) and (min-width: 769px) {
+  .ln-fs { grid-template-columns: 280px 1fr; gap: 20px; padding: 40px 24px 0; }
+  .ln-fs-sticky { height: calc(100vh - 120px); }
   .ln-fs-visuals { height: 400px; }
-  .ln-fs-step { min-height: 30vh; }
+  .ln-fs-step { min-height: 25vh; }
   .ln-fs-title { font-size: 32px; letter-spacing: -1.5px; }
-  .ln-fs-h3 { font-size: 24px; }
+  .ln-fs-h3 { font-size: 22px; }
   .ln-grp, .ln-gen-btn { display: none; }
   .ln-sm-phone { width: 200px; height: 360px; border-radius: 22px; }
   .ln-ft-voices-grid { grid-template-columns: 1fr; }
@@ -8710,63 +8713,137 @@ a { color: var(--blue); text-decoration: none; }
   .ln-nav-btn { display: none; }
   .ln-nav-go { font-size: 11px; padding: 6px 12px; }
 
-  /* ── Hero ── */
-  .ln-hero { min-height: auto; padding: 0; }
-  .ln-hero-content { padding: 120px 20px 60px; max-width: 100%; background: radial-gradient(ellipse 90% 60% at 50% 45%, rgba(5,5,7,0.95) 0%, rgba(5,5,7,0.7) 60%, transparent 100%); }
-  .ln-h1 { font-size: 40px; letter-spacing: -2px; }
-  .ln-p { font-size: 15px; max-width: 100%; }
-  .ln-tagline { font-size: 11px; }
+  /* ── Hero — full screen, centered ── */
+  .ln-hero { min-height: 100vh; min-height: 100dvh; padding: 0; }
+  .ln-hero-content {
+    padding: 100px 24px 48px;
+    max-width: 100%;
+    background: radial-gradient(ellipse 100% 70% at 50% 45%, rgba(5,5,7,0.96) 0%, rgba(5,5,7,0.75) 55%, transparent 100%);
+  }
+  .ln-h1 { font-size: 44px; letter-spacing: -2px; margin-bottom: 20px; }
+  .ln-p { font-size: 15px; max-width: 100%; margin-bottom: 28px; }
+  .ln-tagline { font-size: 10px; letter-spacing: 1.2px; margin-bottom: 12px; }
   .ln-actions { flex-direction: column; gap: 10px; width: 100%; }
-  .ln-go, .ln-ghost { width: 100%; justify-content: center; padding: 14px 20px; }
+  .ln-go, .ln-ghost { width: 100%; justify-content: center; padding: 14px 20px; font-size: 14px; }
 
   /* ── Partners ── */
-  .ln-partners { margin-bottom: 24px; }
-  .ln-partner { font-size: 13px; }
-  .ln-partner-img { height: 20px; }
+  .ln-partners { margin-bottom: 20px; gap: 6px; }
+  .ln-partners-built { font-size: 9px; }
+  .ln-partner { font-size: 12px; gap: 5px; }
+  .ln-partner-img { height: 18px; }
+  .ln-partners-logos { gap: 8px; }
+  .ln-partners-x { font-size: 13px; }
 
   /* ── Showcase (hero background phones) ── */
-  .ln-showcase { height: 350px; }
-  .ln-phone { width: 100px; height: 175px; border-radius: 12px; }
-  .ln-showcase-cols { gap: 6px; }
+  .ln-showcase { opacity: 0.5; }
+  .ln-phone { width: 90px; height: 160px; border-radius: 11px; }
+  .ln-showcase-cols { gap: 6px; padding: 0 8px; }
 
-  /* ── Features sticky scroll ── */
-  .ln-fs { grid-template-columns: 1fr; gap: 0; padding: 40px 20px 0; }
-  .ln-fs-text { padding-top: 4vh; }
-  .ln-fs-sticky { position: relative; top: 0; height: auto; margin-bottom: 32px; order: -1; }
-  .ln-fs-visuals { height: 340px; }
-  .ln-fs-step { min-height: 20vh; padding: 24px 0; }
-  .ln-fs-spacer { min-height: 10vh; }
+  /* ── Features — mobile sticky visual in correct DOM position ── */
+  .ln-fs {
+    display: block;
+    padding: 0 20px;
+  }
+  .ln-fs-sticky-desk { display: none; }
+  .ln-fs-sticky-mob {
+    display: block;
+    position: sticky;
+    top: 50px;
+    height: 280px;
+    z-index: 2;
+    margin-bottom: 12px;
+  }
+  .ln-fs-sticky-mob .ln-fs-visuals { height: 280px; }
+  .ln-fs-viz { border-radius: 14px; padding: 12px; }
+  .ln-fs-text { padding-top: 0; }
+  .ln-fs-intro {
+    padding-top: 32px;
+    margin-bottom: 12px;
+  }
+  .ln-fs-step {
+    min-height: auto;
+    padding: 20px 0 55vh;
+  }
+  .ln-fs-step:last-of-type {
+    padding-bottom: 32px;
+  }
+  .ln-fs-spacer { display: none; }
+  .ln-fs-label { font-size: 10px; letter-spacing: 2px; margin-bottom: 10px; }
   .ln-fs-title { font-size: 28px; letter-spacing: -1px; }
-  .ln-fs-h3 { font-size: 20px; }
-  .ln-fs-desc { font-size: 13px; }
+  .ln-fs-h3 { font-size: 20px; margin-bottom: 8px; }
+  .ln-fs-desc { font-size: 13px; line-height: 1.7; color: #71717a; }
   .ln-fs-num { font-size: 10px; }
-  .ln-fs-intro { margin-bottom: 16px; }
-
-  /* ── Feature visuals — hide complex floating elements ── */
-  .ln-grp, .ln-gen-btn { display: none; }
-  .ln-sm-phone { width: 180px; height: 320px; border-radius: 20px; }
-  .ln-vp-modes, .ln-vp-hook-badge, .ln-vp-caps, .ln-vp-stats { display: none; }
-  .ln-ml-badge { display: none; }
-  .ln-r-tools { gap: 4px; }
-  .ln-r-tool { padding: 6px 8px; }
-
-  /* ── Voice cards ── */
-  .ln-v-card { padding: 8px 10px; }
-  .ln-v-styles-row { gap: 4px; }
-  .ln-v-style { font-size: 9px; padding: 3px 7px; }
-  .ln-v-sec-label { font-size: 9px; }
 
   /* ── Flow / How it works ── */
-  .ln-flow { padding: 40px 20px 60px; }
-  .ln-h2 { font-size: 28px; letter-spacing: -1px; margin-bottom: 32px; }
-  .ln-flow-steps { flex-direction: column; gap: 0; }
-  .ln-flow-step { font-size: 12px; padding: 10px 14px; }
-  .ln-flow-arrow { transform: rotate(90deg); padding: 4px 0; }
+  .ln-flow { padding: 40px 24px 60px; }
+  .ln-h2 { font-size: 26px; letter-spacing: -1px; margin-bottom: 28px; }
+  .ln-flow-steps {
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    align-items: stretch;
+  }
+  .ln-flow-step {
+    font-size: 13px;
+    padding: 14px 16px;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0;
+    border-left: 2px solid rgba(249,115,22,0.2);
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    background: none;
+  }
+  .ln-flow-step span {
+    font-size: 11px;
+    min-width: 18px;
+  }
+  .ln-flow-arrow { display: none; }
+
+  /* ── Feature visuals — compact for mobile ── */
+  .ln-grp, .ln-gen-btn { display: none; }
+  .ln-sm-phone { width: 160px; height: 280px; border-radius: 18px; }
+
+  /* Viral patterns — hide floating decorations */
+  .ln-vp-modes, .ln-vp-hook-badge, .ln-vp-caps, .ln-vp-stats { display: none; }
+  .ln-vp-phone { width: 140px; height: 240px; border-radius: 18px; }
+
+  /* Media library — hide badges */
+  .ln-ml-badge { display: none; }
+  .ln-ml-stack { transform: scale(0.85); }
+
+  /* Research tools — compact */
+  .ln-r-tools { gap: 4px; }
+  .ln-r-tool { padding: 5px 8px; }
+  .ln-r-tool-name { font-size: 10px; }
+  .ln-r-tool-desc { font-size: 9px; }
+
+  /* Voice cards — compact */
+  .ln-v-header { padding: 0 0 8px; }
+  .ln-v-brand span { font-size: 12px; }
+  .ln-v-count { font-size: 10px; }
+  .ln-v-card { padding: 6px 8px; gap: 6px; }
+  .ln-v-card-wave { height: 24px; }
+  .ln-v-card-name { font-size: 11px; }
+  .ln-v-card-desc { font-size: 9px; }
+  .ln-v-card-play { width: 22px; height: 22px; }
+  .ln-v-list { gap: 4px; }
+  .ln-v-sec { padding-top: 8px; }
+  .ln-v-sec-label { font-size: 8px; margin-bottom: 5px; }
+  .ln-v-styles-row { gap: 3px; }
+  .ln-v-style { font-size: 9px; padding: 3px 7px; }
+  .ln-v-music-player { padding: 6px 8px; gap: 6px; }
+  .ln-v-music-tags { gap: 3px; }
+  .ln-v-music-tag { font-size: 9px; padding: 2px 6px; }
+  .ln-v-sfx { margin-top: 6px; padding-top: 6px; }
+  .ln-v-sfx-tags { gap: 3px; }
+  .ln-v-sfx-tag { font-size: 9px; padding: 2px 6px; }
 
   /* ── CTA ── */
-  .ln-cta { padding: 60px 20px 80px; }
-  .ln-cta .ln-h2 { font-size: 28px; }
-  .ln-go-lg { padding: 14px 28px; font-size: 15px; width: auto; }
+  .ln-cta { padding: 48px 24px 80px; }
+  .ln-cta .ln-h2 { font-size: 26px; margin-bottom: 24px; }
+  .ln-go-lg { padding: 14px 28px; font-size: 15px; width: 100%; justify-content: center; }
   .ln-fine { font-size: 11px; }
 
   /* ── Bento (if still used) ── */
@@ -8776,12 +8853,12 @@ a { color: var(--blue); text-decoration: none; }
 
 /* Extra small — very narrow phones */
 @media (max-width: 400px) {
-  .ln-h1 { font-size: 32px; letter-spacing: -1.5px; }
-  .ln-hero-content { padding: 100px 16px 48px; }
+  .ln-h1 { font-size: 36px; letter-spacing: -1.5px; }
+  .ln-hero-content { padding: 90px 16px 40px; }
   .ln-p { font-size: 14px; }
-  .ln-phone { width: 80px; height: 140px; border-radius: 10px; }
-  .ln-h2 { font-size: 24px; }
-  .ln-fs-visuals { height: 280px; }
+  .ln-phone { width: 70px; height: 125px; border-radius: 9px; }
+  .ln-h2 { font-size: 22px; }
+  .ln-fs-title { font-size: 24px; }
 }
 
 /* ─── Scrolling Video Showcase (hero background) ─── */
@@ -8876,4 +8953,78 @@ a { color: var(--blue); text-decoration: none; }
   height: 4px;
   border-radius: 2px;
   background: rgba(255,255,255,0.15);
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE — App shell & Feed
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Hide sidebar on mobile */
+  .sidebar-nav { display: none; }
+  .main-content { padding: 12px 16px 16px; }
+
+  /* Feed — full immersive experience */
+  .main-content:has(.feed-container),
+  .main-content:has(.feed-loading),
+  .main-content:has(.feed-empty) {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .feed-container {
+    margin: 0;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .vc { border-radius: 0; }
+  .vc video { object-fit: cover; }
+
+  .vc-bottom { padding: 40px 16px 16px; }
+  .vc-title { font-size: 14px; }
+  .vc-subtitle { font-size: 11px; }
+
+  .vc-controls-left, .vc-controls-right { gap: 2px; }
+  .vc-btn { width: 34px; height: 34px; }
+
+  .feed-counter {
+    top: 10px;
+    right: 12px;
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* Dashboard grid */
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .dash-new { align-self: flex-start; }
+}
+
+/* Language selector */
+.ve-lang-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ve-lang-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-secondary);
+  transition: all 0.1s;
+}
+.ve-lang-btn:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+}
+.ve-lang-on {
+  background: rgba(59,130,246,0.08) !important;
+  border-color: rgba(59,130,246,0.25) !important;
+  color: var(--blue) !important;
+  font-weight: 600;
 }

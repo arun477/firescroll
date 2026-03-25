@@ -82,10 +82,62 @@ def _run_ffmpeg_cancellable(cmd, job_id, poll_interval=2):
         raise RuntimeError(f"FFmpeg error: {stderr[:500]}")
 
 
+def _translate_text(text, target_language):
+    """Translate text to target language using OpenAI."""
+    from openai import OpenAI
+    from keystore import get_key
+    api_key = get_key("openai")
+    client = OpenAI(api_key=api_key) if api_key else OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": (
+            f"Translate the following text to {target_language}. "
+            f"Keep it natural and conversational — this is for a video narration. "
+            f"Return ONLY the translated text, nothing else.\n\n{text}"
+        )}],
+    )
+    return response.choices[0].message.content.strip()
+
+
+# ElevenLabs eleven_v3 language codes (ISO 639-3)
+ELEVENLABS_LANGUAGES = {
+    "en": {"name": "English", "code": "eng"},
+    "es": {"name": "Spanish", "code": "spa"},
+    "fr": {"name": "French", "code": "fra"},
+    "de": {"name": "German", "code": "deu"},
+    "pt": {"name": "Portuguese", "code": "por"},
+    "it": {"name": "Italian", "code": "ita"},
+    "nl": {"name": "Dutch", "code": "nld"},
+    "pl": {"name": "Polish", "code": "pol"},
+    "ru": {"name": "Russian", "code": "rus"},
+    "ja": {"name": "Japanese", "code": "jpn"},
+    "ko": {"name": "Korean", "code": "kor"},
+    "zh": {"name": "Chinese", "code": "cmn"},
+    "hi": {"name": "Hindi", "code": "hin"},
+    "ar": {"name": "Arabic", "code": "ara"},
+    "tr": {"name": "Turkish", "code": "tur"},
+    "sv": {"name": "Swedish", "code": "swe"},
+    "da": {"name": "Danish", "code": "dan"},
+    "fi": {"name": "Finnish", "code": "fin"},
+    "id": {"name": "Indonesian", "code": "ind"},
+    "th": {"name": "Thai", "code": "tha"},
+    "vi": {"name": "Vietnamese", "code": "vie"},
+    "uk": {"name": "Ukrainian", "code": "ukr"},
+    "cs": {"name": "Czech", "code": "ces"},
+    "ro": {"name": "Romanian", "code": "ron"},
+    "hu": {"name": "Hungarian", "code": "hun"},
+    "el": {"name": "Greek", "code": "ell"},
+    "he": {"name": "Hebrew", "code": "heb"},
+    "bn": {"name": "Bengali", "code": "ben"},
+    "ta": {"name": "Tamil", "code": "tam"},
+    "fil": {"name": "Filipino", "code": "fil"},
+}
+
+
 def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
                   music_track=None, music_source=None, music_prompt=None,
                   voice_style=None, voice_settings=None,
-                  intro_sfx_prompt=None):
+                  intro_sfx_prompt=None, language=None):
     tts = get_voice_provider(voice_provider)
     sid = segment["id"]
     hook_path = os.path.join(output_dir, f"seg{sid}_hook.mp3")
@@ -93,10 +145,22 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
     voice_path = os.path.join(output_dir, f"seg{sid}_voice.mp3")
     final_path = os.path.join(output_dir, f"seg{sid}_final.mp3")
 
+    # Translate if non-English language requested
+    hook_text = segment["hook"]
+    script_text = segment["script"]
+    if language and language != "en" and language in ELEVENLABS_LANGUAGES:
+        lang_name = ELEVENLABS_LANGUAGES[language]["name"]
+        print(f"  [Seg {sid}] Translating to {lang_name}...")
+        hook_text = _translate_text(hook_text, lang_name)
+        script_text = _translate_text(script_text, lang_name)
+
     # Build voice kwargs
     voice_kwargs = {}
     if voice_id:
         voice_kwargs["voice"] = voice_id
+    # Set language code for ElevenLabs TTS
+    if language and language in ELEVENLABS_LANGUAGES:
+        voice_kwargs["language_code"] = ELEVENLABS_LANGUAGES[language]["code"]
     # Apply voice preset or custom settings (ElevenLabs only)
     if voice_style and voice_style != "custom":
         from voice import VOICE_PRESETS
@@ -116,10 +180,10 @@ def _phase_audio(segment, output_dir, voice_provider=None, voice_id=None,
         except Exception as e:
             print(f"  [Seg {sid}] Intro SFX failed ({e}), skipping")
 
-    tts.generate(segment["hook"], hook_path, **voice_kwargs)
+    tts.generate(hook_text, hook_path, **voice_kwargs)
     hook_dur = probe_duration(hook_path)
 
-    tts.generate(segment["script"], script_path, **voice_kwargs)
+    tts.generate(script_text, script_path, **voice_kwargs)
     script_dur = probe_duration(script_path)
 
     audio_parts.extend([hook_path, script_path])
@@ -215,7 +279,8 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                      voice_provider=None, voice_id=None, music_track=None,
                      music_source=None, music_prompt=None,
                      voice_style=None, voice_settings=None,
-                     intro_sfx_prompt=None, bg_video_id=None):
+                     intro_sfx_prompt=None, bg_video_id=None,
+                     language=None):
     video_tmp = None
     thumb_tmp = None
     sid = segment.get("id", "?")
@@ -246,7 +311,8 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
                                     music_prompt=music_prompt,
                                     voice_style=voice_style,
                                     voice_settings=voice_settings,
-                                    intro_sfx_prompt=intro_sfx_prompt)
+                                    intro_sfx_prompt=intro_sfx_prompt,
+                                    language=language)
         timing = audio_result["timing"]
         update_job(job_id, audio_path=audio_result["audio_path"],
                    duration_seconds=timing["total_duration"], progress=15)

@@ -4,7 +4,7 @@ import {
   Play, Shuffle, Flame, AlertCircle, Clock, CheckCircle2,
   Film, Mic, Type, Layers, Monitor, SplitSquareHorizontal,
   BookOpen, Video, Music, Volume2, ChevronDown, Loader2,
-  Eye, Sparkles, X, Square, Search, Palette, ChevronLeft, ChevronRight, Zap, Download,
+  Eye, Sparkles, X, Square, Search, Palette, ChevronLeft, ChevronRight, Zap, Download, Globe,
 } from 'lucide-react'
 import ResearchPanel from '../components/ResearchPanel'
 
@@ -141,6 +141,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const [mediaLibrary, setMediaLibrary] = useState([])
   const [uploading, setUploading] = useState(false)
   const [mediaDrawerOpen, setMediaDrawerOpen] = useState(false)
+  const [languages, setLanguages] = useState([])
   const uploadPollRef = useRef(null)
 
   // Cleanup upload poll on unmount
@@ -186,6 +187,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
     fetch('/api/music').then(r => r.json()).then(d => setMusicTracks(d.tracks || []))
     fetch('/api/voice-presets').then(r => r.json()).then(d => setVoicePresets(d.presets || {}))
     fetch('/api/media').then(r => r.json()).then(d => setMediaLibrary(d.media || []))
+    fetch('/api/languages').then(r => r.json()).then(d => setLanguages(d || []))
   }, [])
 
   useEffect(() => {
@@ -232,6 +234,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
         voice_settings: s.voice_settings || null,
         intro_sfx_prompt: s.intro_sfx_prompt || null,
         bg_video_id: s.bg_video_id || null,
+        language: s.language || null,
         segment_ids: [seg.segment_num],
       }),
     })
@@ -243,7 +246,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         voice_provider: provider || null, voice_id: voiceId || null,
-        music_track: music || null,
+        music_track: music || null, language: null,
       }),
     })
     onRefresh()
@@ -348,6 +351,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
   const caption = settings.caption || 'default'
   const localVoice = settings.voice_id || voiceId
   const localMusic = settings.music_track || music
+  const localLang = settings.language || null
 
   return (
     <div className="ve">
@@ -459,6 +463,27 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               </div>
             )}
           </Section>
+
+          {/* ── Language ── */}
+          {languages.length > 0 && (
+          <Section icon={Globe} title="Language"
+            value={localLang ? languages.find(l => l.code === localLang)?.name || localLang : 'English (Original)'}>
+            <div className="ve-lang-grid">
+              <button
+                className={`ve-lang-btn ${!localLang ? 've-lang-on' : ''}`}
+                onClick={() => setSetting(selectedSeg.id, 'language', null)}>
+                English (Original)
+              </button>
+              {languages.filter(l => l.code !== 'en').map(l => (
+                <button key={l.code}
+                  className={`ve-lang-btn ${localLang === l.code ? 've-lang-on' : ''}`}
+                  onClick={() => setSetting(selectedSeg.id, 'language', l.code)}>
+                  {l.name}
+                </button>
+              ))}
+            </div>
+          </Section>
+          )}
 
           {/* ── Visual Mode ── */}
           <Section icon={Palette} title="Visual Mode" value={MODE_META[mode].label}>
@@ -607,7 +632,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                 : <><Play size={15} /> Generate Segment {selectedSeg.segment_num}</>}
             </button>
             <div className="ve-gen-meta">
-              {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}
+              {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}{localLang ? ` · ${languages.find(l => l.code === localLang)?.name || localLang}` : ''}
             </div>
             {!activeJob && segJobs.find(j => j.status === 'failed') && (() => {
               const failedJob = segJobs.find(j => j.status === 'failed')
@@ -688,7 +713,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                     <Play size={14} /> Generate Segment {selectedSeg.segment_num}
                   </button>
                   <div className="ve-c-empty-meta">
-                    {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}
+                    {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}{localLang ? ` · ${languages.find(l => l.code === localLang)?.name || localLang}` : ''}
                   </div>
                 </div>
               )}

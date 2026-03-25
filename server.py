@@ -60,6 +60,7 @@ class GenerateRequest(BaseModel):
     intro_sfx_prompt: Optional[str] = None
     bg_video_id: Optional[str] = None
     segment_ids: Optional[list] = None
+    language: Optional[str] = None
 
 
 class GenerateAllRequest(BaseModel):
@@ -72,6 +73,7 @@ class GenerateAllRequest(BaseModel):
     voice_settings: Optional[dict] = None
     intro_sfx_prompt: Optional[str] = None
     bg_video_id: Optional[str] = None
+    language: Optional[str] = None
 
 
 @app.get("/api/topics")
@@ -136,6 +138,12 @@ class ResearchRequest(BaseModel):
     method: str = "ai"
     num_segments: int = 6
     instruction: str = ""
+
+
+@app.get("/api/languages")
+def list_languages():
+    from batch_generate import ELEVENLABS_LANGUAGES
+    return [{"code": k, "name": v["name"]} for k, v in ELEVENLABS_LANGUAGES.items()]
 
 
 @app.post("/api/topics/{topic_id}/research")
@@ -220,6 +228,7 @@ def _segments_to_gen_data(topic, segments):
             "script": seg["script"],
             "visual_cue": seg["visual_cue"] or "",
             "series_title": topic["series_title"] or topic["title"],
+            "source_urls": seg.get("source_urls") or "",
             "duration": {"min_seconds": 15, "max_seconds": 45},
         })
     return result
@@ -257,6 +266,7 @@ def generate_segment(topic_id: str, req: GenerateRequest):
                 voice_settings=req.voice_settings,
                 intro_sfx_prompt=req.intro_sfx_prompt,
                 bg_video_id=req.bg_video_id,
+                language=req.language,
             )
             update_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)
@@ -300,6 +310,7 @@ def generate_all(topic_id: str, req: GenerateAllRequest = None):
                 music_prompt=req.music_prompt,
                 voice_style=req.voice_style,
                 voice_settings=req.voice_settings,
+                language=req.language,
             )
             update_job(job_id, celery_task_id=result.id)
             dispatched.append(job_id)

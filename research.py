@@ -123,8 +123,24 @@ def _synthesize_segment(topic_id, segment_id, source="firecrawl",
         response_format={"type": "json_object"},
     )
     data = json.loads(response.choices[0].message.content)
+
+    # Collect source URLs for attribution
+    source_url_list = []
+    from db import get_conn as _gc
+    if source_ids:
+        _conn = _gc()
+        for sid in source_ids:
+            row = _conn.execute(
+                "SELECT url, title FROM research_sources WHERE id = ?", (sid,)
+            ).fetchone()
+            if row and row["url"] and not row["url"].startswith("agent://"):
+                source_url_list.append({"url": row["url"], "title": row["title"] or ""})
+        _conn.close()
+
     update_segment(segment_id, hook=data["hook"], script=data["script"],
                    visual_cue=data.get("visual_cue", ""), source=source,
+                   source_urls=json.dumps(source_url_list) if source_url_list else "",
+                   raw_research=context[:3000] if context else "",
                    status="ready")
     link_segment_sources(segment_id, source_ids)
 
@@ -210,9 +226,25 @@ def generate_segment_content(topic_id, segment_id, topic_title, segment_title,
             response_format={"type": "json_object"},
         )
         data = json.loads(response.choices[0].message.content)
+
+        # Collect source URLs for attribution
+        source_url_list = []
+        if source_ids:
+            from db import get_conn as _gc
+            _conn = _gc()
+            for sid in source_ids:
+                row = _conn.execute(
+                    "SELECT url, title FROM research_sources WHERE id = ?", (sid,)
+                ).fetchone()
+                if row and row["url"] and not row["url"].startswith("agent://"):
+                    source_url_list.append({"url": row["url"], "title": row["title"] or ""})
+            _conn.close()
+
         update_segment(segment_id, hook=data["hook"], script=data["script"],
                        visual_cue=data.get("visual_cue", ""),
-                       source="ai", status="ready")
+                       source="ai",
+                       source_urls=json.dumps(source_url_list) if source_url_list else "",
+                       status="ready")
         if source_ids:
             link_segment_sources(segment_id, source_ids)
         update_research_task(task_id, status="done",
@@ -676,6 +708,19 @@ def generate_segments_from_sources(topic_id, topic_title, source_ids,
         next_num = max((s["segment_num"] for s in existing), default=0) + 1
         created = 0
 
+        # Collect source URLs for attribution
+        source_url_list = []
+        from db import get_conn as _gc
+        _conn = _gc()
+        for sid in source_ids:
+            row = _conn.execute(
+                "SELECT url, title FROM research_sources WHERE id = ?", (sid,)
+            ).fetchone()
+            if row and row["url"] and not row["url"].startswith("agent://"):
+                source_url_list.append({"url": row["url"], "title": row["title"] or ""})
+        _conn.close()
+        source_urls_json = json.dumps(source_url_list) if source_url_list else ""
+
         for seg_data in data.get("segments", []):
             title = seg_data.get("title", "")
             if title.lower() in existing_titles:
@@ -689,6 +734,7 @@ def generate_segments_from_sources(topic_id, topic_title, source_ids,
                 script=seg_data.get("script", ""),
                 visual_cue=seg_data.get("visual_cue", ""),
                 source="firecrawl",
+                source_urls=source_urls_json,
                 status="ready",
             )
             # Link sources to this segment
