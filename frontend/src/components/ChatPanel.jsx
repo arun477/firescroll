@@ -105,10 +105,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const [streamText, setStreamText] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
-  const pollRef = useRef(null)
-  // Use refs for polling state to avoid stale closures
   const streamRef = useRef('')
-  const offsetRef = useRef(0)
 
   // Stable conversation ID per segment — survives page refresh
   useEffect(() => {
@@ -116,7 +113,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     const cid = `conv_${topicId}_${segment.id}`
     setConversationId(cid)
     streamRef.current = ''
-    offsetRef.current = 0
     setStreamText('')
     setStatus('idle')
 
@@ -208,7 +204,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     // Low-level send — used for init and when conversationId isn't in state yet
     setStatus('thinking')
     streamRef.current = ''
-    offsetRef.current = 0
     setStreamText('')
     try {
       await fetch('/api/chat/send', {
