@@ -9178,8 +9178,8 @@ a { color: var(--blue); text-decoration: none; }
   inset: -20px;
   overflow: hidden;
   z-index: 0;
-  mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, black 20%, transparent 65%);
-  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, black 20%, transparent 65%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 46%, black 40%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 46%, black 40%, transparent 72%);
   opacity: 0.75;
 }
 
