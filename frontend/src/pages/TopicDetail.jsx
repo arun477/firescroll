@@ -505,11 +505,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
                   <div className="ve-bg-card" onClick={() => setMediaDrawerOpen(true)}>
                     {selMedia ? (
                       <>
-                        <div className="ve-bg-thumb">
-                          {selMedia.thumb_url
-                            ? <img src={selMedia.thumb_url} alt="" />
-                            : <Film size={20} />}
-                        </div>
+                        <BgVideoThumb media={selMedia} />
                         <div className="ve-bg-info">
                           <div className="ve-bg-name">{selMedia.original_name || selMedia.filename}</div>
                           <div className="ve-bg-meta">Custom video</div>
@@ -878,6 +874,42 @@ function SfxPreviewButton({ prompt }) {
         : playing ? <><Square size={11} /> Stop</>
         : <><Play size={11} /> Preview SFX</>}
     </button>
+  )
+}
+
+function BgVideoThumb({ media: m }) {
+  const [playing, setPlaying] = useState(false)
+  const videoRef = useRef(null)
+
+  const toggle = (e) => {
+    e.stopPropagation()
+    if (playing) {
+      videoRef.current?.pause()
+      setPlaying(false)
+    } else {
+      videoRef.current?.play().catch(() => {})
+      setPlaying(true)
+    }
+  }
+
+  return (
+    <div className="ve-bg-thumb">
+      {m.video_url ? (
+        <>
+          <video ref={videoRef} src={m.video_url} muted loop
+            poster={m.thumb_url || ''} preload="none"
+            className="ve-bg-video"
+            onEnded={() => setPlaying(false)} />
+          <button className="ve-bg-play" onClick={toggle}>
+            {playing ? <Square size={8} /> : <Play size={8} />}
+          </button>
+        </>
+      ) : m.thumb_url ? (
+        <img src={m.thumb_url} alt="" />
+      ) : (
+        <Film size={20} />
+      )}
+    </div>
   )
 }
 
