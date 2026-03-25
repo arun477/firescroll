@@ -1488,10 +1488,11 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   margin-left: -20px;
   margin-right: -20px;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .td-title-row {
@@ -4641,7 +4642,8 @@ a { color: var(--blue); text-decoration: none; }
   display: grid;
   grid-template-columns: 320px 1fr 344px;
   gap: 0;
-  min-height: calc(100vh - 90px);
+  height: calc(100vh - 90px);
+  overflow: hidden;
   align-items: stretch;
   animation: fadeUp 0.25s ease both;
   position: relative;
@@ -4681,14 +4683,20 @@ a { color: var(--blue); text-decoration: none; }
 .ve-left {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   position: sticky;
   top: 0;
   height: calc(100vh - 90px);
-  padding: 0 20px 20px 16px;
+  padding: 0 20px 0 16px;
 }
 
-.ve-left::-webkit-scrollbar { width: 3px; }
+.ve-left-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ve-left-scroll::-webkit-scrollbar { width: 3px; }
 
 .ve-left-head {
   display: flex;
@@ -4882,7 +4890,7 @@ a { color: var(--blue); text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px 16px;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -5410,8 +5418,9 @@ a { color: var(--blue); text-decoration: none; }
 
 /* Generate section */
 .ve-gen {
-  padding: 14px 0;
-  margin-top: 8px;
+  padding: 10px 0 4px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
 .ve-gen-btn {
@@ -5442,6 +5451,21 @@ a { color: var(--blue); text-decoration: none; }
   color: var(--text-muted);
   margin-top: 6px;
 }
+
+.ve-gen-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #f87171;
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.1);
+}
+.ve-gen-error svg { flex-shrink: 0; margin-top: 1px; }
 
 /* History */
 .ve-hist {

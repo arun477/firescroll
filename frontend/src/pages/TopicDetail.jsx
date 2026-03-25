@@ -352,6 +352,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             </span>
           </div>
 
+          <div className="ve-left-scroll">
           {/* ── Voice ── */}
           <Section icon={Volume2} title="Voice" defaultOpen
             value={voices.find(v => v.id === localVoice)?.name || 'Default'}>
@@ -558,6 +559,7 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               </div>
             </Section>
           )}
+          </div>
 
           {/* ── Generate ── */}
           <div className="ve-gen">
@@ -570,6 +572,12 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
             <div className="ve-gen-meta">
               {MODE_META[mode].label} · {CAPTION_META[caption].label} · {voices.find(v => v.id === localVoice)?.name || 'Default'}
             </div>
+            {!activeJob && segJobs.find(j => j.status === 'failed') && (
+              <div className="ve-gen-error">
+                <AlertCircle size={11} />
+                {fmtError(segJobs.find(j => j.status === 'failed').error)}
+              </div>
+            )}
           </div>
 
         </div>
@@ -628,12 +636,6 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
               {selectedSeg.visual_cue && <div className="ve-c-cue">{selectedSeg.visual_cue}</div>}
             </div>
 
-            {!activeJob && segJobs.find(j => j.status === 'failed') && (
-              <div className="ve-c-error">
-                <AlertCircle size={12} />
-                {fmtError(segJobs.find(j => j.status === 'failed').error)}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -674,23 +676,6 @@ function VideoStudio({ topicId, topic, segments, jobs, onRefresh, searchParams, 
           })}
         </div>
 
-        {/* History */}
-        {selectedSeg && segJobs.filter(j => j.status === 'done' || j.status === 'failed').length > 0 && (
-          <div className="ve-hist">
-            <div className="ve-hist-title">History</div>
-            {[...segJobs].filter(j => j.status === 'done' || j.status === 'failed').reverse().map(j => (
-              <div key={j.id} className={`ve-hist-row ${j.status === 'done' ? 'c-green' : 'c-red'}`}>
-                <div className="ve-hist-l">
-                  {j.status === 'done' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
-                  <span>{j.mode}/{j.caption}</span>
-                </div>
-                <div className="ve-hist-r">
-                  {j.duration_seconds && <span>{Math.round(j.duration_seconds)}s</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ══════ MEDIA LIBRARY DRAWER ══════ */}
