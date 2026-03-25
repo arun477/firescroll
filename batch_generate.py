@@ -5,7 +5,6 @@ import random
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from multiprocessing import cpu_count
 
 from audio_utils import (
     mix_voice_and_music,
@@ -14,7 +13,6 @@ from audio_utils import (
     probe_duration,
     stitch_audio,
 )
-from compositor import load_background
 from db import (
     STATUS_AUDIO,
     STATUS_BACKGROUNDS,
@@ -28,14 +26,8 @@ from db import (
     update_job,
 )
 from imagegen import get_provider as get_image_provider
-from karaoke_renderer import render_karaoke_frame
-from split_screen import (
-    compose_split_frame,
-    compose_video_fullscreen,
-    extract_frames,
-    pick_video,
-)
-from text_renderer import FPS, HEIGHT, render_frame, render_thumbnail
+from split_screen import extract_frames, pick_video
+from text_renderer import FPS, HEIGHT, render_thumbnail
 from transcribe import get_word_timestamps
 from voice import get_provider as get_voice_provider
 
@@ -187,62 +179,11 @@ def _phase_backgrounds(segment, output_dir, count=4):
         "Vivid colors, cinematic lighting, no text, no words, photorealistic."
     )
     paths = img_gen.generate_bulk(prompt, bg_dir, count)
-    return [load_background(p) for p in paths]
+    return paths  # Return file paths, not PIL objects
 
 
 def _phase_transcribe(voice_path):
     return get_word_timestamps(voice_path)
-
-
-def _text_layer(segment, frame_num, total_frames, timing, word_ts=None):
-    if word_ts:
-        return render_karaoke_frame(segment, frame_num, total_frames, timing, word_ts)
-    return render_frame(segment, frame_num, total_frames, timing)
-
-
-def _render_frame_worker(args):
-    mode, segment, frame_num, total_frames, timing, extra = args
-    word_ts = extra.get("word_ts")
-    text = _text_layer(segment, frame_num, total_frames, timing, word_ts)
-
-    if mode == "full":
-        from compositor import _get_bg_at_time
-        t = frame_num / FPS
-        bg = _get_bg_at_time(extra["bg_images"], t, timing["total_duration"])
-        bg_copy = bg.copy()
-        text_rgba = text.convert("RGBA")
-        bg_copy.paste(text_rgba, (0, 0), text_rgba)
-        final = bg_copy.convert("RGB")
-
-    elif mode == "video":
-        vid_path = _safe_vid(extra["vid_dir"], frame_num)
-        final = compose_video_fullscreen(text, vid_path)
-
-    elif mode == "split":
-        vid_path = _safe_vid(extra["vid_dir"], frame_num)
-        from compositor import _get_bg_at_time
-        t = frame_num / FPS
-        bg_bottom = _get_bg_at_time(extra["bg_images"], t, timing["total_duration"])
-        final = compose_split_frame(text, vid_path, bg_bottom)
-
-    else:
-        final = text.convert("RGB")
-
-    final.save(os.path.join(extra["frame_dir"], f"frame_{frame_num:05d}.png"))
-    return frame_num
-
-
-def _safe_vid(vid_dir, frame_num):
-    path = os.path.join(vid_dir, f"bg_{frame_num + 1:05d}.png")
-    if os.path.exists(path):
-        return path
-    idx = frame_num
-    while idx > 0:
-        idx -= 1
-        fallback = os.path.join(vid_dir, f"bg_{idx + 1:05d}.png")
-        if os.path.exists(fallback):
-            return fallback
-    return path
 
 
 class CancelledError(Exception):
@@ -328,7 +269,7 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         if needs_bg:
             update_job(job_id, status=STATUS_BACKGROUNDS, progress=30)
             print(f"  [Seg {sid}] Backgrounds...")
-            extra["bg_images"] = _phase_backgrounds(segment, seg_dir)
+            extra["bg_paths"] = _phase_backgrounds(segment, seg_dir)
             update_job(job_id, progress=45)
 
         if needs_vid:
@@ -347,31 +288,61 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         print(f"  [Seg {sid}] Rendering {total_frames} frames...")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            extra["frame_dir"] = tmp_dir
+            # Prepare args for the render subprocess
+            render_args = {
+                "mode": mode,
+                "segment": segment,
+                "total_frames": total_frames,
+                "timing": timing,
+                "frame_dir": tmp_dir,
+                "word_ts": word_ts,
+                "bg_paths": extra.get("bg_paths", []),
+                "vid_dir": extra.get("vid_dir"),
+            }
+            args_file = os.path.join(tmp_dir, "render_args.json")
+            with open(args_file, "w") as f:
+                json.dump(render_args, f)
 
-            tasks = [
-                (mode, segment, i, total_frames, timing, extra)
-                for i in range(total_frames)
-            ]
+            # Spawn a fresh process for rendering — not a daemon, so it can
+            # use multiprocessing.Pool freely (8 parallel workers)
+            import subprocess as sp
+            render_script = os.path.join(os.path.dirname(__file__), "render_subprocess.py")
+            proc = sp.Popen(
+                [sys.executable, render_script, args_file],
+                stdout=sp.PIPE, stderr=sp.PIPE,
+                text=True, bufsize=1,
+            )
 
-            workers = min(cpu_count(), 8)
-            cancel_check_interval = FPS * 2  # check every ~2 seconds of video
-            # Use threads — PIL releases the GIL for image ops, and threads
-            # don't trigger Celery's SIGCHLD handling in solo pool mode
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = [executor.submit(_render_frame_worker, t) for t in tasks]
-                done = 0
-                for fut in as_completed(futures):
-                    fut.result()  # raise if frame worker crashed
-                    done += 1
-                    if done % cancel_check_interval == 0:
-                        if _is_cancelled(job_id):
-                            executor.shutdown(wait=False, cancel_futures=True)
-                            print(f"  [Seg {sid}] Cancelled during rendering")
-                            return job_id, None
-                    if done % (FPS * 3) == 0 or done == total_frames:
-                        pct = 45 + int(done / total_frames * 45)
-                        update_job(job_id, progress=pct)
+            # Read stdout for progress, check for cancellation
+            import threading
+            stderr_lines = []
+            def _drain_stderr():
+                for line in proc.stderr:
+                    stderr_lines.append(line)
+            drain = threading.Thread(target=_drain_stderr, daemon=True)
+            drain.start()
+
+            for line in proc.stdout:
+                line = line.strip()
+                if line.startswith("PROGRESS:"):
+                    pct_render = int(line.split(":")[1])
+                    pct = 45 + int(pct_render * 0.45)
+                    update_job(job_id, progress=pct)
+                if _is_cancelled(job_id):
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=10)
+                    except sp.TimeoutExpired:
+                        proc.kill()
+                    print(f"  [Seg {sid}] Cancelled during rendering")
+                    return job_id, None
+
+            proc.wait()
+            drain.join(timeout=5)
+
+            if proc.returncode != 0:
+                err = "".join(stderr_lines)[:500]
+                raise RuntimeError(f"Render subprocess failed: {err}")
 
             _check_cancel(job_id)
 
