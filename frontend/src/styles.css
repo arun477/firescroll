@@ -9641,10 +9641,35 @@ a { color: var(--blue); text-decoration: none; }
 }
 .vc-msg-text {
   font-size: 12px; line-height: 1.55;
-  color: var(--text-secondary); margin: 0;
-  white-space: pre-wrap;
+  color: var(--text-secondary);
 }
 .vc-msg-user .vc-msg-text { color: var(--text-primary); }
+
+/* Markdown in chat */
+.vc-md-p { margin: 0 0 6px; }
+.vc-md-p:last-child { margin-bottom: 0; }
+.vc-msg-text strong { color: var(--text-primary); font-weight: 600; }
+.vc-md-code {
+  font-size: 10px; padding: 1px 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px; font-family: monospace;
+  color: var(--accent);
+}
+.vc-md-list {
+  margin: 4px 0 8px; padding-left: 18px;
+  list-style: none;
+}
+.vc-md-list li {
+  position: relative; margin-bottom: 4px;
+  font-size: 12px; line-height: 1.5;
+  color: var(--text-secondary);
+}
+.vc-md-list li::before {
+  content: ""; position: absolute;
+  left: -14px; top: 7px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); opacity: 0.6;
+}
 
 /* Settings badge in header */
 .vc-badge {

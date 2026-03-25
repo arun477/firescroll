@@ -103,10 +103,12 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const [input, setInput] = useState('')
   const [status, setStatus] = useState('idle')
   const [streamText, setStreamText] = useState('')
-  const [chunkOffset, setChunkOffset] = useState(0)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const pollRef = useRef(null)
+  // Use refs for polling state to avoid stale closures
+  const streamRef = useRef('')
+  const offsetRef = useRef(0)
 
   // Stable conversation ID per segment — survives page refresh
   useEffect(() => {
@@ -135,45 +137,47 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     })
   }, [segment?.id])
 
-  // Poll for response chunks
+  // Poll for response chunks — uses refs to avoid stale closures
   useEffect(() => {
     if (status !== 'thinking' || !conversationId) return
+
     const poll = async () => {
       try {
-        const res = await fetch(`/api/chat/${conversationId}/poll?offset=${chunkOffset}`)
+        const res = await fetch(`/api/chat/${conversationId}/poll?offset=${offsetRef.current}`)
         const data = await res.json()
 
+        // Append new chunks
         if (data.chunks?.length) {
-          setStreamText(prev => prev + data.chunks.join(''))
-          setChunkOffset(data.total_chunks)
+          streamRef.current += data.chunks.join('')
+          offsetRef.current = data.total_chunks
+          setStreamText(streamRef.current)
         }
 
         if (data.scene_config) {
           onSceneConfigUpdate(data.scene_config)
         }
 
-        // Agent requested a render via trigger_render tool
         if (data.render_requested && onGenerate) {
           onGenerate()
         }
 
         if (data.status === 'done' || data.status === 'error') {
-          // Finalize the streaming message
-          const finalText = streamText + (data.chunks || []).join('')
-          if (finalText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: finalText }])
+          // Finalize — move stream content into a proper message
+          if (streamRef.current) {
+            setMessages(prev => [...prev, { role: 'assistant', content: streamRef.current }])
           }
+          streamRef.current = ''
+          offsetRef.current = 0
           setStreamText('')
-          setChunkOffset(0)
           setStatus('idle')
         }
       } catch {}
     }
+
     pollRef.current = setInterval(poll, 1500)
-    // Do first poll immediately
-    poll()
+    poll() // first poll immediately
     return () => clearInterval(pollRef.current)
-  }, [status, conversationId, chunkOffset])
+  }, [status, conversationId])
 
   // Auto-scroll
   useEffect(() => {
@@ -183,8 +187,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const sendMessageDirect = useCallback(async (cid, text) => {
     // Low-level send — used for init and when conversationId isn't in state yet
     setStatus('thinking')
+    streamRef.current = ''
+    offsetRef.current = 0
     setStreamText('')
-    setChunkOffset(0)
     try {
       await fetch('/api/chat/send', {
         method: 'POST',
@@ -242,7 +247,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           templates={templates} onSelect={handlePickerSelect} />
       default:
         return part.content ? (
-          <p key={i} className="vc-msg-text">{part.content}</p>
+          <div key={i} className="vc-msg-text">{renderMarkdown(part.content)}</div>
         ) : null
     }
   }
