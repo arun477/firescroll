@@ -4,8 +4,67 @@ import SceneConfigCard from './SceneConfigCard'
 import { VoicePicker, LanguagePicker, StylePicker, TemplateShowcase } from './ChatPickers'
 
 /**
+ * Render simple markdown: **bold**, `code`, newlines, lists
+ */
+function renderMarkdown(text) {
+  if (!text) return null
+  // Split into lines for list detection
+  const lines = text.split('\n')
+  const elements = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+    // Numbered list item: "1. text" or "- text"
+    const listMatch = line.match(/^(\d+\.\s+|- )(.*)/)
+    if (listMatch) {
+      const items = []
+      while (i < lines.length) {
+        const m = lines[i].match(/^(\d+\.\s+|- )(.*)/)
+        if (!m) break
+        items.push(m[2])
+        i++
+      }
+      elements.push(
+        <ul key={elements.length} className="vc-md-list">
+          {items.map((item, j) => <li key={j}>{inlineFormat(item)}</li>)}
+        </ul>
+      )
+    } else if (line.trim() === '') {
+      i++
+    } else {
+      // Regular paragraph
+      let para = line
+      i++
+      while (i < lines.length && lines[i].trim() !== '' && !lines[i].match(/^(\d+\.\s+|- )/)) {
+        para += ' ' + lines[i]
+        i++
+      }
+      elements.push(<p key={elements.length} className="vc-md-p">{inlineFormat(para)}</p>)
+    }
+  }
+  return elements
+}
+
+function inlineFormat(text) {
+  // Split by **bold** and `code` markers
+  const parts = []
+  const regex = /(\*\*(.+?)\*\*|`(.+?)`)/g
+  let last = 0
+  let match
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index))
+    if (match[2]) parts.push(<strong key={match.index}>{match[2]}</strong>)
+    else if (match[3]) parts.push(<code key={match.index} className="vc-md-code">{match[3]}</code>)
+    last = match.index + match[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts
+}
+
+/**
  * Parse assistant message text into segments:
- * - Plain text
+ * - Plain text (with markdown)
  * - :::scene_config::: → SceneConfigCard
  * - :::voice_picker::: → VoicePicker
  * - :::language_picker::: → LanguagePicker
