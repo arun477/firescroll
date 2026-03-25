@@ -184,7 +184,13 @@ RULES:
 - fps=30, vertical 1080x1920. Scenes must not overlap in time.
 - Use 3-6 scenes. Start with title_reveal or fact_card, end with cta_outro.
 - Keep narrative scenes under 50 words each.
-- On first message, introduce yourself briefly, propose initial scenes based on the segment content, and ask for creative direction."""
+- On first message, introduce yourself briefly, propose initial scenes based on the segment content, and ask for creative direction.
+- ITERATION: After a video is rendered, the user may want changes. Use get_render_status to check, then modify scenes with update_scene/add_scene/remove_scene, and trigger_render again.
+- When the user asks to change colors, text, timing, or any visual property — update the specific scene props and re-render. Don't just acknowledge — ACTUALLY make the change with the tools.
+- Example: "change color to white" → call update_scene to set colorScheme to "minimal" or change accentColor → then trigger_render.
+- Example: "make the title bigger" → update the title scene's fontSize prop → trigger_render.
+- Example: "make it longer" → increase durationInFrames on the relevant scenes → trigger_render.
+- Always confirm what you changed and offer to render the updated version."""
 
 
 # ── Agent tools ──
@@ -345,20 +351,46 @@ def _make_tools(cid):
 
     @function_tool
     def trigger_render() -> str:
-        """Start rendering the video with the current scene config, voice, and language settings. Call this when the user confirms they want to render."""
+        """Start rendering the video with the current scene config, voice, and language settings.
+        Call this when the user confirms they want to render, OR when they request changes after a previous render (re-render)."""
         config = get_scene_config(cid)
         if not config or not config.get("scenes"):
             return "Error: no scene config to render. Compose scenes first."
-        state = get_conversation_state(cid)
-        # Store render flag — the frontend will pick this up and trigger the actual render
         r = _get_redis()
         r.set(_key(cid, "render_requested"), "1")
         r.expire(_key(cid, "render_requested"), 300)
-        return "Render requested! The video will start generating now."
+        return "Render requested! The video will start generating with the current scene config."
+
+    @function_tool
+    def get_render_status() -> str:
+        """Check the current render status for this segment."""
+        state = get_conversation_state(cid)
+        if not state:
+            return "No conversation state found."
+        from db import get_remotion_jobs_for_topic, REMOTION_ACTIVE
+        jobs = get_remotion_jobs_for_topic(state["topic_id"])
+        seg_id = state.get("segment_id")
+        # Find segment number from segment id
+        from db import get_segments_for_topic
+        segs = get_segments_for_topic(state["topic_id"])
+        seg = next((s for s in segs if s["id"] == seg_id), None)
+        if not seg:
+            return "Segment not found."
+        seg_num = seg["segment_num"]
+        seg_jobs = [j for j in jobs if j["segment_id"] == seg_num]
+        if not seg_jobs:
+            return "No renders found for this segment. Compose scenes and trigger a render."
+        latest = seg_jobs[0]  # ordered by created_at DESC
+        if latest["status"] in REMOTION_ACTIVE:
+            return f"Render in progress: {latest['status']} ({latest.get('progress', 0)}%)"
+        elif latest["status"] == "done":
+            return "Latest render is COMPLETE. You can modify scenes and re-render, or the user can watch the video."
+        else:
+            return f"Latest render FAILED: {latest.get('error', 'unknown error')[:200]}"
 
     return [compose_scenes, update_scene, add_scene, remove_scene,
             reorder_scenes, set_style, set_voice, set_language,
-            list_voices, list_languages, trigger_render]
+            list_voices, list_languages, trigger_render, get_render_status]
 
 
 # ── Main agent runner ──
