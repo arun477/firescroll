@@ -20,19 +20,36 @@ SPOKEN_COLOR = (200, 200, 200)
 UNSPOKEN_COLOR = (255, 255, 255)
 WORD_BG = (20, 20, 30, 200)
 ACTIVE_WORD_BG = (230, 50, 80, 230)
-MAX_WORDS_PER_LINE = 5
+MAX_LINE_WIDTH = WIDTH - TEXT_PAD_X * 2 - 120
 LINE_H = 90
 
 
-def _group_words_into_lines(words, max_per_line=MAX_WORDS_PER_LINE):
+def _group_words_into_lines(words, font, draw):
+    """Group words into lines based on pixel width, not fixed word count."""
     lines = []
-    for i in range(0, len(words), max_per_line):
-        chunk = words[i:i + max_per_line]
+    current_words = []
+    current_text = ""
+    for w in words:
+        test_text = f"{current_text} {w['word']}".strip()
+        tw, _ = text_size(draw, test_text, font)
+        if tw > MAX_LINE_WIDTH and current_words:
+            lines.append({
+                "words": current_words,
+                "start": current_words[0]["start"],
+                "end": current_words[-1]["end"],
+                "text": current_text,
+            })
+            current_words = [w]
+            current_text = w["word"]
+        else:
+            current_words.append(w)
+            current_text = test_text
+    if current_words:
         lines.append({
-            "words": chunk,
-            "start": chunk[0]["start"],
-            "end": chunk[-1]["end"],
-            "text": " ".join(w["word"] for w in chunk),
+            "words": current_words,
+            "start": current_words[0]["start"],
+            "end": current_words[-1]["end"],
+            "text": current_text,
         })
     return lines
 
@@ -45,7 +62,7 @@ def _draw_karaoke_captions(img, word_timestamps, t):
     font = get_font("bold", 50)
     small_font = get_font("bold", 42)
 
-    lines = _group_words_into_lines(word_timestamps)
+    lines = _group_words_into_lines(word_timestamps, font, draw)
 
     current_line_idx = 0
     for i, line in enumerate(lines):

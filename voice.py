@@ -51,7 +51,7 @@ VOICE_PRESETS = {
 
 
 class ElevenLabsVoice(VoiceProvider):
-    DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+    FALLBACK_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
 
     def __init__(self, voice: str = None, model: str = "eleven_v3"):
         from elevenlabs.client import ElevenLabs
@@ -60,8 +60,20 @@ class ElevenLabsVoice(VoiceProvider):
         if not api_key:
             raise ValueError("ElevenLabs API key not configured")
         self.client = ElevenLabs(api_key=api_key)
-        self.voice = voice or self.DEFAULT_VOICE_ID
         self.model = model
+        if voice:
+            self.voice = voice
+        else:
+            # Try to get the first available voice from the user's account
+            try:
+                response = self.client.voices.search()
+                if response.voices:
+                    self.voice = response.voices[0].voice_id
+                    print(f"  [Voice] Using account voice: {response.voices[0].name} ({self.voice})")
+                else:
+                    self.voice = self.FALLBACK_VOICE_ID
+            except Exception:
+                self.voice = self.FALLBACK_VOICE_ID
 
     def generate(self, text: str, output_path: str, **kwargs) -> str:
         voice_id = kwargs.get("voice", self.voice)

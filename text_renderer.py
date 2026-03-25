@@ -90,11 +90,23 @@ def _draw_series_badge(img, segment, t):
     draw = ImageDraw.Draw(img)
     alpha = min(1.0, t / FADE_DUR)
     a = int(255 * alpha)
+    badge_pad_x = 24
+    badge_pad_y = 12
+    max_badge_w = WIDTH - badge_pad_x * 2 - 60
     tw, th = text_size(draw, series, font)
+    # Truncate with ellipsis if badge text is too wide
+    if tw > max_badge_w:
+        while tw > max_badge_w and len(series) > 1:
+            series = series[:-1]
+            tw, th = text_size(draw, series.rstrip() + "…", font)
+        series = series.rstrip() + "…"
+        tw, th = text_size(draw, series, font)
     sx = (WIDTH - tw) // 2
     y = 60
     badge_bg = (*BADGE_BG[:3], int(BADGE_BG[3] * alpha))
-    draw_pill(draw, sx - 20, y - 10, tw + 40, th + 20, fill=badge_bg, radius=25)
+    draw_pill(draw, sx - badge_pad_x, y - badge_pad_y,
+              tw + badge_pad_x * 2, th + badge_pad_y * 2,
+              fill=badge_bg, radius=25)
     draw_bold_text(draw, series, (sx, y), font,
                    fill=(255, 255, 255, a), stroke=2)
 
@@ -158,7 +170,7 @@ def _draw_caption_block(img, lines, t_offset, duration, font, *,
         if idx == current_idx:
             pop = min(1.0, line_age / 0.15)
             alpha = ease_out_cubic(pop)
-            scale = 0.9 + 0.1 * ease_out_back(min(1.0, line_age / 0.3))
+            scale = min(1.0, 0.9 + 0.1 * ease_out_back(min(1.0, line_age / 0.3)))
             y_slide = int((1 - ease_out_cubic(min(1.0, line_age / 0.15))) * 30)
         else:
             alpha = 0.6

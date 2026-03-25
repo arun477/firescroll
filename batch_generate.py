@@ -330,11 +330,19 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
         return job_id, video_path
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        err_msg = str(exc)
-        if len(err_msg) > 300:
-            err_msg = err_msg[:300]
+        # Extract the most useful error info
+        err_msg = ""
+        # ElevenLabs / httpx errors: pull out status + body, not headers
+        if hasattr(exc, "body"):
+            err_msg = f"{type(exc).__name__}: {exc.body}"
+        elif hasattr(exc, "response") and hasattr(exc.response, "text"):
+            err_msg = f"{type(exc).__name__} {getattr(exc.response, 'status_code', '')}: {exc.response.text}"
+        else:
+            err_msg = f"{type(exc).__name__}: {exc}"
+        if len(err_msg) > 500:
+            err_msg = err_msg[:500]
         update_job(job_id, status=STATUS_FAILED, error=err_msg)
-        print(f"  [Seg {sid}] FAILED: {exc}")
+        print(f"  [Seg {sid}] FAILED: {err_msg}")
         return job_id, None
 
 
