@@ -5,7 +5,7 @@ import random
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count
 
 from audio_utils import (
     mix_voice_and_music,
@@ -62,7 +62,18 @@ def _run_ffmpeg_cancellable(cmd, job_id, poll_interval=2):
     """Run FFmpeg as a subprocess, polling for cancellation."""
     import subprocess
     import time
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Use DEVNULL for stdout; capture stderr in a thread to avoid pipe deadlock
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+    # Read stderr in a background thread to prevent buffer deadlock
+    import threading
+    stderr_chunks = []
+    def _drain_stderr():
+        for line in proc.stderr:
+            stderr_chunks.append(line)
+    drain_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    drain_thread.start()
+
     while proc.poll() is None:
         time.sleep(poll_interval)
         if _is_cancelled(job_id):
@@ -73,8 +84,9 @@ def _run_ffmpeg_cancellable(cmd, job_id, poll_interval=2):
                 proc.kill()
             print(f"  [Job {job_id}] FFmpeg killed — cancelled by user")
             return
+    drain_thread.join(timeout=5)
     if proc.returncode != 0:
-        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
         raise RuntimeError(f"FFmpeg error: {stderr[:500]}")
 
 
@@ -344,14 +356,17 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
 
             workers = min(cpu_count(), 8)
             cancel_check_interval = FPS * 2  # check every ~2 seconds of video
-            with Pool(workers) as pool:
+            # Use threads — PIL releases the GIL for image ops, and threads
+            # don't trigger Celery's SIGCHLD handling in solo pool mode
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = [executor.submit(_render_frame_worker, t) for t in tasks]
                 done = 0
-                for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
+                for fut in as_completed(futures):
+                    fut.result()  # raise if frame worker crashed
                     done += 1
                     if done % cancel_check_interval == 0:
                         if _is_cancelled(job_id):
-                            pool.terminate()
-                            pool.join()
+                            executor.shutdown(wait=False, cancel_futures=True)
                             print(f"  [Seg {sid}] Cancelled during rendering")
                             return job_id, None
                     if done % (FPS * 3) == 0 or done == total_frames:

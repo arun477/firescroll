@@ -556,6 +556,12 @@ def list_segments_ep(topic_id: str, q: str = "", page: int = 1,
             "pages": (total + per_page - 1) // per_page}
 
 
+@app.get("/api/topics/{topic_id}/activity")
+def get_activity_ep(topic_id: str, page: int = 1, page_size: int = 20, status: str = "all"):
+    from db import get_activity_page
+    return get_activity_page(topic_id, page=page, page_size=page_size, status_filter=status)
+
+
 @app.delete("/api/topics/{topic_id}/research/{task_id}")
 def delete_research_ep(topic_id: str, task_id: str):  # noqa: ARG001
     from db import delete_research_task

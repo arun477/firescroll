@@ -417,6 +417,61 @@ def get_research_tasks(topic_id):
     return [dict(r) for r in rows]
 
 
+def get_activity_page(topic_id, page=1, page_size=20, status_filter=None):
+    """Return paginated activity (research tasks + firecrawl jobs merged by time)."""
+    conn = get_conn()
+
+    status_clause_rt = ""
+    status_clause_fc = ""
+    params_rt = [topic_id]
+    params_fc = [topic_id]
+    if status_filter and status_filter != "all":
+        if status_filter == "running":
+            status_clause_rt = " AND status NOT IN ('done','failed','pending')"
+            status_clause_fc = " AND status NOT IN ('done','failed','pending')"
+        else:
+            status_clause_rt = " AND status = ?"
+            status_clause_fc = " AND status = ?"
+            params_rt.append(status_filter)
+            params_fc.append(status_filter)
+
+    # Count totals
+    total_rt = conn.execute(
+        f"SELECT COUNT(*) FROM research_tasks WHERE topic_id = ?{status_clause_rt}",
+        params_rt,
+    ).fetchone()[0]
+    total_fc = conn.execute(
+        f"SELECT COUNT(*) FROM firecrawl_jobs WHERE topic_id = ?{status_clause_fc}",
+        params_fc,
+    ).fetchone()[0]
+    total = total_rt + total_fc
+
+    # Fetch both sets, union and sort by time desc, then paginate
+    offset = (page - 1) * page_size
+    rows = conn.execute(
+        f"""
+        SELECT id, 'research' AS kind, task_type AS type, query, status, error,
+               updated_at AS time, NULL AS pages, NULL AS result_preview, NULL AS segment_id
+        FROM research_tasks WHERE topic_id = ?{status_clause_rt}
+        UNION ALL
+        SELECT id, 'firecrawl' AS kind, job_type AS type, target AS query, status, error,
+               updated_at AS time, pages_found AS pages, result_preview, segment_id
+        FROM firecrawl_jobs WHERE topic_id = ?{status_clause_fc}
+        ORDER BY time DESC
+        LIMIT ? OFFSET ?
+        """,
+        params_rt + params_fc + [page_size, offset],
+    ).fetchall()
+    conn.close()
+
+    return {
+        "items": [dict(r) for r in rows],
+        "total": total,
+        "page": page,
+        "pages": max(1, (total + page_size - 1) // page_size),
+    }
+
+
 def delete_research_task(task_id):
     conn = get_conn()
     conn.execute("DELETE FROM research_tasks WHERE id = ?", (task_id,))

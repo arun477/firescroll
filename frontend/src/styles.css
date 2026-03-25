@@ -3411,25 +3411,33 @@ a { color: var(--blue); text-decoration: none; }
   font-weight: 500;
 }
 
-/* Show more for activity */
-.tm-show-more {
-  display: block;
-  width: 100%;
-  padding: 6px;
+/* Activity pagination */
+.tm-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+  border-top: 1px solid rgba(255,255,255,0.04);
   margin-top: 4px;
-  background: none;
-  border: 1px solid rgba(255,255,255,0.04);
+}
+.tm-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
-  color: #3f3f46;
-  font-size: 10px;
-  font-weight: 500;
-  font-family: inherit;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: none;
+  color: #71717a;
   cursor: pointer;
-  text-align: center;
+  font-family: inherit;
   transition: all 0.15s;
 }
-
-.tm-show-more:hover { color: #71717a; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06); }
+.tm-page-btn:hover:not(:disabled) { color: #a1a1aa; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); }
+.tm-page-btn:disabled { opacity: 0.3; cursor: default; }
+.tm-page-info { font-size: 11px; color: #52525b; font-variant-numeric: tabular-nums; }
 
 .sp-src {
   border-bottom: 1px solid rgba(255,255,255,0.02);

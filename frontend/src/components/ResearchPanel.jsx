@@ -315,8 +315,6 @@ export default function ResearchPanel({
           alwaysOpen
         />
         <ResearchTaskManager
-          tasks={research || []}
-          fcJobs={fcJobs || []}
           topicId={topicId}
           onRefresh={refresh}
           alwaysOpen

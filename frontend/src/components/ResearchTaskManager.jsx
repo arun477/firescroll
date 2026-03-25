@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
-  ChevronDown, ChevronRight, Trash2, Loader2,
+  ChevronDown, ChevronRight, ChevronLeft, Trash2, Loader2,
   CheckCircle2, AlertCircle, Clock, Search, FileText,
   Globe, Bot, Database, Cpu, Sparkles, Layers,
 } from 'lucide-react'
@@ -40,74 +40,58 @@ const STEP_LABELS = {
   agent_synthesize: 'Synthesize',
 }
 
-function normalizeItems(tasks, fcJobs) {
-  const items = []
+const PAGE_SIZE = 20
 
-  for (const t of (tasks || [])) {
-    items.push({
-      id: t.id,
-      kind: 'research',
-      type: t.task_type,
-      query: t.query || '',
-      status: t.status,
-      error: t.error,
-      time: t.updated_at,
-      pages: null,
-    })
-  }
-
-  for (const j of (fcJobs || [])) {
-    items.push({
-      id: j.id,
-      kind: 'firecrawl',
-      type: j.job_type,
-      query: j.target || '',
-      status: j.status,
-      error: j.error,
-      time: j.updated_at,
-      pages: j.pages_found,
-      preview: j.result_preview,
-      segment_id: j.segment_id || null,
-    })
-  }
-
-  items.sort((a, b) => (b.time || '').localeCompare(a.time || ''))
-  return items
-}
-
-export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh, alwaysOpen = false }) {
+export default function ResearchTaskManager({ topicId, onRefresh, alwaysOpen = false }) {
   const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('all')
-  const [showAll, setShowAll] = useState(false)
-  const VISIBLE_LIMIT = 8
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState({ items: [], total: 0, pages: 1 })
+  const [loading, setLoading] = useState(false)
 
   const isOpen = alwaysOpen || expanded
-  const allItems = normalizeItems(tasks, fcJobs)
 
-  const filtered = filter === 'all'
-    ? allItems
-    : allItems.filter(t => {
-      if (filter === 'running') return !['done', 'failed', 'pending'].includes(t.status)
-      return t.status === filter
-    })
+  const loadActivity = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ page, page_size: PAGE_SIZE, status: filter })
+      const res = await fetch(`/api/topics/${topicId}/activity?${params}`)
+      if (res.ok) setData(await res.json())
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [topicId, page, filter])
+
+  useEffect(() => { loadActivity() }, [loadActivity])
+
+  // Poll for updates while open
+  useEffect(() => {
+    if (!isOpen) return
+    const iv = setInterval(loadActivity, 8000)
+    return () => clearInterval(iv)
+  }, [isOpen, loadActivity])
+
+  // Reset to page 1 when filter changes
+  useEffect(() => { setPage(1) }, [filter])
 
   const handleDelete = async (item) => {
     if (item.kind === 'research') {
       await fetch(`/api/topics/${topicId}/research/${item.id}`, { method: 'DELETE' })
     }
     onRefresh()
+    loadActivity()
   }
 
   const clearCompleted = async () => {
-    const done = allItems.filter(t => t.status === 'done' && t.kind === 'research')
+    const done = data.items.filter(t => t.status === 'done' && t.kind === 'research')
     for (const t of done) {
       await fetch(`/api/topics/${topicId}/research/${t.id}`, { method: 'DELETE' })
     }
     onRefresh()
+    loadActivity()
   }
 
   const filters = ['all', 'running', 'done', 'failed']
-  const runningCount = allItems.filter(
+  const runningCount = data.items.filter(
     t => !['done', 'failed', 'pending'].includes(t.status)
   ).length
 
@@ -118,7 +102,7 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           <span>Activity</span>
           <span className="collapsible-count">
-            {allItems.length}
+            {data.total}
             {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
           </span>
           <button className="task-clear-btn" onClick={e => { e.stopPropagation(); clearCompleted() }}>
@@ -131,7 +115,7 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
         <div className="tm-header">
           <span className="tm-header-title">Activity</span>
           <span className="tm-header-count">
-            {allItems.length}
+            {data.total}
             {runningCount > 0 && <span className="task-running-badge"> {runningCount} active</span>}
           </span>
           <button className="task-clear-btn" onClick={clearCompleted}>Clear</button>
@@ -150,15 +134,16 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
           </div>
 
           <div className="task-list">
+            {loading && data.items.length === 0 && (
+              <div className="task-empty"><Loader2 size={14} className="spin" /> Loading...</div>
+            )}
             {(() => {
-              // Group pipeline items by segment_id
-              const visible = showAll ? filtered : filtered.slice(0, VISIBLE_LIMIT)
+              const visible = data.items
               const groups = []
               let i = 0
               while (i < visible.length) {
-                const item = filtered[i]
+                const item = visible[i]
                 if (PIPELINE_TYPES.has(item.type) && item.segment_id) {
-                  // Collect all pipeline items for this segment
                   const segId = item.segment_id
                   const steps = [item]
                   let j = i + 1
@@ -228,18 +213,20 @@ export default function ResearchTaskManager({ tasks, fcJobs, topicId, onRefresh,
                 )
               })
             })()}
-            {filtered.length === 0 && <div className="task-empty">No tasks</div>}
-            {!showAll && filtered.length > VISIBLE_LIMIT && (
-              <button className="tm-show-more" onClick={() => setShowAll(true)}>
-                Show all ({filtered.length})
-              </button>
-            )}
-            {showAll && filtered.length > VISIBLE_LIMIT && (
-              <button className="tm-show-more" onClick={() => setShowAll(false)}>
-                Show less
-              </button>
-            )}
+            {!loading && data.items.length === 0 && <div className="task-empty">No tasks</div>}
           </div>
+
+          {data.pages > 1 && (
+            <div className="tm-pagination">
+              <button className="tm-page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+                <ChevronLeft size={13} />
+              </button>
+              <span className="tm-page-info">{page} / {data.pages}</span>
+              <button className="tm-page-btn" disabled={page >= data.pages} onClick={() => setPage(p => p + 1)}>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
