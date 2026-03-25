@@ -344,14 +344,15 @@ def _generate_single(segment, mode, caption, output_dir, job_id,
 
             workers = min(cpu_count(), 8)
             cancel_check_interval = FPS * 2  # check every ~2 seconds of video
-            with Pool(workers) as pool:
+            with ProcessPoolExecutor(max_workers=workers) as executor:
+                futures = {executor.submit(_render_frame_worker, t): t for t in tasks}
                 done = 0
-                for _ in pool.imap_unordered(_render_frame_worker, tasks, chunksize=16):
+                for fut in as_completed(futures):
+                    fut.result()  # raise if frame worker crashed
                     done += 1
                     if done % cancel_check_interval == 0:
                         if _is_cancelled(job_id):
-                            pool.terminate()
-                            pool.join()
+                            executor.shutdown(wait=False, cancel_futures=True)
                             print(f"  [Seg {sid}] Cancelled during rendering")
                             return job_id, None
                     if done % (FPS * 3) == 0 or done == total_frames:
