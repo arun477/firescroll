@@ -1,7 +1,4 @@
-<p align="center">
-  <img src="assets/logo.svg" alt="FireScroll" width="48" />
-</p>
-<h1 align="center">FireScroll</h1>
+<h1 align="center"><img src="assets/logo.svg" alt="" width="28" style="vertical-align: middle;" /> FireScroll</h1>
 <p align="center">Short video creation platform. Type any topic. AI researches, writes, and renders addictive short-form videos with ultra-realistic voices and custom music.</p>
 
 <p align="center">
