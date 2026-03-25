@@ -115,8 +115,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     if (!segment) return
     const cid = `conv_${topicId}_${segment.id}`
     setConversationId(cid)
+    streamRef.current = ''
+    offsetRef.current = 0
     setStreamText('')
-    setChunkOffset(0)
     setStatus('idle')
 
     // Try to load existing conversation history

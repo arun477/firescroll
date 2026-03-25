@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
-  Loader2, Square, Search, ChevronRight, Film,
+  Loader2, Square, Search, ChevronRight, Film, Play,
   CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import ChatPanel from './ChatPanel'
@@ -31,6 +31,9 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   const [chatSettings, setChatSettings] = useState({ style: 'cinematic', voice_id: '', language: '' })
   const [generating, setGenerating] = useState(false)
   const [segSearch, setSegSearch] = useState('')
+  const [showVideo, setShowVideo] = useState(false)  // toggle between preview and rendered video
+  const iframeRef = useRef(null)
+  const iframeReady = useRef(false)
 
   const readySegs = segments.filter(s => s.status === 'ready')
   const filteredSegs = segSearch
@@ -48,6 +51,32 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
   useEffect(() => {
     if (!selectedSegId && readySegs.length) setSelectedSegId(readySegs[0].id)
   }, [readySegs.length])
+
+  // Send scene config to iframe when it changes
+  useEffect(() => {
+    if (!previewConfig?.scenes?.length || !iframeRef.current?.contentWindow) return
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'SCENE_CONFIG_UPDATE', payload: previewConfig }, '*'
+    )
+    setShowVideo(false)  // switch to preview when config changes
+  }, [previewConfig])
+
+  // Listen for iframe ready
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === 'PLAYER_READY') {
+        iframeReady.current = true
+        // Send current config if we have one
+        if (previewConfig?.scenes?.length && iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage(
+            { type: 'SCENE_CONFIG_UPDATE', payload: previewConfig }, '*'
+          )
+        }
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [previewConfig])
 
   useEffect(() => {
     const load = () => fetch(`/api/topics/${topicId}/remotion/jobs`).then(r => r.json()).then(d => setSegStatus(d.segments || {}))
@@ -116,9 +145,17 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
               </div>
             </div>
 
-            <div className="ve-c-preview">
+            <div className="ve-c-preview" style={{ position: 'relative' }}>
+              {/* Live Remotion Player Preview */}
+              {previewConfig?.scenes?.length > 0 && !showVideo && (
+                <iframe ref={iframeRef} src="/remotion/preview"
+                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12 }}
+                  allow="autoplay" />
+              )}
+
+              {/* Render progress overlay */}
               {activeJob && (
-                <div className="ve-c-rendering">
+                <div className="ve-c-rendering" style={{ position: previewConfig ? 'absolute' : 'relative', inset: 0, zIndex: 5, background: 'rgba(10,10,15,0.85)' }}>
                   <div className="ve-c-render-bg">
                     <div className="ve-c-render-orb ve-c-render-orb1" />
                     <div className="ve-c-render-orb ve-c-render-orb2" />
@@ -138,19 +175,33 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
                 </div>
               )}
 
-              {!activeJob && doneJob && (
+              {/* Rendered video (toggle from preview) */}
+              {!activeJob && doneJob && showVideo && (
                 <div className="ve-c-video-wrap">
                   <video key={doneJob.id} className="ve-c-video" src={doneJob.video_url} controls preload="metadata" />
+                  <button className="vc-back-preview" onClick={() => setShowVideo(false)}
+                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
+                    Back to Preview
+                  </button>
                 </div>
               )}
 
-              {!activeJob && !doneJob && (
+              {/* Show rendered video button when available */}
+              {!activeJob && doneJob && !showVideo && previewConfig?.scenes?.length > 0 && (
+                <button onClick={() => setShowVideo(true)}
+                  style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 5, background: 'rgba(0,0,0,0.7)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Play size={12} /> Watch Rendered
+                </button>
+              )}
+
+              {/* Empty state — no config yet */}
+              {!previewConfig?.scenes?.length && !activeJob && !showVideo && (
                 <div className="ve-c-empty">
                   <div className="ve-c-empty-bg" />
                   <Film size={48} strokeWidth={1} style={{ opacity: 0.2 }} />
                   <div className="ve-c-empty-title">Ready to create</div>
                   <div className="ve-c-empty-desc">
-                    Chat with the Motion Director to compose your video scenes.
+                    Chat with the Motion Director to compose your video scenes. Preview updates live as you iterate.
                   </div>
                 </div>
               )}

@@ -185,13 +185,20 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 1. FIRST MESSAGE: Briefly greet (1 sentence), compose 4-5 scenes using compose_scenes, show :::scene_config:::, then ask "Want to adjust anything or pick a voice?" Keep it SHORT — the scene card shows the details. Do NOT list every template/prop in text.
 
 2. ACTION OVER TALK: When user requests ANY change, IMMEDIATELY use the right tool:
-   - "change color" → update_scene with new colorScheme/accentColor → trigger_render
-   - "make title shorter" → update_scene with new title text → trigger_render
-   - "add a stat" → add_scene with fact_card template → trigger_render
-   - "remove the CTA" → remove_scene → trigger_render
-   - "make it longer" → update_scene to increase durationInFrames → trigger_render
-   - "use Spanish" → set_language → trigger_render
+   - "change background to white" → expand_to_generic if needed → set_scene_prop(0, "props.backgroundColor", '"#ffffff"')
+   - "make text bigger" → set_scene_prop(0, "props.textLayers.0.fontSize", '96')
+   - "change text color to red" → set_scene_prop(0, "props.textLayers.0.color", '"#E63250"')
+   - "add particles" → set_scene_prop(0, "props.particles", 'true')
+   - "remove particles" → set_scene_prop(0, "props.particles", 'false')
+   - "make it longer" → set_scene_prop(0, "durationInFrames", '180')
+   - "add a stat" → add_scene with fact_card template
+   - "remove the CTA" → remove_scene
+   - "use Spanish" → set_language
    - "change voice" → list_voices to show picker, then set_voice when they pick
+   For VISUAL changes: expand_to_generic first (if not already generic), then set_scene_prop.
+   For STRUCTURAL changes: use add_scene/remove_scene/reorder_scenes.
+   The live preview updates AUTOMATICALLY — no need to trigger_render for preview.
+   Only trigger_render when user wants the FINAL video with audio.
    DO NOT just acknowledge — ALWAYS use the tool, THEN confirm what you did.
 
 3. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep your text to 1-2 sentences MAX — the visual card speaks for itself. NEVER list scene details as text when the card shows them.
@@ -400,9 +407,73 @@ def _make_tools(cid):
         else:
             return f"Latest render FAILED: {latest.get('error', 'unknown error')[:200]}"
 
+    @function_tool
+    def set_scene_prop(scene_index: int, prop_path: str, value_json: str) -> str:
+        """Set any property on a scene using a dot-path.
+        Examples:
+          set_scene_prop(0, "props.backgroundColor", '"#ffffff"')
+          set_scene_prop(0, "props.textLayers.0.fontSize", '96')
+          set_scene_prop(0, "props.particles", 'false')
+          set_scene_prop(0, "props.textLayers.0.color", '"#E63250"')
+          set_scene_prop(0, "durationInFrames", '180')
+        """
+        config = get_scene_config(cid)
+        if not config or scene_index >= len(config.get("scenes", [])):
+            return f"Error: scene index {scene_index} out of range."
+        try:
+            value = json.loads(value_json)
+        except (json.JSONDecodeError, TypeError):
+            return f"Error: invalid JSON value: {value_json}"
+        # Navigate the dot path
+        parts = prop_path.split(".")
+        obj = config["scenes"][scene_index]
+        for part in parts[:-1]:
+            if part.isdigit():
+                idx = int(part)
+                if not isinstance(obj, list) or idx >= len(obj):
+                    return f"Error: index {idx} out of range in path '{prop_path}'"
+                obj = obj[idx]
+            else:
+                if part not in obj:
+                    obj[part] = {}
+                obj = obj[part]
+        final_key = parts[-1]
+        if final_key.isdigit() and isinstance(obj, list):
+            obj[int(final_key)] = value
+        else:
+            obj[final_key] = value
+        set_scene_config(cid, config)
+        return f"Set {prop_path} = {value_json} on scene {scene_index}. The live preview will update automatically."
+
+    @function_tool
+    def expand_to_generic(scene_index: int) -> str:
+        """Convert a template-based scene (title_reveal, fact_card, etc.) to a generic scene
+        with direct visual properties. This enables fine-grained control over every visual element.
+        Call this before using set_scene_prop on template scenes."""
+        config = get_scene_config(cid)
+        if not config or scene_index >= len(config.get("scenes", [])):
+            return f"Error: scene index {scene_index} out of range."
+        scene = config["scenes"][scene_index]
+        if scene["template"] == "generic":
+            return f"Scene {scene_index} is already generic. You can modify any property with set_scene_prop."
+        from remotion_templates import expand_template_to_generic
+        state = get_conversation_state(cid)
+        style = state.get("style", "cinematic") if state else "cinematic"
+        expanded = expand_template_to_generic(scene["template"], scene.get("props", {}), style)
+        if not expanded:
+            return f"Error: cannot expand template '{scene['template']}'."
+        # Preserve timing
+        expanded["from"] = scene["from"]
+        expanded["durationInFrames"] = scene["durationInFrames"]
+        config["scenes"][scene_index] = expanded
+        set_scene_config(cid, config)
+        props_summary = json.dumps(list(expanded["props"].keys()))
+        return f"Scene {scene_index} expanded to generic. Available props: {props_summary}. Use set_scene_prop to modify any property."
+
     return [compose_scenes, update_scene, add_scene, remove_scene,
             reorder_scenes, set_style, set_voice, set_language,
-            list_voices, list_languages, trigger_render, get_render_status]
+            list_voices, list_languages, trigger_render, get_render_status,
+            set_scene_prop, expand_to_generic]
 
 
 # ── Main agent runner ──

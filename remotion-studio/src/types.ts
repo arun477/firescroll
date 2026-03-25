@@ -7,6 +7,7 @@ export const SceneEntrySchema = z.object({
     "narrative",
     "split_info",
     "cta_outro",
+    "generic",
   ]),
   from: z.number().int().min(0),
   durationInFrames: z.number().int().min(1),

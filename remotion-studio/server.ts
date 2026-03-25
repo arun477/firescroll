@@ -159,15 +159,64 @@ app.post("/cancel/:jobId", (req, res) => {
   }
 });
 
-// Pre-bundle on startup
-getBundled().then(() => {
+// ══════ LIVE PREVIEW ══════
+
+// Serve the preview page with Remotion Player (client-side, no Chromium)
+app.get("/preview", (_req, res) => {
+  res.type("html").send(`<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; }
+  #root { width: 100vw; height: 100vh; }
+</style>
+</head><body>
+<div id="root"></div>
+<script src="/preview-bundle.js"></script>
+</body></html>`);
+});
+
+// Serve the preview JS bundle
+app.use("/preview-bundle.js", express.static(path.resolve(__dirname, "dist/preview.js")));
+
+// Build preview bundle on startup
+async function buildPreview() {
+  const outfile = path.resolve(__dirname, "dist/preview.js");
+  const distDir = path.dirname(outfile);
+  if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
+
+  try {
+    const esbuild = await import("esbuild");
+    await esbuild.build({
+      entryPoints: [path.resolve(__dirname, "src/preview-entry.tsx")],
+      bundle: true,
+      outfile,
+      format: "iife",
+      jsx: "automatic",
+      loader: { ".tsx": "tsx", ".ts": "ts" },
+      define: { "process.env.NODE_ENV": '"production"' },
+      external: ["@remotion/renderer", "@remotion/bundler", "@remotion/cli"],
+      minify: true,
+      sourcemap: false,
+    });
+    console.log("Preview bundle built successfully");
+  } catch (err) {
+    console.error("Failed to build preview bundle:", err);
+  }
+}
+
+// Startup: bundle Remotion (for server render) + build preview (for client preview)
+Promise.all([
+  getBundled().catch(err => console.error("Remotion bundle failed:", err)),
+  buildPreview().catch(err => console.error("Preview build failed:", err)),
+]).then(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Remotion render server ready on port ${PORT}`);
+    console.log(`Remotion server ready on port ${PORT} (render + preview)`);
   });
-}).catch((err) => {
-  console.error("Failed to bundle:", err);
-  // Start anyway — will bundle on first request
+}).catch(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Remotion render server started (bundle pending) on port ${PORT}`);
+    console.log(`Remotion server started (some bundles pending) on port ${PORT}`);
   });
 });
