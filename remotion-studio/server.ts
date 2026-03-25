@@ -129,13 +129,6 @@ app.post("/render", async (req, res) => {
           console.log(`[Render] ${jobId}: ${Math.round(progress * 100)}%`);
         }
       },
-      cancelSignal: (() => {
-        // Remotion cancelSignal: return abort controller signal
-        const ac = new AbortController();
-        const origCancel = cancelFn;
-        activeRenders.set(jobId, { cancel: () => { ac.abort(); origCancel(); } });
-        return ac.signal;
-      })(),
     });
 
     activeRenders.delete(jobId);

@@ -267,9 +267,8 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh }) 
 
               {!activeJob && !doneJob && (
                 <div className="ve-c-empty">
-                  <div className="ve-c-empty-bg">
-                    <Film size={48} strokeWidth={1} />
-                  </div>
+                  <div className="ve-c-empty-bg" />
+                  <Film size={48} strokeWidth={1} style={{ opacity: 0.2 }} />
                   <div className="ve-c-empty-title">Ready to create</div>
                   <div className="ve-c-empty-desc">
                     Describe your creative vision and let AI compose cinema-quality animated scenes.
