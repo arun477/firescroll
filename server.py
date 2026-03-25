@@ -866,10 +866,11 @@ def list_music():
 
 
 @app.get("/api/feed")
-def feed(topic_id: str = None):
-    videos = get_completed_videos(topic_id)
+def feed(topic_id: str = None, cursor: str = None, limit: int = 6):
+    from db import get_feed_page
+    data = get_feed_page(topic_id=topic_id, cursor=cursor, limit=limit)
     feed_items = []
-    for v in videos:
+    for v in data["items"]:
         if not v["video_path"] or not os.path.exists(v["video_path"]):
             continue
         rel_video = os.path.relpath(v["video_path"], OUTPUT_DIR)
@@ -886,8 +887,14 @@ def feed(topic_id: str = None):
             "duration": v["duration_seconds"],
             "video_url": f"/static/{rel_video}",
             "thumb_url": f"/static/{rel_thumb}" if rel_thumb else None,
+            "created_at": v["created_at"],
         })
-    return feed_items
+    return {
+        "items": feed_items,
+        "total": data["total"],
+        "next_cursor": data["next_cursor"],
+        "has_more": data["has_more"],
+    }
 
 
 @app.get("/api/video/{job_id}")

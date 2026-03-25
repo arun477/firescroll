@@ -18,13 +18,9 @@ from karaoke_renderer import render_karaoke_frame
 from split_screen import compose_split_frame, compose_video_fullscreen
 from text_renderer import FPS, render_frame
 
-# These must be module-level for Pool pickling
-_shared = {}
-
-
-def _init_worker(shared_args):
-    """Called once per pool worker to load shared state (background images)."""
-    _shared.update(shared_args)
+# Module-level shared state — populated in main() before Pool fork,
+# inherited by child workers via copy-on-write
+_bg_images = []
 
 
 def _render_one(frame_args):
@@ -39,7 +35,7 @@ def _render_one(frame_args):
     # Composite
     if mode == "full":
         t = frame_num / FPS
-        bg = _get_bg_at_time(_shared["bg_images"], t, timing["total_duration"])
+        bg = _get_bg_at_time(_bg_images, t, timing["total_duration"])
         bg_copy = bg.copy()
         text_rgba = text.convert("RGBA")
         bg_copy.paste(text_rgba, (0, 0), text_rgba)
@@ -52,7 +48,7 @@ def _render_one(frame_args):
     elif mode == "split":
         vid_path = _safe_vid(vid_dir, frame_num)
         t = frame_num / FPS
-        bg_bottom = _get_bg_at_time(_shared["bg_images"], t, timing["total_duration"])
+        bg_bottom = _get_bg_at_time(_bg_images, t, timing["total_duration"])
         final = compose_split_frame(text, vid_path, bg_bottom)
 
     else:
@@ -88,15 +84,12 @@ def main():
     word_ts = args.get("word_ts")
     vid_dir = args.get("vid_dir")
 
-    # Load background images into shared state for pool workers
-    shared = {}
+    # Load background images into module-level list — fork() gives
+    # child workers copy-on-write access without pickling overhead
+    global _bg_images
     bg_paths = args.get("bg_paths", [])
-    if bg_paths:
-        shared["bg_images"] = [load_background(p) for p in bg_paths]
-    else:
-        shared["bg_images"] = []
+    _bg_images = [load_background(p) for p in bg_paths] if bg_paths else []
 
-    # Build task args (all picklable — no PIL objects, no lambdas)
     tasks = [
         (i, mode, segment, total_frames, timing, word_ts, frame_dir, vid_dir)
         for i in range(total_frames)
@@ -105,7 +98,7 @@ def main():
     workers = min(cpu_count(), 8)
     report_interval = FPS * 3  # report every ~3 seconds of video
 
-    with Pool(workers, initializer=_init_worker, initargs=(shared,)) as pool:
+    with Pool(workers) as pool:
         done = 0
         for _ in pool.imap_unordered(_render_one, tasks, chunksize=16):
             done += 1

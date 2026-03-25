@@ -3,23 +3,59 @@ import { useSearchParams } from 'react-router-dom'
 import { Loader2, Flame } from 'lucide-react'
 import VideoCard from '../components/VideoCard'
 
+const BATCH = 6
+
 export default function Feed() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [cursor, setCursor] = useState(null)
   const [activeIdx, setActiveIdx] = useState(0)
   const [searchParams] = useSearchParams()
   const feedRef = useRef(null)
+  const sentinelRef = useRef(null)
   const topicId = searchParams.get('topic')
 
-  useEffect(() => {
-    const url = topicId ? `/api/feed?topic_id=${topicId}` : '/api/feed'
-    fetch(url)
-      .then(r => r.json())
-      .then(d => setItems(d || []))
-      .finally(() => setLoading(false))
+  const fetchPage = useCallback(async (cur = null, append = false) => {
+    if (!append) setLoading(true)
+    else setLoadingMore(true)
+    try {
+      const params = new URLSearchParams({ limit: BATCH })
+      if (topicId) params.set('topic_id', topicId)
+      if (cur) params.set('cursor', cur)
+      const res = await fetch(`/api/feed?${params}`)
+      const data = await res.json()
+      setItems(prev => append ? [...prev, ...data.items] : data.items)
+      setTotal(data.total)
+      setHasMore(data.has_more)
+      setCursor(data.next_cursor)
+    } catch { /* ignore */ }
+    setLoading(false)
+    setLoadingMore(false)
   }, [topicId])
 
-  // Track which card is active via IntersectionObserver on the container
+  // Initial load
+  useEffect(() => { fetchPage() }, [fetchPage])
+
+  // Infinite scroll — observe sentinel element near the bottom
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore && cursor) {
+          fetchPage(cursor, true)
+        }
+      },
+      { rootMargin: '200%' }  // trigger 2 screens before reaching end
+    )
+    obs.observe(sentinel)
+    return () => obs.disconnect()
+  }, [hasMore, loadingMore, cursor, fetchPage])
+
   const handleActiveChange = useCallback((idx) => {
     setActiveIdx(idx)
   }, [])
@@ -64,10 +100,21 @@ export default function Feed() {
         />
       ))}
 
-      {/* Position indicator */}
-      <div className="feed-counter">
-        {activeIdx + 1} / {items.length}
+      {/* Sentinel for infinite scroll — triggers next page load */}
+      <div ref={sentinelRef} className="feed-sentinel">
+        {loadingMore && (
+          <div className="feed-loading-more">
+            <Loader2 size={16} className="spin" />
+          </div>
+        )}
       </div>
+
+      {/* Total count badge */}
+      {total > 0 && (
+        <div className="feed-counter">
+          {total} video{total !== 1 ? 's' : ''}
+        </div>
+      )}
     </div>
   )
 }

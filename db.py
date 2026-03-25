@@ -385,6 +385,55 @@ def get_completed_videos(topic_id=None):
     return [dict(r) for r in rows]
 
 
+def get_feed_page(topic_id=None, cursor=None, limit=6):
+    """Cursor-based paginated feed. Cursor is a job created_at timestamp."""
+    conn = get_conn()
+    params = [STATUS_DONE]
+    where = "j.status = ?"
+
+    if topic_id:
+        where += " AND j.topic_id = ?"
+        params.append(topic_id)
+
+    if cursor:
+        where += " AND j.created_at < ?"
+        params.append(cursor)
+
+    # Total count (without cursor filter)
+    count_params = [STATUS_DONE]
+    count_where = "j.status = ?"
+    if topic_id:
+        count_where += " AND j.topic_id = ?"
+        count_params.append(topic_id)
+    total = conn.execute(
+        f"SELECT COUNT(*) FROM jobs j WHERE {count_where}", count_params
+    ).fetchone()[0]
+
+    rows = conn.execute(
+        f"SELECT j.*, t.title as topic_title, t.series_title "
+        f"FROM jobs j JOIN topics t ON j.topic_id = t.id "
+        f"WHERE {where} "
+        f"ORDER BY j.created_at DESC "
+        f"LIMIT ?",
+        params + [limit + 1],  # fetch one extra to know if there's more
+    ).fetchall()
+    conn.close()
+
+    items = [dict(r) for r in rows]
+    has_more = len(items) > limit
+    if has_more:
+        items = items[:limit]
+
+    next_cursor = items[-1]["created_at"] if items and has_more else None
+
+    return {
+        "items": items,
+        "total": total,
+        "next_cursor": next_cursor,
+        "has_more": has_more,
+    }
+
+
 def create_segment(topic_id, segment_num, *, title="", hook="", script="",
                     visual_cue="", source="ai"):
     conn = get_conn()
