@@ -122,6 +122,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
         const msgs = data.messages.filter(m => m.content && !m.content.startsWith('[Started'))
         setMessages(msgs)
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
+        if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
       } else {
         // No history — show static welcome, don't call the agent
         setMessages([{
