@@ -353,6 +353,12 @@ def _make_tools(cid):
 def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                    style=None, voice_id=None, language=None):
     """Run the chat agent for one turn. Called by Celery task."""
+    # Set OpenAI API key for the Agents SDK
+    from keystore import get_key
+    api_key = get_key("openai")
+    if api_key:
+        os.environ["OPENAI_API_KEY"] = api_key
+
     from agents import Agent, Runner
     from openai.types.responses import ResponseTextDeltaEvent
 
