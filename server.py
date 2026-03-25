@@ -878,7 +878,9 @@ def list_music():
 
 @app.get("/api/feed")
 def feed(topic_id: str = None, cursor: str = None, limit: int = 6):
-    from db import get_feed_page
+    from db import get_feed_page, get_remotion_jobs_for_topic, get_topic
+
+    # Standard pipeline videos
     data = get_feed_page(topic_id=topic_id, cursor=cursor, limit=limit)
     feed_items = []
     for v in data["items"]:
@@ -894,15 +896,52 @@ def feed(topic_id: str = None, cursor: str = None, limit: int = 6):
             "topic": v["topic_title"],
             "series": v["series_title"],
             "mode": v["mode"],
-            "caption": v["caption"],
+            "caption": v.get("caption", ""),
             "duration": v["duration_seconds"],
             "video_url": f"/static/{rel_video}",
             "thumb_url": f"/static/{rel_thumb}" if rel_thumb else None,
             "created_at": v["created_at"],
+            "pipeline": "studio",
         })
+
+    # Motion Studio videos
+    from db import get_conn
+    conn = get_conn()
+    rquery = "SELECT r.*, t.title as topic_title, t.series_title FROM remotion_jobs r JOIN topics t ON r.topic_id = t.id WHERE r.status = 'done'"
+    rparams = []
+    if topic_id:
+        rquery += " AND r.topic_id = ?"
+        rparams.append(topic_id)
+    rquery += " ORDER BY r.created_at DESC LIMIT ?"
+    rparams.append(limit)
+    rrows = conn.execute(rquery, rparams).fetchall()
+    conn.close()
+
+    for v in [dict(r) for r in rrows]:
+        fp = v.get("final_path")
+        if not fp or not os.path.exists(fp):
+            continue
+        feed_items.append({
+            "id": v["id"],
+            "segment_id": v["segment_id"],
+            "topic": v["topic_title"],
+            "series": v["series_title"],
+            "mode": "motion",
+            "caption": v.get("style", ""),
+            "duration": v.get("duration_seconds"),
+            "video_url": f"/static/{os.path.relpath(fp, OUTPUT_DIR)}",
+            "thumb_url": None,
+            "created_at": v["created_at"],
+            "pipeline": "motion",
+        })
+
+    # Sort combined results by date, newest first
+    feed_items.sort(key=lambda x: x["created_at"], reverse=True)
+    feed_items = feed_items[:limit]
+
     return {
         "items": feed_items,
-        "total": data["total"],
+        "total": data["total"] + len(rrows),
         "next_cursor": data["next_cursor"],
         "has_more": data["has_more"],
     }
