@@ -4,8 +4,8 @@ import os
 import random
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from multiprocessing import Pool, cpu_count
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from multiprocessing import cpu_count
 
 from audio_utils import (
     mix_voice_and_music,
