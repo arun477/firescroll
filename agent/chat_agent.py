@@ -371,11 +371,18 @@ async def _execute_tool(cid, tool_name, args):
             scene_indices=indices, mode="update")
 
     elif tool_name == "set_voice":
+        vid = args.get("voice_id", "")
+        vname = args.get("voice_name", "")
+        # If the LLM passed a name as the ID, look up the real ID
+        if vid and not vid.startswith("EX") and len(vid) < 20:
+            resolved = await _resolve_voice_id(vid, vname)
+            if resolved:
+                vid, vname = resolved
         state = await get_conversation_state(cid) or {}
-        state["voice_id"] = args.get("voice_id", "")
-        state["voice_name"] = args.get("voice_name", "")
+        state["voice_id"] = vid
+        state["voice_name"] = vname
         await r.set(_key(cid, "state"), json.dumps(state))
-        return f"Voice set to '{state['voice_name']}'."
+        return f"Voice set to '{vname}'."
 
     elif tool_name == "set_language":
         state = await get_conversation_state(cid) or {}
