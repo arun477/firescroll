@@ -573,6 +573,7 @@ a { color: var(--blue); text-decoration: none; }
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+.vc-btn-delete:hover { background: rgba(239,68,68,0.3); color: #ef4444; }
 
 .vc-btn:hover {
   background: rgba(255,255,255,0.18);
