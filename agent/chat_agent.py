@@ -343,6 +343,41 @@ _TOOL_DISPLAY = {
 }
 
 
+_voices_cache = None
+
+
+async def _fetch_voices():
+    """Fetch available voices from backend (cached)."""
+    global _voices_cache
+    if _voices_cache:
+        return _voices_cache
+    import httpx
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BACKEND_URL}/api/voices/elevenlabs", timeout=10.0)
+            data = resp.json()
+            _voices_cache = data.get("voices", []) if isinstance(data, dict) else []
+            return _voices_cache
+    except Exception:
+        return []
+
+
+async def _resolve_voice_id(vid_or_name, name_hint=""):
+    """Look up a real voice ID from a name. Returns (id, name) or None."""
+    voices = await _fetch_voices()
+    search = (vid_or_name or name_hint).lower()
+    for v in voices:
+        if v.get("id") == vid_or_name:
+            return (v["id"], v.get("name", ""))
+        if v.get("name", "").lower() == search:
+            return (v["id"], v["name"])
+    # Partial match
+    for v in voices:
+        if search in v.get("name", "").lower():
+            return (v["id"], v["name"])
+    return None
+
+
 # ── Tool execution (async) ──
 
 async def _execute_tool(cid, tool_name, args):
@@ -391,8 +426,11 @@ async def _execute_tool(cid, tool_name, args):
         return f"Language set to {state['language']}."
 
     elif tool_name == "list_voices":
-        # Return voice names — the frontend has the full list already
-        return "Available voices: Bella, Roger, Sarah, Laura, Charlie, George, Callum, River, Harry, Liam. User can pick from the Voice button."
+        voices = await _fetch_voices()
+        if voices:
+            voice_text = "\n".join(f"  - {v['name']} (id: {v['id']})" for v in voices)
+            return f"Available voices:\n{voice_text}\n\nUse set_voice with the exact id from this list."
+        return "Could not load voices. User can pick from the Voice button."
 
     elif tool_name == "list_languages":
         return "Available languages: English, Spanish, French, German, Portuguese, Hindi, Japanese, Chinese, Korean, Arabic, and more. User can pick from the Language button."
