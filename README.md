@@ -54,7 +54,7 @@ Topic
   │
   ├──  Voice & Audio    ElevenLabs narrates in any language, AI music mixed in
   │
-  ├──  Render           Remotion composes video with backgrounds, captions, transitions
+  ├──  Render           AI backgrounds, captions, transitions — composed into vertical video
   │
   ▼
 Scrollable Feed
