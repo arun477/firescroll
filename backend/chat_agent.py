@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 import time
+import uuid
 from datetime import datetime, timezone
 
 import redis
@@ -35,7 +36,8 @@ def _key(cid, suffix):
 
 
 def _refresh_ttl(r, cid):
-    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count", "custom_code"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code",
+                    "ui_events", "ui_state"):
         r.expire(_key(cid, suffix), CONV_TTL)
 
 
@@ -90,13 +92,12 @@ def set_status(cid, new_status):
 def push_chunk(cid, text):
     r = _get_redis()
     r.rpush(_key(cid, "chunks"), text)
-    r.incr(_key(cid, "chunk_count"))
 
 
 def clear_chunks(cid):
     r = _get_redis()
     r.delete(_key(cid, "chunks"))
-    r.set(_key(cid, "chunk_count"), 0)
+    r.delete(_key(cid, "ui_events"))
 
 
 def append_message(cid, role, content):
@@ -124,14 +125,105 @@ def init_conversation(cid, topic_id, segment_id, style="cinematic",
     }
     r.set(_key(cid, "state"), json.dumps(state))
     r.set(_key(cid, "messages"), "[]")
-    r.set(_key(cid, "chunk_count"), 0)
+    set_ui_state(cid, {"phase": "setup", "active_tools": {}, "pending_input": None})
     _refresh_ttl(r, cid)
 
 
 def delete_conversation(cid):
     r = _get_redis()
-    for suffix in ("messages", "scene_config", "state", "chunks", "chunk_count", "custom_code"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code",
+                    "ui_events", "ui_state"):
         r.delete(_key(cid, suffix))
+
+
+# ── Tool UI Protocol ──
+# Structured event system for rendering interactive UI components from tool calls.
+# Tools push events → SSE streams them → frontend renders from flags (not text markers).
+
+VALID_PHASE_TRANSITIONS = {
+    "setup": ["configuring", "composing"],
+    "configuring": ["composing", "configuring"],
+    "composing": ["reviewing", "configuring", "rendering", "composing"],
+    "reviewing": ["rendering", "composing"],
+    "rendering": ["reviewing", "done", "composing"],
+    "done": ["composing"],
+}
+
+
+def _generate_tool_id():
+    return f"tc_{uuid.uuid4().hex[:8]}"
+
+
+def push_ui_event(cid, event):
+    """Push a structured UI event for real-time SSE streaming."""
+    r = _get_redis()
+    r.rpush(_key(cid, "ui_events"), json.dumps(event))
+
+
+def get_ui_state(cid):
+    """Get persistent UI state for recovery on page reload."""
+    r = _get_redis()
+    raw = r.get(_key(cid, "ui_state"))
+    if not raw:
+        return {"phase": "setup", "active_tools": {}, "pending_input": None}
+    return json.loads(raw)
+
+
+def set_ui_state(cid, state):
+    r = _get_redis()
+    r.set(_key(cid, "ui_state"), json.dumps(state))
+    r.expire(_key(cid, "ui_state"), CONV_TTL)
+
+
+def transition_phase(cid, new_phase):
+    """Transition agent phase with validation. Returns True if transition is valid."""
+    ui = get_ui_state(cid)
+    current = ui.get("phase", "setup")
+    allowed = VALID_PHASE_TRANSITIONS.get(current, [])
+    if new_phase not in allowed and current != new_phase:
+        return False
+    ui["phase"] = new_phase
+    set_ui_state(cid, ui)
+    push_ui_event(cid, {"type": "phase_change", "from": current, "to": new_phase})
+    return True
+
+
+def register_tool_ui(cid, tool_name, component, props=None, awaiting_input=False):
+    """Register a tool's UI artifact for frontend rendering. Returns tool_id."""
+    tool_id = _generate_tool_id()
+    ui = get_ui_state(cid)
+    status = "awaiting_input" if awaiting_input else "completed"
+    tool_obj = {
+        "tool_id": tool_id,
+        "tool_name": tool_name,
+        "status": status,
+        "component": component,
+        "props": props or {},
+    }
+    ui["active_tools"][tool_id] = tool_obj
+    if awaiting_input:
+        ui["pending_input"] = {"tool_id": tool_id, "component": component}
+    set_ui_state(cid, ui)
+    push_ui_event(cid, {
+        "type": "tool_ui",
+        "tool_id": tool_id,
+        "action": "show",
+        "component": component,
+        "props": props or {},
+        "status": status,
+    })
+    return tool_id
+
+
+def complete_tool_ui(cid, tool_id):
+    """Mark a tool's UI as completed and dismiss it from the frontend."""
+    ui = get_ui_state(cid)
+    if tool_id in ui["active_tools"]:
+        del ui["active_tools"][tool_id]
+    if ui.get("pending_input", {}).get("tool_id") == tool_id:
+        ui["pending_input"] = None
+    set_ui_state(cid, ui)
+    push_ui_event(cid, {"type": "tool_ui", "tool_id": tool_id, "action": "dismiss"})
 
 
 # ── Code-first helpers ──
@@ -318,29 +410,39 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
 ## BEHAVIOR RULES
 
-1. FIRST MESSAGE: Greet briefly (1 sentence), then create 4-5 scenes with create_scene and write code for each with write_scene_code. Show :::scene_config::: after. Ask "Want to adjust anything or pick a voice?"
-   Base your scenes on the segment content: hook → opening scene, script → middle scenes, visual_cue → creative direction.
-   Default durations: opening 4s (120f), content 5s (150f), closing 3s (90f). Total ~25-30s.
+1. GUIDED SETUP (first message):
+   a) Greet the user in 1 sentence, mentioning the segment title.
+   b) Call list_voices — this automatically shows the voice picker UI to the user.
+   c) Say "Pick a voice and tell me your creative direction, or say 'surprise me' to jump right in."
+   d) Do NOT create any scenes until the user responds with a preference or says "go"/"surprise me".
 
-2. ACTION OVER TALK: When user requests ANY change, act immediately:
-   - Visual change ("white background", "bigger text", "red color") → read_scene_code → modify code → write_scene_code
+2. COMPOSE PHASE (after user provides input or picks a voice):
+   a) Acknowledge briefly if user selected a voice.
+   b) Create 4-5 scenes with create_scene and write code for each with write_scene_code.
+      Base scenes on segment content: hook → opening, script → middle, visual_cue → creative direction.
+      Default durations: opening 4s (120f), content 5s (150f), closing 3s (90f). Total ~25-30s.
+   c) Show :::scene_config::: after composing. Keep text to 1-2 sentences.
+   d) Ask "Want to adjust anything, or should I render?"
+
+3. ACTION OVER TALK: When user requests ANY change, act immediately:
+   - Visual change → read_scene_code → modify → write_scene_code
    - Global change ("all scenes white") → loop through each scene index
    - Structural change → use remove_scene/reorder_scenes/create_scene
    - Timing change → set_scene_timing
-   - Voice/language → list_voices/set_voice/set_language
+   - Voice/language → list_voices/set_voice or list_languages/set_language
    DO NOT just acknowledge — use the tool, THEN confirm in 1-2 sentences.
 
-3. ERROR RECOVERY: If write_scene_code returns a validation error, read the error, fix the code, call write_scene_code again. Retry up to 3 times silently. The user doesn't see failed attempts.
+4. ERROR RECOVERY: If write_scene_code fails, fix and retry up to 3x silently.
 
-4. AFTER TOOL CALLS: Include :::scene_config::: to show the updated layout. Keep text to 1-2 sentences MAX. NEVER list scene details, timing, or descriptions as text — the scene config card shows everything the user needs. No "Scene 0: ...", no frame counts, no durations in text.
+5. AFTER TOOL CALLS: Show :::scene_config::: for layout changes. Keep text minimal. NEVER list scene details, timing, or descriptions as text — the scene config card shows everything. No "Scene 0: ...", no frame counts.
 
-5. RENDER FLOW: After composing scenes, ask about voice/language. When user says "go"/"render"/"start" → trigger_render.
+6. RENDER FLOW: Before rendering, check voice is set. If not, call list_voices first. When user says "go"/"render"/"start" → trigger_render.
 
-6. ITERATION: For changes after render, modify scenes and call trigger_render again. Don't ask "should I render?" — just do it.
+7. ITERATION: For post-render changes, modify scenes and trigger_render again without asking.
 
-7. PICKERS: Use :::voice_picker::: :::language_picker::: to show interactive UI.
+8. PICKERS: Do NOT write :::voice_picker::: or :::language_picker::: in your text. Picker UIs appear automatically when you call list_voices or list_languages. Just call the tool — the frontend handles display.
 
-8. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Scenes must not overlap (sequential from values). Keep text readable (min font size 28). Use width/height for responsive positioning — never hardcode pixel positions beyond the canvas."""
+9. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Sequential timing. Min font 28. Use width/height for responsive positioning."""
 
 
 # ── Agent tools ──
@@ -491,7 +593,12 @@ def _make_tools(cid):
         state["voice_id"] = voice_id
         state["voice_name"] = voice_name
         r.set(_key(cid, "state"), json.dumps(state))
-        return f"Voice set to '{voice_name}' ({voice_id})."
+        # Dismiss any active voice picker
+        ui = get_ui_state(cid)
+        for tid, t in list(ui["active_tools"].items()):
+            if t["component"] == "voice_picker":
+                complete_tool_ui(cid, tid)
+        return f"Voice set to '{voice_name}'."
 
     @function_tool
     def set_language(language_code: str) -> str:
@@ -504,26 +611,40 @@ def _make_tools(cid):
         state["language"] = language_code
         r.set(_key(cid, "state"), json.dumps(state))
         name = ELEVENLABS_LANGUAGES[language_code]["name"]
+        # Dismiss any active language picker
+        ui = get_ui_state(cid)
+        for tid, t in list(ui["active_tools"].items()):
+            if t["component"] == "language_picker":
+                complete_tool_ui(cid, tid)
         return f"Language set to {name} ({language_code})."
 
     @function_tool
     def list_voices() -> str:
-        """Get available ElevenLabs voices."""
+        """Get available voices and show the voice picker UI to the user."""
         try:
             from voice import get_provider
             tts = get_provider("elevenlabs")
             voices = tts.list_voices()
-            voice_text = "\n".join(f"  • {v['name']} ({v['id']})" for v in voices[:15])
-            return f"Available voices:\n{voice_text}\n\nInclude :::voice_picker::: to show the selection UI."
+            state = get_conversation_state(cid) or {}
+            register_tool_ui(cid, "list_voices", "voice_picker",
+                props={"current": state.get("voice_id", "")},
+                awaiting_input=True)
+            transition_phase(cid, "configuring")
+            voice_text = "\n".join(f"  - {v['name']}" for v in voices[:15])
+            return f"Voices available:\n{voice_text}\nVoice picker is shown to the user. Wait for their selection."
         except Exception as e:
             return f"Could not load voices: {e}"
 
     @function_tool
     def list_languages() -> str:
-        """Get available translation languages."""
+        """Get available translation languages and show the language picker UI."""
         from batch_generate import ELEVENLABS_LANGUAGES
-        lang_text = "\n".join(f"  • {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
-        return f"Available languages:\n{lang_text}\n\nInclude :::language_picker::: to show the selection UI."
+        state = get_conversation_state(cid) or {}
+        register_tool_ui(cid, "list_languages", "language_picker",
+            props={"current": state.get("language", "en")},
+            awaiting_input=True)
+        lang_text = "\n".join(f"  - {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
+        return f"Languages available:\n{lang_text}\nLanguage picker is shown to the user. Wait for their selection."
 
     @function_tool
     def trigger_render() -> str:
@@ -534,6 +655,7 @@ def _make_tools(cid):
         r = _get_redis()
         r.set(_key(cid, "render_requested"), "1")
         r.expire(_key(cid, "render_requested"), 300)
+        transition_phase(cid, "rendering")
         return "Render requested! Video will generate with current scenes + voice."
 
     @function_tool

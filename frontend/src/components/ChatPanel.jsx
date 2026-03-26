@@ -8,14 +8,12 @@ import { VoicePicker, LanguagePicker, StylePicker, TemplateShowcase } from './Ch
  */
 function renderMarkdown(text) {
   if (!text) return null
-  // Split into lines for list detection
   const lines = text.split('\n')
   const elements = []
   let i = 0
 
   while (i < lines.length) {
     const line = lines[i]
-    // Numbered list item: "1. text" or "- text"
     const listMatch = line.match(/^(\d+\.\s+|- )(.*)/)
     if (listMatch) {
       const items = []
@@ -33,7 +31,6 @@ function renderMarkdown(text) {
     } else if (line.trim() === '') {
       i++
     } else {
-      // Regular paragraph
       let para = line
       i++
       while (i < lines.length && lines[i].trim() !== '' && !lines[i].match(/^(\d+\.\s+|- )/)) {
@@ -47,7 +44,6 @@ function renderMarkdown(text) {
 }
 
 function inlineFormat(text) {
-  // Split by **bold** and `code` markers
   const parts = []
   const regex = /(\*\*(.+?)\*\*|`(.+?)`)/g
   let last = 0
@@ -62,38 +58,51 @@ function inlineFormat(text) {
   return parts
 }
 
+// Legacy marker regex — strip from text, pickers are now rendered from structured tool_ui events
+const MARKER_REGEX = /:::(scene_config|voice_picker|language_picker|style_picker|template_showcase)(\[.*?\])?:::/g
+
 /**
- * Parse assistant message text into segments:
- * - Plain text (with markdown)
- * - :::scene_config::: → SceneConfigCard
- * - :::voice_picker::: → VoicePicker
- * - :::language_picker::: → LanguagePicker
- * - :::style_picker::: → StylePicker
- * - :::template_showcase[...]:::  → TemplateShowcase
+ * Parse assistant message text into segments.
+ * Strips legacy picker markers. Keeps :::scene_config::: for inline scene cards.
  */
 function parseMessage(text) {
   if (!text) return [{ type: 'text', content: '' }]
   const parts = []
-  const regex = /:::(scene_config|voice_picker|language_picker|style_picker|template_showcase)(\[.*?\])?:::/g
+  const regex = /:::scene_config:::/g
   let last = 0
   let match
-  while ((match = regex.exec(text)) !== null) {
+  // First strip all non-scene markers
+  const cleaned = text.replace(/:::(voice_picker|language_picker|style_picker|template_showcase)(\[.*?\])?:::/g, '')
+  while ((match = regex.exec(cleaned)) !== null) {
     if (match.index > last) {
-      parts.push({ type: 'text', content: text.slice(last, match.index) })
+      parts.push({ type: 'text', content: cleaned.slice(last, match.index) })
     }
-    const blockType = match[1]
-    const blockArg = match[2] // e.g. ["fact_card","narrative"]
-    let args = null
-    if (blockArg) {
-      try { args = JSON.parse(blockArg) } catch {}
-    }
-    parts.push({ type: blockType, args })
+    parts.push({ type: 'scene_config' })
     last = match.index + match[0].length
   }
-  if (last < text.length) {
-    parts.push({ type: 'text', content: text.slice(last) })
+  if (last < cleaned.length) {
+    parts.push({ type: 'text', content: cleaned.slice(last) })
   }
-  return parts.length ? parts : [{ type: 'text', content: text }]
+  return parts.length ? parts : [{ type: 'text', content: cleaned }]
+}
+
+/**
+ * Tool UI component registry — maps tool component names to React renderers.
+ * To add a new interactive tool: add one entry here + create the component.
+ */
+const TOOL_COMPONENTS = {
+  voice_picker: (props, onRespond) => (
+    <VoicePicker voices={props.voices} currentVoiceId={props.currentVoiceId || props.current}
+      onSelect={(type, value, label) => onRespond({ picker: 'voice', value, label })} />
+  ),
+  language_picker: (props, onRespond) => (
+    <LanguagePicker languages={props.languages} currentLang={props.currentLang || props.current}
+      onSelect={(type, value, label) => onRespond({ picker: 'language', value, label })} />
+  ),
+  style_picker: (props, onRespond) => (
+    <StylePicker styles={props.styles} currentStyle={props.currentStyle || props.current}
+      onSelect={(type, value, label) => onRespond({ picker: 'style', value, label })} />
+  ),
 }
 
 export default function ChatPanel({ topicId, segment, voices, languages, styles, templates,
@@ -104,24 +113,24 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const [input, setInput] = useState('')
   const [status, setStatus] = useState('idle')
   const [streamText, setStreamText] = useState('')
+  const [activeTools, setActiveTools] = useState({})     // {tool_id: {component, props, status}}
+  const [agentPhase, setAgentPhase] = useState('setup')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const streamRef = useRef('')
   const evtSourceRef = useRef(null)
-  const mountedRef = useRef(true)           // guard against post-unmount state updates
-  const recoveringRef = useRef(false)        // prevent concurrent recovery attempts
-  const retryCountRef = useRef(0)            // exponential backoff counter
-  const lastEventIdRef = useRef('')          // SSE resume support
-  const retryTimerRef = useRef(null)         // backoff timer handle
-  const statusRef = useRef('idle')           // stable status ref for async callbacks
-  const isResumeRef = useRef(false)          // track if SSE is a reconnect (skip streamRef reset)
+  const mountedRef = useRef(true)
+  const recoveringRef = useRef(false)
+  const retryCountRef = useRef(0)
+  const lastEventIdRef = useRef('')
+  const retryTimerRef = useRef(null)
+  const statusRef = useRef('idle')
+  const isResumeRef = useRef(false)
 
-  const MAX_RETRIES = 10                     // give up after ~30s of backoff (1+2+4+8+8+8...)
+  const MAX_RETRIES = 10
 
-  // Keep statusRef in sync with state
   useEffect(() => { statusRef.current = status }, [status])
 
-  // Close any active SSE stream + pending retry timer
   const closeSSE = useCallback(() => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current)
@@ -134,9 +143,63 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     recoveringRef.current = false
   }, [])
 
-  // Recover full state from history endpoint — used on SSE drop and refresh
+  // Handle structured tool UI events from SSE
+  const handleToolUIEvent = useCallback((data) => {
+    if (data.action === 'show') {
+      setActiveTools(prev => ({
+        ...prev,
+        [data.tool_id]: { component: data.component, props: data.props || {}, status: data.status || 'completed' }
+      }))
+    } else if (data.action === 'dismiss') {
+      setActiveTools(prev => {
+        const next = { ...prev }
+        delete next[data.tool_id]
+        return next
+      })
+    } else if (data.action === 'update') {
+      setActiveTools(prev =>
+        prev[data.tool_id]
+          ? { ...prev, [data.tool_id]: { ...prev[data.tool_id], status: data.status } }
+          : prev
+      )
+    }
+  }, [])
+
+  // Stable ref for sendMessageDirect so handleToolResponse can call it without circular deps
+  const sendMessageDirectRef = useRef(null)
+
+  // Generic tool response — direct config update via API, notify agent if idle
+  const handleToolResponse = useCallback(async (toolId, response) => {
+    // Dismiss immediately in local state
+    setActiveTools(prev => {
+      const next = { ...prev }
+      delete next[toolId]
+      return next
+    })
+
+    try {
+      const resp = await fetch(`/api/chat/${conversationId}/tool_response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool_id: toolId, response }),
+      })
+      const data = await resp.json()
+      if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
+    } catch (err) {
+      console.warn('[ChatPanel] Tool response failed:', err)
+    }
+
+    // Notify agent if idle (not currently streaming)
+    if (statusRef.current === 'idle' && conversationId && sendMessageDirectRef.current) {
+      const label = response.label || response.value
+      setMessages(prev => [...prev, { role: 'user', content: `Selected ${response.picker}: ${label}` }])
+      setStatus('thinking')
+      sendMessageDirectRef.current(conversationId, `[Selected ${response.picker}: ${label}]`)
+    }
+  }, [conversationId, onSettingsUpdate])
+
+  // Recover full state from history endpoint
   const recoverFromHistory = useCallback((cid) => {
-    // Prevent concurrent recovery attempts (onerror can fire multiple times)
     if (recoveringRef.current) return
     recoveringRef.current = true
 
@@ -148,7 +211,11 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
       if (data.scene_config) onSceneConfigUpdate(data.scene_config)
       if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
       if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
-      // If agent is still working, reconnect SSE with backoff
+      // Restore tool UI state
+      if (data.ui_state) {
+        setActiveTools(data.ui_state.active_tools || {})
+        setAgentPhase(data.ui_state.phase || 'setup')
+      }
       if (data.status === 'thinking') {
         if (retryCountRef.current >= MAX_RETRIES) {
           console.warn('[ChatPanel] Max SSE retries reached, giving up')
@@ -157,7 +224,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           recoveringRef.current = false
           return
         }
-        // Don't clear streamRef — keep showing what we have during backoff
         const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 8000)
         retryCountRef.current++
         retryTimerRef.current = setTimeout(() => {
@@ -177,7 +243,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }).catch((err) => {
       console.warn('[ChatPanel] Recovery fetch failed:', err)
       if (!mountedRef.current) { recoveringRef.current = false; return }
-      // Retry recovery with backoff if we were thinking
       if (statusRef.current === 'thinking') {
         if (retryCountRef.current >= MAX_RETRIES) {
           console.warn('[ChatPanel] Max recovery retries reached, giving up')
@@ -202,7 +267,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     })
   }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate])
 
-  // Open SSE stream imperatively — called AFTER POST succeeds
+  // Open SSE stream
   const openSSEStream = useCallback((cid) => {
     closeSSE()
     const evtSource = new EventSource(`/api/chat/${cid}/stream`)
@@ -212,7 +277,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
     evtSource.onmessage = (event) => {
       if (!mountedRef.current) { evtSource.close(); return }
-      // Track event ID for resume
       if (event.lastEventId) lastEventIdRef.current = event.lastEventId
 
       try {
@@ -220,11 +284,12 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
         switch (data.type) {
           case 'connected':
-            // Connection acknowledged — reset backoff
             retryCountRef.current = 0
-            // On resume: server replays all chunks from offset 0, so reset
-            // streamRef to avoid stacking old + replayed text
-            if (isResume) {
+            // Server sends full_text with all accumulated chunks — always reset
+            if (data.full_text != null) {
+              streamRef.current = data.full_text
+              setStreamText(data.full_text)
+            } else if (isResume) {
               streamRef.current = ''
               setStreamText('')
             }
@@ -245,6 +310,15 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
           case 'render_requested':
             if (onGenerate) onGenerate()
+            break
+
+          // Structured tool UI events from backend
+          case 'tool_ui':
+            handleToolUIEvent(data)
+            break
+
+          case 'phase_change':
+            setAgentPhase(data.to || 'setup')
             break
 
           case 'done':
@@ -272,12 +346,11 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
       evtSource.close()
       evtSourceRef.current = null
       if (!mountedRef.current) return
-      // Don't give up — recover from history + reconnect if still thinking
       recoverFromHistory(cid)
     }
-  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate, onGenerate, closeSSE, recoverFromHistory])
+  }, [onSceneConfigUpdate, onCustomCodeUpdate, onSettingsUpdate, onGenerate, closeSSE, recoverFromHistory, handleToolUIEvent])
 
-  // Stable conversation ID per segment — survives page refresh
+  // Stable conversation ID per segment
   useEffect(() => {
     if (!segment) return
     closeSSE()
@@ -289,8 +362,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     streamRef.current = ''
     setStreamText('')
     setStatus('idle')
+    setActiveTools({})
+    setAgentPhase('setup')
 
-    // Load existing conversation history + recover from stuck states
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (data.messages?.length > 0) {
         const msgs = data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started'))
@@ -298,14 +372,18 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
         if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
         if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
+        // Restore tool UI state
+        if (data.ui_state) {
+          setActiveTools(data.ui_state.active_tools || {})
+          setAgentPhase(data.ui_state.phase || 'setup')
+        }
       } else {
         setMessages([{
           role: 'assistant',
-          content: `I'm ready to help you create a motion video for **"${segment.title}"**.\n\nDescribe what you'd like — the tone, style, specific visuals — or just say "compose scenes" and I'll propose a layout based on the segment content.`
+          content: `Let's create a motion video for **"${segment.title}"**.\n\nPick a voice and style to get started, or describe your creative vision.`
         }])
       }
 
-      // If agent is still "thinking" (page refresh during active stream), reconnect SSE
       if (data.status === 'thinking') {
         setStatus('thinking')
         openSSEStream(cid)
@@ -318,7 +396,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     })
   }, [segment?.id])
 
-  // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true
     return () => {
@@ -330,10 +407,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamText])
+  }, [messages, streamText, activeTools])
 
   const sendMessageDirect = useCallback(async (cid, text) => {
-    // Reset recovery state — user is sending a fresh message
     closeSSE()
     retryCountRef.current = 0
     lastEventIdRef.current = ''
@@ -363,8 +439,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
         setStatus('idle')
         return
       }
-      // POST succeeded — server has set status="thinking" in Redis.
-      // NOW open SSE — no race condition.
       openSSEStream(cid)
     } catch (err) {
       console.warn('[ChatPanel] Send failed:', err)
@@ -375,6 +449,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }
   }, [topicId, segment, settings, openSSEStream, closeSSE])
 
+  // Keep ref in sync so handleToolResponse can call it
+  sendMessageDirectRef.current = sendMessageDirect
+
   const sendMessage = useCallback(async (text) => {
     if (status === 'thinking' || !conversationId) return
     if (text) {
@@ -384,13 +461,6 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     await sendMessageDirect(conversationId, text)
   }, [conversationId, status, sendMessageDirect])
 
-  const handlePickerSelect = (type, value, label) => {
-    if (type === 'voice') sendMessage(`Use voice ${label} (id: ${value})`)
-    else if (type === 'language') sendMessage(`Set language to ${label} (code: ${value})`)
-    else if (type === 'style') sendMessage(`Use ${label} style`)
-    else if (type === 'template') sendMessage(`Add a ${label} scene`)
-  }
-
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -398,22 +468,11 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }
   }
 
+  // Render parts from messages — scene cards inline, picker markers stripped
   const renderPart = (part, i) => {
     switch (part.type) {
       case 'scene_config':
-        return <SceneConfigCard key={i} config={sceneConfig} />
-      case 'voice_picker':
-        return <VoicePicker key={i} voices={voices}
-          currentVoiceId={settings?.voice_id} onSelect={handlePickerSelect} />
-      case 'language_picker':
-        return <LanguagePicker key={i} languages={languages}
-          currentLang={settings?.language} onSelect={handlePickerSelect} />
-      case 'style_picker':
-        return <StylePicker key={i} styles={styles}
-          currentStyle={settings?.style} onSelect={handlePickerSelect} />
-      case 'template_showcase':
-        return <TemplateShowcase key={i} templateIds={part.args}
-          templates={templates} onSelect={handlePickerSelect} />
+        return <SceneConfigCard key={`sc_${i}`} config={sceneConfig} />
       default:
         return part.content?.trim() ? (
           <div key={i} className="vc-msg-text">{renderMarkdown(part.content.trim())}</div>
@@ -434,6 +493,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
         <span className="ve-left-label" style={{ textTransform: 'none', letterSpacing: '-0.1px', fontSize: 12, fontWeight: 700, color: '#a1a1aa', flex: 1 }}>
           Motion Director
         </span>
+        {agentPhase && agentPhase !== 'setup' && (
+          <span className="vc-badge">{agentPhase}</span>
+        )}
         {settings?.style && (
           <span className="vc-badge">{settings.style}</span>
         )}
@@ -450,7 +512,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           </div>
         ))}
 
-        {/* Streaming message — only show if there's visible text */}
+        {/* Streaming message */}
         {streamText?.trim() && (
           <div className="vc-msg vc-msg-assistant">
             {parseMessage(streamText).map(renderPart)}
@@ -463,6 +525,28 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
             <div className="vc-typing">
               <span /><span /><span />
             </div>
+          </div>
+        )}
+
+        {/* Stable tool UI zone — components rendered from structured events, not text parsing */}
+        {Object.keys(activeTools).length > 0 && (
+          <div className="vc-tool-zone">
+            {Object.entries(activeTools).map(([toolId, tool]) => {
+              const Renderer = TOOL_COMPONENTS[tool.component]
+              if (!Renderer) return null
+              const mergedProps = {
+                ...tool.props,
+                voices, languages, styles,
+                currentVoiceId: settings?.voice_id,
+                currentLang: settings?.language,
+                currentStyle: settings?.style,
+              }
+              return (
+                <div key={toolId} className="vc-tool-ui">
+                  {Renderer(mergedProps, (response) => handleToolResponse(toolId, response))}
+                </div>
+              )
+            })}
           </div>
         )}
 

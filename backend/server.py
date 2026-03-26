@@ -1305,8 +1305,11 @@ async def chat_stream(conversation_id: str, request: Request):
         HEARTBEAT_INTERVAL = 10  # seconds between keepalive pings
         POLL_INTERVAL = 0.1    # 100ms for smooth streaming
 
-        # Initial connection acknowledgment
-        yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'connected'})}\n\n"
+        # Initial connection acknowledgment — include full text for safe resume
+        all_chunks = r.lrange(_key(conversation_id, "chunks"), 0, -1)
+        full_text = "".join(all_chunks) if all_chunks else ""
+        offset = len(all_chunks)
+        yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'connected', 'full_text': full_text})}\n\n"
 
         while True:
             now = time.time()
@@ -1341,7 +1344,7 @@ async def chat_stream(conversation_id: str, request: Request):
 
             # Stream scene config changes
             config = get_scene_config(conversation_id)
-            config_str = json.dumps(config) if config else ""
+            config_str = json.dumps(config, sort_keys=True) if config else ""
             if config_str and config_str != last_config_hash:
                 last_config_hash = config_str
                 event_seq += 1
@@ -1361,6 +1364,16 @@ async def chat_stream(conversation_id: str, request: Request):
             if render_req:
                 r.delete(_key(conversation_id, "render_requested"))
                 yield f"data: {json.dumps({'type': 'render_requested'})}\n\n"
+                emitted = True
+
+            # Drain tool UI events (structured events from tool calls)
+            while True:
+                raw_evt = r.lpop(_key(conversation_id, "ui_events"))
+                if not raw_evt:
+                    break
+                evt = json.loads(raw_evt)
+                event_seq += 1
+                yield f"data: {json.dumps(evt)}\n\n"
                 emitted = True
 
             # Stream settings
@@ -1404,7 +1417,7 @@ async def chat_stream(conversation_id: str, request: Request):
 def chat_history(conversation_id: str):
     from chat_agent import (
         get_conversation_history, get_scene_config, get_conversation_state,
-        _get_redis, _key
+        get_ui_state, _get_redis, _key
     )
     r = _get_redis()
     state = get_conversation_state(conversation_id)
@@ -1419,6 +1432,53 @@ def chat_history(conversation_id: str):
             "voice_id": state.get("voice_id", "") if state else "",
             "voice_name": state.get("voice_name", "") if state else "",
             "language": state.get("language", "") if state else "",
+        },
+        "ui_state": get_ui_state(conversation_id),
+    }
+
+
+class ToolResponseRequest(BaseModel):
+    tool_id: str
+    response: dict  # e.g. {picker: "voice", value: "abc", label: "Rachel"}
+
+
+@app.post("/api/chat/{conversation_id}/tool_response")
+def chat_tool_response(conversation_id: str, req: ToolResponseRequest):
+    """Generic endpoint for frontend tool responses (picker selections, etc).
+    Updates config directly in Redis, dismisses tool UI, returns settings."""
+    from chat_agent import (
+        get_conversation_state, complete_tool_ui, get_ui_state,
+        _get_redis, _key
+    )
+    r = _get_redis()
+    state = get_conversation_state(conversation_id)
+    if not state:
+        return {"error": "Conversation not found"}
+
+    picker = req.response.get("picker", "")
+    value = req.response.get("value", "")
+    label = req.response.get("label", "")
+
+    if picker == "voice":
+        state["voice_id"] = value
+        state["voice_name"] = label
+    elif picker == "language":
+        state["language"] = value
+    elif picker == "style":
+        state["style"] = value
+
+    r.set(_key(conversation_id, "state"), json.dumps(state))
+
+    # Dismiss the tool UI
+    complete_tool_ui(conversation_id, req.tool_id)
+
+    return {
+        "status": "ok",
+        "settings": {
+            "style": state.get("style", "cinematic"),
+            "voice_id": state.get("voice_id", ""),
+            "voice_name": state.get("voice_name", ""),
+            "language": state.get("language", ""),
         },
     }
 

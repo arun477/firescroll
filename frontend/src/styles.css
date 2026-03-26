@@ -9826,3 +9826,18 @@ a { color: var(--blue); text-decoration: none; }
 .vc-picker-card-desc { font-size: 9px; color: var(--text-muted); display: block; margin-top: 2px; }
 .vc-picker-empty { font-size: 11px; color: var(--text-muted); padding: 8px 0; }
 
+/* Tool UI zone — stable rendering area for interactive tools from structured events */
+.vc-tool-zone {
+  padding: 4px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vc-tool-ui {
+  animation: vc-tool-enter 0.2s ease-out;
+}
+@keyframes vc-tool-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
