@@ -25,14 +25,14 @@
         <img src="assets/firescroll-thumbnail.png" alt="FireScroll Overview" width="100%" />
       </a>
       <br />
-      <strong>Overview</strong> — What FireScroll can do
+      <a href="https://www.youtube.com/watch?v=485MsI5a450"><strong>Overview</strong> — What FireScroll can do</a>
     </td>
     <td align="center" width="50%">
       <a href="https://www.youtube.com/watch?v=vs4SbNTQTww">
         <img src="https://img.youtube.com/vi/vs4SbNTQTww/maxresdefault.jpg" alt="FireScroll Live Demo" width="100%" />
       </a>
       <br />
-      <strong>Live Demo</strong> — Full walkthrough of the app
+      <a href="https://www.youtube.com/watch?v=vs4SbNTQTww"><strong>Live Demo</strong> — Full walkthrough of the app</a>
     </td>
   </tr>
 </table>
