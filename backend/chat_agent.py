@@ -1,11 +1,12 @@
 """AI Chat Agent for Motion Studio.
 
-Uses OpenAI Agents SDK with function tools to drive scene composition
-through conversational interaction. State stored in Redis.
+Direct OpenAI API with main agent + sub-agent pattern.
+Main agent: creative director (talks to user, lean context).
+Sub-agent: Remotion specialist (iterates scene code with validation).
 """
-import asyncio
 import json
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -36,8 +37,7 @@ def _key(cid, suffix):
 
 
 def _refresh_ttl(r, cid):
-    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code",
-                    "ui_events", "ui_state"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code", "ui_events"):
         r.expire(_key(cid, suffix), CONV_TTL)
 
 
@@ -94,6 +94,13 @@ def push_chunk(cid, text):
     r.rpush(_key(cid, "chunks"), text)
 
 
+def push_tool_event(cid, event_type, tool_name, **kwargs):
+    """Emit tool_call/tool_result event for SSE activity card."""
+    r = _get_redis()
+    event = {"type": event_type, "tool": tool_name, **kwargs}
+    r.rpush(_key(cid, "ui_events"), json.dumps(event))
+
+
 def clear_chunks(cid):
     r = _get_redis()
     r.delete(_key(cid, "chunks"))
@@ -125,105 +132,13 @@ def init_conversation(cid, topic_id, segment_id, style="cinematic",
     }
     r.set(_key(cid, "state"), json.dumps(state))
     r.set(_key(cid, "messages"), "[]")
-    set_ui_state(cid, {"phase": "setup", "active_tools": {}, "pending_input": None})
     _refresh_ttl(r, cid)
 
 
 def delete_conversation(cid):
     r = _get_redis()
-    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code",
-                    "ui_events", "ui_state"):
+    for suffix in ("messages", "scene_config", "state", "chunks", "custom_code", "ui_events"):
         r.delete(_key(cid, suffix))
-
-
-# ── Tool UI Protocol ──
-# Structured event system for rendering interactive UI components from tool calls.
-# Tools push events → SSE streams them → frontend renders from flags (not text markers).
-
-VALID_PHASE_TRANSITIONS = {
-    "setup": ["configuring", "composing"],
-    "configuring": ["composing", "configuring"],
-    "composing": ["reviewing", "configuring", "rendering", "composing"],
-    "reviewing": ["rendering", "composing"],
-    "rendering": ["reviewing", "done", "composing"],
-    "done": ["composing"],
-}
-
-
-def _generate_tool_id():
-    return f"tc_{uuid.uuid4().hex[:8]}"
-
-
-def push_ui_event(cid, event):
-    """Push a structured UI event for real-time SSE streaming."""
-    r = _get_redis()
-    r.rpush(_key(cid, "ui_events"), json.dumps(event))
-
-
-def get_ui_state(cid):
-    """Get persistent UI state for recovery on page reload."""
-    r = _get_redis()
-    raw = r.get(_key(cid, "ui_state"))
-    if not raw:
-        return {"phase": "setup", "active_tools": {}, "pending_input": None}
-    return json.loads(raw)
-
-
-def set_ui_state(cid, state):
-    r = _get_redis()
-    r.set(_key(cid, "ui_state"), json.dumps(state))
-    r.expire(_key(cid, "ui_state"), CONV_TTL)
-
-
-def transition_phase(cid, new_phase):
-    """Transition agent phase with validation. Returns True if transition is valid."""
-    ui = get_ui_state(cid)
-    current = ui.get("phase", "setup")
-    allowed = VALID_PHASE_TRANSITIONS.get(current, [])
-    if new_phase not in allowed and current != new_phase:
-        return False
-    ui["phase"] = new_phase
-    set_ui_state(cid, ui)
-    push_ui_event(cid, {"type": "phase_change", "from": current, "to": new_phase})
-    return True
-
-
-def register_tool_ui(cid, tool_name, component, props=None, awaiting_input=False):
-    """Register a tool's UI artifact for frontend rendering. Returns tool_id."""
-    tool_id = _generate_tool_id()
-    ui = get_ui_state(cid)
-    status = "awaiting_input" if awaiting_input else "completed"
-    tool_obj = {
-        "tool_id": tool_id,
-        "tool_name": tool_name,
-        "status": status,
-        "component": component,
-        "props": props or {},
-    }
-    ui["active_tools"][tool_id] = tool_obj
-    if awaiting_input:
-        ui["pending_input"] = {"tool_id": tool_id, "component": component}
-    set_ui_state(cid, ui)
-    push_ui_event(cid, {
-        "type": "tool_ui",
-        "tool_id": tool_id,
-        "action": "show",
-        "component": component,
-        "props": props or {},
-        "status": status,
-    })
-    return tool_id
-
-
-def complete_tool_ui(cid, tool_id):
-    """Mark a tool's UI as completed and dismiss it from the frontend."""
-    ui = get_ui_state(cid)
-    if tool_id in ui["active_tools"]:
-        del ui["active_tools"][tool_id]
-    if ui.get("pending_input", {}).get("tool_id") == tool_id:
-        ui["pending_input"] = None
-    set_ui_state(cid, ui)
-    push_ui_event(cid, {"type": "tool_ui", "tool_id": tool_id, "action": "dismiss"})
 
 
 # ── Code-first helpers ──
@@ -410,62 +325,40 @@ Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
 ## BEHAVIOR RULES
 
-1. GUIDED SETUP (first message):
-   a) Greet the user in 1 sentence, mentioning the segment title.
-   b) Call list_voices — this automatically shows the voice picker UI to the user.
-   c) Say "Pick a voice and tell me your creative direction, or say 'surprise me' to jump right in."
-   d) Do NOT create any scenes until the user responds with a preference or says "go"/"surprise me".
+1. FIRST MESSAGE: Greet briefly, then call compose_scenes with a creative brief based on the segment content (hook → opening, script → middle, visual_cue → direction). Also call list_voices. After scenes are composed, show :::scene_config::: and ask about adjustments or voice.
 
-2. COMPOSE PHASE (after user provides input or picks a voice):
-   a) Acknowledge briefly if user selected a voice.
-   b) Create 4-5 scenes with create_scene and write code for each with write_scene_code.
-      Base scenes on segment content: hook → opening, script → middle, visual_cue → creative direction.
-      Default durations: opening 4s (120f), content 5s (150f), closing 3s (90f). Total ~25-30s.
-   c) Show :::scene_config::: after composing. Keep text to 1-2 sentences.
-   d) Ask "Want to adjust anything, or should I render?"
-
-3. ACTION OVER TALK: When user requests ANY change, act immediately:
-   - Visual change → read_scene_code → modify → write_scene_code
-   - Global change ("all scenes white") → loop through each scene index
-   - Structural change → use remove_scene/reorder_scenes/create_scene
+2. ACTION OVER TALK: When user requests ANY change, act immediately:
+   - Visual change ("white background", "bigger text") → call update_scenes with a brief describing the change
+   - Structural change → use remove_scene/reorder_scenes + compose_scenes for new scenes
    - Timing change → set_scene_timing
-   - Voice/language → list_voices/set_voice or list_languages/set_language
-   DO NOT just acknowledge — use the tool, THEN confirm in 1-2 sentences.
+   - Voice/language → set_voice/set_language (or list_voices/list_languages to show options)
+   DO NOT just acknowledge — call the tool, THEN confirm in 1-2 sentences.
 
-4. ERROR RECOVERY: If write_scene_code fails, fix and retry up to 3x silently.
+3. AFTER TOOL CALLS: Include :::scene_config::: to show updated layout. Keep text minimal. Never list scene details as text.
 
-5. AFTER TOOL CALLS: Show :::scene_config::: for layout changes. Keep text minimal. NEVER list scene details, timing, or descriptions as text — the scene config card shows everything. No "Scene 0: ...", no frame counts.
+4. RENDER FLOW: After composing, ask about voice/language. When user says "go"/"render" → trigger_render.
 
-6. RENDER FLOW: Before rendering, check voice is set. If not, call list_voices first. When user says "go"/"render"/"start" → trigger_render.
+5. ITERATION: For post-render changes, call update_scenes then trigger_render. Don't ask — just do it.
 
-7. ITERATION: For post-render changes, modify scenes and trigger_render again without asking.
-
-8. PICKERS: Do NOT write :::voice_picker::: or :::language_picker::: in your text. Picker UIs appear automatically when you call list_voices or list_languages. Just call the tool — the frontend handles display.
-
-9. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Sequential timing. Min font 28. Use width/height for responsive positioning."""
+6. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Sequential timing. Min font 28."""
 
 
-# ── Agent tools ──
+# ── Tool functions (plain functions, no SDK decorators) ──
 
 def _make_tools(cid):
-    """Create tool functions bound to a conversation ID."""
-    from agents import function_tool
+    """Create tool functions bound to a conversation ID. Returns (tool_map, tool_schemas)."""
 
-    @function_tool
-    def create_scene(duration_frames: int, position: int) -> str:
-        """Create an empty scene slot at the given position. Shifts subsequent scenes.
-        After creating, use write_scene_code to fill it with animation code.
-        Duration is in frames (30fps). E.g. 120 = 4 seconds, 150 = 5 seconds."""
+    def create_scene(duration_frames, position):
         config = get_scene_config(cid) or {"fps": 30, "width": 1080, "height": 1920, "scenes": []}
         scenes = config["scenes"]
-        pos = max(0, min(position, len(scenes)))
+        pos = max(0, min(int(position), len(scenes)))
+        duration_frames = int(duration_frames)
         if pos == 0:
             start = 0
         elif pos >= len(scenes):
             start = (scenes[-1]["from"] + scenes[-1]["durationInFrames"]) if scenes else 0
         else:
             start = scenes[pos]["from"]
-        # Shift subsequent scenes
         for s in scenes[pos:]:
             s["from"] += duration_frames
         new_scene = {"template": "custom_code", "from": start,
@@ -473,28 +366,21 @@ def _make_tools(cid):
         scenes.insert(pos, new_scene)
         config["scenes"] = scenes
         set_scene_config(cid, config)
-        transition_phase(cid, "composing")
-        return f"Scene {pos} created ({duration_frames}f = {duration_frames/30:.1f}s). Now write code with write_scene_code({pos}, code)."
+        return f"Scene {pos} created ({duration_frames}f = {duration_frames/30:.1f}s)."
 
-    @function_tool
-    def read_scene_code(scene_index: int) -> str:
-        """Read the current code for a scene. Use this before modifying existing scenes."""
+    def read_scene_code(scene_index):
         r = _get_redis()
         raw = r.get(_key(cid, "custom_code"))
         if not raw:
             return "No scene code exists yet."
         code_map = json.loads(raw)
-        code = code_map.get(str(scene_index))
-        if not code:
-            return f"No code found for scene {scene_index}."
-        return code
+        return code_map.get(str(int(scene_index)), f"No code for scene {scene_index}.")
 
-    @function_tool
-    def set_scene_timing(scene_index: int, duration_frames: int) -> str:
-        """Change a scene's duration and recalculate timing for all subsequent scenes."""
+    def set_scene_timing(scene_index, duration_frames):
+        scene_index, duration_frames = int(scene_index), int(duration_frames)
         config = get_scene_config(cid)
         if not config or scene_index >= len(config.get("scenes", [])):
-            return f"Error: scene index {scene_index} out of range."
+            return f"Error: scene {scene_index} out of range."
         old_dur = config["scenes"][scene_index]["durationInFrames"]
         config["scenes"][scene_index]["durationInFrames"] = duration_frames
         diff = duration_frames - old_dur
@@ -503,23 +389,20 @@ def _make_tools(cid):
         set_scene_config(cid, config)
         return f"Scene {scene_index} duration set to {duration_frames}f ({duration_frames/30:.1f}s)."
 
-    @function_tool
-    def remove_scene(scene_index: int) -> str:
-        """Remove a scene by index."""
+    def remove_scene(scene_index):
+        scene_index = int(scene_index)
         config = get_scene_config(cid)
         if not config or scene_index >= len(config.get("scenes", [])):
-            return f"Error: scene index {scene_index} out of range."
+            return f"Error: scene {scene_index} out of range."
         removed = config["scenes"].pop(scene_index)
         dur = removed["durationInFrames"]
         for s in config["scenes"][scene_index:]:
             s["from"] = max(0, s["from"] - dur)
         set_scene_config(cid, config)
         _reindex_custom_code(cid, scene_index)
-        return f"Removed scene {scene_index}. Include :::scene_config::: to show."
+        return f"Removed scene {scene_index}."
 
-    @function_tool
-    def reorder_scenes(new_order_json: str) -> str:
-        """Reorder scenes. Pass JSON array of indices, e.g. '[2,0,1,3]'."""
+    def reorder_scenes(new_order_json):
         try:
             new_order = json.loads(new_order_json)
         except (json.JSONDecodeError, TypeError):
@@ -538,40 +421,23 @@ def _make_tools(cid):
         config["scenes"] = reordered
         set_scene_config(cid, config)
         _reindex_custom_code_reorder(cid, new_order)
-        return "Scenes reordered. Include :::scene_config::: to show."
+        return "Scenes reordered."
 
-    @function_tool
-    def write_scene_code(scene_index: int, code: str) -> str:
-        """Write React/Remotion code for a scene. The code is a JS function body that must return
-        a React element via React.createElement() (NOT JSX).
-
-        Available: React, AbsoluteFill, spring, interpolate, useCurrentFrame, useVideoConfig,
-        frame, fps (30), width (1080), height (1920).
-
-        The scene must already exist (use create_scene first)."""
+    def write_scene_code(scene_index, code):
+        scene_index = int(scene_index)
         config = get_scene_config(cid)
         if not config or scene_index >= len(config.get("scenes", [])):
-            return f"Error: scene {scene_index} doesn't exist. Use create_scene first."
-
+            return f"Error: scene {scene_index} doesn't exist."
         import requests as _req
         remotion_url = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
-
         try:
-            resp = _req.post(
-                f"{remotion_url}/validate-code",
-                json={"code": code, "scene_index": scene_index},
-                timeout=5,
-            )
+            resp = _req.post(f"{remotion_url}/validate-code",
+                             json={"code": code, "scene_index": scene_index}, timeout=5)
             result = resp.json()
         except Exception as e:
-            return f"Error: could not reach Remotion server: {e}"
-
+            return f"Error: Remotion server unreachable: {e}"
         if not result.get("valid"):
-            error = result.get("error", "Unknown error")
-            phase = result.get("phase", "unknown")
-            return f"Code validation FAILED ({phase}): {error}\n\nFix the error and call write_scene_code again."
-
-        # Store in Redis
+            return f"Code validation FAILED ({result.get('phase','?')}): {result.get('error','?')}"
         r = _get_redis()
         custom_key = _key(cid, "custom_code")
         existing = r.get(custom_key)
@@ -579,32 +445,19 @@ def _make_tools(cid):
         custom_map[str(scene_index)] = code
         r.set(custom_key, json.dumps(custom_map))
         r.expire(custom_key, CONV_TTL)
-
-        # Mark scene as custom_code
         config["scenes"][scene_index]["template"] = "custom_code"
         set_scene_config(cid, config)
-        transition_phase(cid, "composing")
+        return f"Scene {scene_index} code saved."
 
-        return f"Scene {scene_index} code saved. Preview updates automatically."
-
-    @function_tool
-    def set_voice(voice_id: str, voice_name: str) -> str:
-        """Select an ElevenLabs voice for narration."""
+    def set_voice(voice_id, voice_name):
         r = _get_redis()
         state = get_conversation_state(cid) or {}
         state["voice_id"] = voice_id
         state["voice_name"] = voice_name
         r.set(_key(cid, "state"), json.dumps(state))
-        # Dismiss any active voice picker
-        ui = get_ui_state(cid)
-        for tid, t in list(ui["active_tools"].items()):
-            if t["component"] == "voice_picker":
-                complete_tool_ui(cid, tid)
         return f"Voice set to '{voice_name}'."
 
-    @function_tool
-    def set_language(language_code: str) -> str:
-        """Set the translation language. Use 'en' for English (no translation)."""
+    def set_language(language_code):
         from batch_generate import ELEVENLABS_LANGUAGES
         if language_code not in ELEVENLABS_LANGUAGES:
             return f"Error: unsupported language '{language_code}'."
@@ -612,60 +465,36 @@ def _make_tools(cid):
         state = get_conversation_state(cid) or {}
         state["language"] = language_code
         r.set(_key(cid, "state"), json.dumps(state))
-        name = ELEVENLABS_LANGUAGES[language_code]["name"]
-        # Dismiss any active language picker
-        ui = get_ui_state(cid)
-        for tid, t in list(ui["active_tools"].items()):
-            if t["component"] == "language_picker":
-                complete_tool_ui(cid, tid)
-        return f"Language set to {name} ({language_code})."
+        return f"Language set to {ELEVENLABS_LANGUAGES[language_code]['name']}."
 
-    @function_tool
-    def list_voices() -> str:
-        """Get available voices and show the voice picker UI to the user."""
+    def list_voices():
         try:
             from voice import get_provider
             tts = get_provider("elevenlabs")
             voices = tts.list_voices()
-            state = get_conversation_state(cid) or {}
-            register_tool_ui(cid, "list_voices", "voice_picker",
-                props={"current": state.get("voice_id", "")},
-                awaiting_input=True)
-            transition_phase(cid, "configuring")
-            voice_text = "\n".join(f"  - {v['name']}" for v in voices[:15])
-            return f"Voices available:\n{voice_text}\nVoice picker is shown to the user. Wait for their selection."
+            voice_text = "\n".join(f"  - {v['name']} ({v['id']})" for v in voices[:15])
+            return f"Available voices:\n{voice_text}"
         except Exception as e:
             return f"Could not load voices: {e}"
 
-    @function_tool
-    def list_languages() -> str:
-        """Get available translation languages and show the language picker UI."""
+    def list_languages():
         from batch_generate import ELEVENLABS_LANGUAGES
-        state = get_conversation_state(cid) or {}
-        register_tool_ui(cid, "list_languages", "language_picker",
-            props={"current": state.get("language", "en")},
-            awaiting_input=True)
         lang_text = "\n".join(f"  - {v['name']} ({k})" for k, v in ELEVENLABS_LANGUAGES.items())
-        return f"Languages available:\n{lang_text}\nLanguage picker is shown to the user. Wait for their selection."
+        return f"Available languages:\n{lang_text}"
 
-    @function_tool
-    def trigger_render() -> str:
-        """Start rendering the final video with audio."""
+    def trigger_render():
         config = get_scene_config(cid)
         if not config or not config.get("scenes"):
-            return "Error: no scenes to render. Create scenes first."
+            return "Error: no scenes to render."
         r = _get_redis()
         r.set(_key(cid, "render_requested"), "1")
         r.expire(_key(cid, "render_requested"), 300)
-        transition_phase(cid, "rendering")
-        return "Render requested! Video will generate with current scenes + voice."
+        return "Render requested."
 
-    @function_tool
-    def get_render_status() -> str:
-        """Check render progress."""
+    def get_render_status():
         state = get_conversation_state(cid)
         if not state:
-            return "No conversation state."
+            return "No conversation."
         from db import get_remotion_jobs_for_topic, REMOTION_ACTIVE, get_segments_for_topic
         jobs = get_remotion_jobs_for_topic(state["topic_id"])
         segs = get_segments_for_topic(state["topic_id"])
@@ -679,35 +508,259 @@ def _make_tools(cid):
         if latest["status"] in REMOTION_ACTIVE:
             return f"Rendering: {latest['status']} ({latest.get('progress', 0)}%)"
         elif latest["status"] == "done":
-            return "Render COMPLETE. Modify and re-render, or user can watch."
+            return "Render COMPLETE."
+        return f"FAILED: {latest.get('error', 'unknown')[:200]}"
+
+    def compose_scenes(creative_brief, num_scenes=5):
+        """Compose multiple scenes using the Remotion sub-agent. Handles create + code generation + validation."""
+        return _run_scene_subagent(cid, creative_brief, num_scenes=int(num_scenes), mode="create")
+
+    def update_scenes(creative_brief, scene_indices_json="all"):
+        """Update existing scenes using the Remotion sub-agent. Pass 'all' or JSON array of indices."""
+        config = get_scene_config(cid)
+        if not config or not config.get("scenes"):
+            return "Error: no scenes to update."
+        if scene_indices_json == "all":
+            indices = list(range(len(config["scenes"])))
         else:
-            return f"FAILED: {latest.get('error', 'unknown')[:200]}"
+            try:
+                indices = json.loads(scene_indices_json)
+            except (json.JSONDecodeError, TypeError):
+                indices = list(range(len(config["scenes"])))
+        return _run_scene_subagent(cid, creative_brief, scene_indices=indices, mode="update")
 
-    return [create_scene, read_scene_code, set_scene_timing, write_scene_code,
-            remove_scene, reorder_scenes,
-            set_voice, set_language, list_voices, list_languages,
-            trigger_render, get_render_status]
+    tool_map = {
+        "compose_scenes": compose_scenes,
+        "update_scenes": update_scenes,
+        "set_voice": set_voice,
+        "set_language": set_language,
+        "list_voices": list_voices,
+        "list_languages": list_languages,
+        "trigger_render": trigger_render,
+        "get_render_status": get_render_status,
+        "remove_scene": remove_scene,
+        "reorder_scenes": reorder_scenes,
+        "set_scene_timing": set_scene_timing,
+    }
+    return tool_map
 
 
-# ── Main agent runner ──
+# ── Tool schemas for OpenAI function calling ──
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "compose_scenes", "description": "Compose multiple animated scenes for the video. The Remotion sub-agent creates scenes, generates React code, and validates each against the renderer. Use this for initial scene creation.",
+        "parameters": {"type": "object", "properties": {
+            "creative_brief": {"type": "string", "description": "Creative direction for the scenes. Include visual style, mood, colors, what each scene should show."},
+            "num_scenes": {"type": "integer", "description": "Number of scenes (3-6)", "default": 5},
+        }, "required": ["creative_brief"]},
+    }},
+    {"type": "function", "function": {
+        "name": "update_scenes", "description": "Update existing scenes based on user feedback. The sub-agent reads current code, modifies it, and validates. Use for 'change background', 'bigger text', etc.",
+        "parameters": {"type": "object", "properties": {
+            "creative_brief": {"type": "string", "description": "What to change. E.g. 'white background on all scenes', 'make title text bigger'."},
+            "scene_indices_json": {"type": "string", "description": "JSON array of scene indices to update, or 'all'", "default": "all"},
+        }, "required": ["creative_brief"]},
+    }},
+    {"type": "function", "function": {
+        "name": "set_voice", "description": "Set the narration voice.",
+        "parameters": {"type": "object", "properties": {
+            "voice_id": {"type": "string"}, "voice_name": {"type": "string"},
+        }, "required": ["voice_id", "voice_name"]},
+    }},
+    {"type": "function", "function": {
+        "name": "set_language", "description": "Set translation language. Use 'en' for English.",
+        "parameters": {"type": "object", "properties": {
+            "language_code": {"type": "string"},
+        }, "required": ["language_code"]},
+    }},
+    {"type": "function", "function": {
+        "name": "list_voices", "description": "Get available ElevenLabs voices.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
+    {"type": "function", "function": {
+        "name": "list_languages", "description": "Get available languages.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
+    {"type": "function", "function": {
+        "name": "trigger_render", "description": "Start final video render with audio.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
+    {"type": "function", "function": {
+        "name": "get_render_status", "description": "Check render progress.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
+    {"type": "function", "function": {
+        "name": "remove_scene", "description": "Remove a scene by index.",
+        "parameters": {"type": "object", "properties": {
+            "scene_index": {"type": "integer"},
+        }, "required": ["scene_index"]},
+    }},
+    {"type": "function", "function": {
+        "name": "reorder_scenes", "description": "Reorder scenes. Pass JSON array of indices.",
+        "parameters": {"type": "object", "properties": {
+            "new_order_json": {"type": "string", "description": "JSON array like '[2,0,1,3]'"},
+        }, "required": ["new_order_json"]},
+    }},
+    {"type": "function", "function": {
+        "name": "set_scene_timing", "description": "Change a scene's duration in frames.",
+        "parameters": {"type": "object", "properties": {
+            "scene_index": {"type": "integer"},
+            "duration_frames": {"type": "integer", "description": "Duration in frames (30fps). 120=4s, 150=5s."},
+        }, "required": ["scene_index", "duration_frames"]},
+    }},
+]
+
+# ── Tool display labels for SSE activity card ──
+
+_TOOL_DISPLAY = {
+    "compose_scenes": lambda a: f"Composing {a.get('num_scenes', 5)} scenes...",
+    "update_scenes": lambda a: f"Updating scenes: {a.get('creative_brief', '?')[:50]}",
+    "set_voice": lambda a: f"Setting voice: {a.get('voice_name', '?')}",
+    "set_language": lambda a: f"Setting language: {a.get('language_code', '?')}",
+    "list_voices": lambda _: "Loading voices",
+    "list_languages": lambda _: "Loading languages",
+    "trigger_render": lambda _: "Starting render",
+    "get_render_status": lambda _: "Checking render",
+    "remove_scene": lambda a: f"Removing scene {a.get('scene_index', '?')}",
+    "reorder_scenes": lambda _: "Reordering scenes",
+    "set_scene_timing": lambda a: f"Timing scene {a.get('scene_index', '?')}",
+}
+
+
+def _tool_display_label(name, args):
+    fn = _TOOL_DISPLAY.get(name)
+    return fn(args) if fn else f"Running {name}"
+
+
+# ── Remotion sub-agent (own LLM calls for scene code generation) ──
+
+SCENE_CODE_SYSTEM_PROMPT = """You generate React/Remotion animation code. Return ONLY the JavaScript function body — no markdown, no explanation.
+
+Format: 1080×1920 vertical, 30fps. React.createElement() only — NO JSX. Must return a React element.
+
+Available: React, AbsoluteFill, spring, interpolate, useCurrentFrame, useVideoConfig, frame, fps (30), width (1080), height (1920).
+
+spring({ frame, fps, config: { damping: 15 } }) → 0..1
+interpolate(value, [inMin, inMax], [outMin, outMax]) → number
+
+Keep text readable (min font size 28). Use dark backgrounds (#0a0a0f). Use width/height variables for responsive positioning."""
+
+
+def _run_scene_subagent(cid, brief, num_scenes=5, scene_indices=None, mode="create"):
+    """Sub-agent: creates/updates scenes with own LLM calls + Remotion validation.
+    Emits SSE progress events. Returns summary for main agent."""
+    from keystore import get_key
+    from openai import OpenAI
+
+    api_key = get_key("openai")
+    client = OpenAI(api_key=api_key)
+    tool_map, _ = _make_tools(cid)
+    results = []
+
+    if mode == "create":
+        scene_indices = list(range(num_scenes))
+        # Create scene slots first
+        durations = [120, 150, 150, 150, 90]  # 4s, 5s, 5s, 5s, 3s
+        for i in range(num_scenes):
+            dur = durations[i] if i < len(durations) else 150
+            push_tool_event(cid, "tool_call", "scene_code",
+                            display=f"Creating scene {i}...", call_id=f"sc_{i}")
+            tool_map["create_scene"](duration_frames=dur, position=i)
+            push_tool_event(cid, "tool_result", "scene_code",
+                            status="completed", label=f"Scene {i} slot ready",
+                            call_id=f"sc_{i}")
+
+    # Load segment data for context
+    state = get_conversation_state(cid)
+    config = get_scene_config(cid)
+    code_summary = _get_code_summary(cid)
+
+    for i, scene_idx in enumerate(scene_indices):
+        call_id = f"code_{scene_idx}_{uuid.uuid4().hex[:6]}"
+        push_tool_event(cid, "tool_call", "scene_code",
+                        display=f"{'Writing' if mode == 'create' else 'Updating'} scene {scene_idx} code...",
+                        call_id=call_id)
+
+        existing_code = None
+        if mode == "update":
+            existing_code = tool_map["read_scene_code"](scene_idx)
+            if existing_code.startswith("No "):
+                existing_code = None
+
+        existing_block = ("Existing code to modify:\n" + existing_code) if existing_code else "Write new scene code from scratch."
+        scene_prompt = f"""Creative brief: {brief}
+Scene index: {scene_idx} of {len(scene_indices)} total
+Mode: {mode}
+{existing_block}
+Segment context: {state.get('title', '')} — {state.get('hook', '')}
+
+Return ONLY the function body code. No markdown fences."""
+
+        success = False
+        for attempt in range(3):
+            try:
+                resp = client.chat.completions.create(
+                    model="gpt-5.4",
+                    messages=[
+                        {"role": "system", "content": SCENE_CODE_SYSTEM_PROMPT},
+                        {"role": "user", "content": scene_prompt},
+                    ],
+                    max_tokens=2000,
+                )
+                raw_code = resp.choices[0].message.content or ""
+                # Strip markdown fences if present
+                code = re.sub(r'^```\w*\n?', '', raw_code.strip())
+                code = re.sub(r'\n?```$', '', code.strip())
+
+                result = tool_map["write_scene_code"](scene_idx, code)
+                if "FAILED" not in result:
+                    results.append(f"Scene {scene_idx}: OK")
+                    push_tool_event(cid, "tool_result", "scene_code",
+                                    status="completed", label=f"Scene {scene_idx} saved",
+                                    call_id=call_id)
+                    success = True
+                    break
+                else:
+                    scene_prompt += f"\n\nValidation error on attempt {attempt+1}: {result}\nFix and try again."
+            except Exception as e:
+                scene_prompt += f"\n\nError: {e}\nTry again."
+
+        if not success:
+            results.append(f"Scene {scene_idx}: failed")
+            push_tool_event(cid, "tool_result", "scene_code",
+                            status="failed", label=f"Scene {scene_idx} failed",
+                            call_id=call_id)
+
+    total_frames = 0
+    config = get_scene_config(cid)
+    if config and config.get("scenes"):
+        total_frames = sum(s["durationInFrames"] for s in config["scenes"])
+
+    return f"{'Composed' if mode == 'create' else 'Updated'} {len(results)} scenes ({total_frames/30:.0f}s total). {'; '.join(results)}"
+
+
+# ── Main agent runner (direct OpenAI API, multi-turn loop) ──
+
+MAX_TURNS = 15  # Main agent only — sub-agent handles heavy iteration separately
+
 
 def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                    style=None, voice_id=None, language=None):
-    """Run the chat agent for one turn. Called by Celery task."""
-    # Set OpenAI API key for the Agents SDK
+    """Run the main creative director agent. Called by Celery task."""
     from keystore import get_key
+    from openai import OpenAI
+
     api_key = get_key("openai")
-    if api_key:
-        os.environ["OPENAI_API_KEY"] = api_key
+    if not api_key:
+        set_status(conversation_id, "error")
+        push_chunk(conversation_id, "[Error: No OpenAI API key]")
+        return
 
-    from agents import Agent, Runner
-    from openai.types.responses import ResponseTextDeltaEvent
-
+    client = OpenAI(api_key=api_key)
     cid = conversation_id
     r = _get_redis()
 
-    # Server already set status="thinking" and cleared chunks before dispatch.
-    # Ensure conversation exists (defensive — server should have init'd).
     state = get_conversation_state(cid)
     if not state:
         init_conversation(cid, topic_id, segment_id or "",
@@ -717,7 +770,6 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
         state = get_conversation_state(cid)
         set_status(cid, "thinking")
 
-    # Update settings if provided
     if style:
         state["style"] = style
     if voice_id:
@@ -727,7 +779,6 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
     r.set(_key(cid, "state"), json.dumps(state))
 
     try:
-        # Load segment data
         from db import get_segments_for_topic, get_topic
         topic = get_topic(state["topic_id"])
         segments = get_segments_for_topic(state["topic_id"])
@@ -751,51 +802,121 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
             "source_urls": segment.get("source_urls") or "",
         }
 
-        # Load current scene config
         scene_config = get_scene_config(cid)
-
-        # Build agent
         system_prompt = _build_system_prompt(seg_data, state, scene_config, cid=cid)
-        tools = _make_tools(cid)
+        tool_map = _make_tools(cid)
 
-        agent = Agent(
-            name="Motion Director",
-            instructions=system_prompt,
-            tools=tools,
-            model="gpt-5.4",
-        )
-
-        # Build input messages
+        # Build messages for OpenAI API
+        messages = [{"role": "system", "content": system_prompt}]
         history = get_conversation_history(cid)
-        input_msgs = []
         for msg in history:
-            input_msgs.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({"role": msg["role"], "content": msg["content"]})
 
-        # Add current user message
         if user_message:
-            input_msgs.append({"role": "user", "content": user_message})
+            messages.append({"role": "user", "content": user_message})
             append_message(cid, "user", user_message)
         else:
-            # Empty message = initialization, agent sends greeting
-            input_msgs.append({"role": "user", "content": "Hello, I'd like to create a video for this segment."})
+            messages.append({"role": "user", "content": "Hello, I'd like to create a video for this segment."})
             append_message(cid, "user", "[Started new conversation]")
 
-        # Run agent with streaming
+        # ── Multi-turn loop ──
         full_response = ""
 
-        async def _run():
-            nonlocal full_response
-            result = Runner.run_streamed(agent, input=input_msgs)
-            async for event in result.stream_events():
-                if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
-                    delta = event.data.delta
-                    if delta:
-                        push_chunk(cid, delta)
-                        full_response += delta
+        for turn in range(MAX_TURNS):
+            remaining = MAX_TURNS - turn
 
-        asyncio.run(_run())
+            # Force-answer nudge near limit
+            use_tools = TOOL_SCHEMAS if remaining > 1 else None
+            if remaining <= 3 and turn > 0:
+                messages.append({"role": "system",
+                    "content": f"[{remaining} turns left. Wrap up and respond to the user now.]"})
 
-        # Save complete assistant message
+            # Stream from OpenAI
+            stream = client.chat.completions.create(
+                model="gpt-5.4",
+                messages=messages,
+                tools=use_tools,
+                stream=True,
+            )
+
+            turn_text = ""
+            tool_calls_accum = {}
+
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+
+                # Text content → stream to frontend
+                if delta.content:
+                    turn_text += delta.content
+                    full_response += delta.content
+                    push_chunk(cid, delta.content)
+
+                # Tool calls → accumulate incrementally
+                if delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in tool_calls_accum:
+                            tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
+                        if tc.id:
+                            tool_calls_accum[idx]["id"] = tc.id
+                        if tc.function and tc.function.name:
+                            tool_calls_accum[idx]["name"] = tc.function.name
+                        if tc.function and tc.function.arguments:
+                            tool_calls_accum[idx]["arguments"] += tc.function.arguments
+
+            # No tool calls → final answer, done
+            if not tool_calls_accum:
+                break
+
+            # Append assistant message with tool_calls
+            assistant_msg = {"role": "assistant", "content": turn_text or None, "tool_calls": []}
+            for idx in sorted(tool_calls_accum.keys()):
+                tc = tool_calls_accum[idx]
+                assistant_msg["tool_calls"].append({
+                    "id": tc["id"], "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                })
+            messages.append(assistant_msg)
+
+            # Execute tool calls
+            for idx in sorted(tool_calls_accum.keys()):
+                tc = tool_calls_accum[idx]
+                tool_name = tc["name"]
+                tool_call_id = tc["id"]
+                try:
+                    args = json.loads(tc["arguments"]) if tc["arguments"] else {}
+                except json.JSONDecodeError:
+                    args = {}
+
+                # Emit tool_call event to SSE
+                display = _tool_display_label(tool_name, args)
+                push_tool_event(cid, "tool_call", tool_name,
+                                display=display, call_id=tool_call_id)
+
+                # Execute
+                func = tool_map.get(tool_name)
+                if func:
+                    try:
+                        result = str(func(**args))
+                    except Exception as e:
+                        result = f"Error: {e}"
+                else:
+                    result = f"Unknown tool: {tool_name}"
+
+                # Emit tool_result event
+                push_tool_event(cid, "tool_result", tool_name,
+                                status="completed", label=result[:100],
+                                call_id=tool_call_id)
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": result,
+                })
+
+        # Save final response
         append_message(cid, "assistant", full_response)
         set_status(cid, "done")
 

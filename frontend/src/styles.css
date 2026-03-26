@@ -9826,58 +9826,29 @@ a { color: var(--blue); text-decoration: none; }
 .vc-picker-card-desc { font-size: 9px; color: var(--text-muted); display: block; margin-top: 2px; }
 .vc-picker-empty { font-size: 11px; color: var(--text-muted); padding: 8px 0; }
 
-/* Tool UI zone — stable rendering area for interactive tools from structured events */
-.vc-tool-zone {
-  padding: 4px 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.vc-tool-ui {
-  animation: vc-tool-enter 0.2s ease-out;
-}
-@keyframes vc-tool-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* Activity card — tool step visualization */
+.vc-activity-card { margin: 4px 12px 6px; padding: 10px 14px; background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; max-width: 90%; }
+.vc-activity-header { display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.vc-activity-step { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary); padding: 3px 0; }
+.vc-activity-step.completed { color: var(--text-muted); }
+.vc-activity-step.failed { color: #ef4444; }
+.vc-activity-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0; animation: vcPulse 1.2s ease-in-out infinite; }
+.vc-activity-check { color: #22c55e; flex-shrink: 0; }
+.vc-activity-x { font-size: 10px; color: #ef4444; flex-shrink: 0; width: 10px; text-align: center; }
+.vc-activity-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-activity-result { font-size: 9px; color: var(--text-muted); background: rgba(255,255,255,0.04); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes vcPulse { 0%,100% { opacity: 0.4; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
-/* Quick action bar — user can trigger pickers anytime */
-.vc-quick-actions {
-  display: flex;
-  gap: 4px;
-  padding: 0 0 6px;
-}
-.vc-quick-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.vc-quick-btn:hover {
-  color: var(--text-secondary);
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.12);
-}
-.vc-quick-active {
-  color: var(--accent, #f97316);
-  border-color: rgba(249,115,22,0.3);
-  background: rgba(249,115,22,0.06);
-}
-.vc-quick-render {
-  margin-left: auto;
-  color: var(--accent, #f97316);
-  border-color: rgba(249,115,22,0.2);
-}
-.vc-quick-render:hover {
-  background: rgba(249,115,22,0.1);
-  border-color: rgba(249,115,22,0.4);
-}
+/* Typewriter cursor */
+.vc-cursor { display: inline-block; width: 2px; height: 13px; background: var(--accent, #f97316); margin-left: 1px; vertical-align: text-bottom; animation: vcBlink 0.7s step-end infinite; }
+@keyframes vcBlink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* Quick actions toolbar */
+.vc-quick-actions { display: flex; gap: 4px; padding: 0 0 6px; }
+.vc-quick-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 10px; font-weight: 600; color: var(--text-muted); background: transparent; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+.vc-quick-btn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+.vc-quick-active { color: var(--accent, #f97316); border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.06); }
+.vc-quick-render { margin-left: auto; color: var(--accent, #f97316); border-color: rgba(249,115,22,0.2); }
+.vc-quick-render:hover { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.4); }
+.vc-picker-zone { padding: 4px 0; }
 

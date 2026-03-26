@@ -1301,15 +1301,12 @@ async def chat_stream(conversation_id: str, request: Request):
         last_custom_hash = ""
         started = time.time()
         last_heartbeat = time.time()
-        SSE_TIMEOUT = 180      # 3 min max — matches Celery time_limit
+        SSE_TIMEOUT = 420      # 7 min — exceeds Celery time_limit (360s)
         HEARTBEAT_INTERVAL = 10  # seconds between keepalive pings
         POLL_INTERVAL = 0.1    # 100ms for smooth streaming
 
-        # Initial connection acknowledgment — include full text for safe resume
-        all_chunks = r.lrange(_key(conversation_id, "chunks"), 0, -1)
-        full_text = "".join(all_chunks) if all_chunks else ""
-        offset = len(all_chunks)
-        yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'connected', 'full_text': full_text})}\n\n"
+        # Initial connection acknowledgment
+        yield f"id: evt:{offset}\ndata: {json.dumps({'type': 'connected'})}\n\n"
 
         while True:
             now = time.time()
@@ -1366,7 +1363,7 @@ async def chat_stream(conversation_id: str, request: Request):
                 yield f"data: {json.dumps({'type': 'render_requested'})}\n\n"
                 emitted = True
 
-            # Drain tool UI events (structured events from tool calls)
+            # Drain tool UI events (tool_call, tool_result, etc.)
             while True:
                 raw_evt = r.lpop(_key(conversation_id, "ui_events"))
                 if not raw_evt:
@@ -1417,7 +1414,7 @@ async def chat_stream(conversation_id: str, request: Request):
 def chat_history(conversation_id: str):
     from chat_agent import (
         get_conversation_history, get_scene_config, get_conversation_state,
-        get_ui_state, _get_redis, _key
+        _get_redis, _key
     )
     r = _get_redis()
     state = get_conversation_state(conversation_id)
@@ -1433,45 +1430,31 @@ def chat_history(conversation_id: str):
             "voice_name": state.get("voice_name", "") if state else "",
             "language": state.get("language", "") if state else "",
         },
-        "ui_state": get_ui_state(conversation_id),
     }
 
 
-class ToolResponseRequest(BaseModel):
-    tool_id: str
-    response: dict  # e.g. {picker: "voice", value: "abc", label: "Rachel"}
+class ChatSelectRequest(BaseModel):
+    picker: str
+    value: str
+    label: str = ""
 
 
-@app.post("/api/chat/{conversation_id}/tool_response")
-def chat_tool_response(conversation_id: str, req: ToolResponseRequest):
-    """Generic endpoint for frontend tool responses (picker selections, etc).
-    Updates config directly in Redis, dismisses tool UI, returns settings."""
-    from chat_agent import (
-        get_conversation_state, complete_tool_ui, get_ui_state,
-        _get_redis, _key
-    )
+@app.post("/api/chat/{conversation_id}/select")
+def chat_select(conversation_id: str, req: ChatSelectRequest):
+    """Direct config update from picker selection — no chat message needed."""
+    from chat_agent import get_conversation_state, _get_redis, _key
     r = _get_redis()
     state = get_conversation_state(conversation_id)
     if not state:
         return {"error": "Conversation not found"}
-
-    picker = req.response.get("picker", "")
-    value = req.response.get("value", "")
-    label = req.response.get("label", "")
-
-    if picker == "voice":
-        state["voice_id"] = value
-        state["voice_name"] = label
-    elif picker == "language":
-        state["language"] = value
-    elif picker == "style":
-        state["style"] = value
-
+    if req.picker == "voice":
+        state["voice_id"] = req.value
+        state["voice_name"] = req.label
+    elif req.picker == "language":
+        state["language"] = req.value
+    elif req.picker == "style":
+        state["style"] = req.value
     r.set(_key(conversation_id, "state"), json.dumps(state))
-
-    # Dismiss the tool UI
-    complete_tool_ui(conversation_id, req.tool_id)
-
     return {
         "status": "ok",
         "settings": {
