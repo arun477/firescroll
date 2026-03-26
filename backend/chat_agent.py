@@ -341,6 +341,67 @@ Use your judgment — not every message needs a tool call. Be helpful and concis
 Guardrails: 1080×1920 vertical, 30fps, 3-6 scenes, min font 28."""
 
 
+# ── Low-level scene helpers (used by sub-agent directly) ──
+
+def _create_scene_for_cid(cid, duration_frames, position):
+    """Create a scene slot. Used by sub-agent."""
+    config = get_scene_config(cid) or {"fps": 30, "width": 1080, "height": 1920, "scenes": []}
+    scenes = config["scenes"]
+    pos = max(0, min(int(position), len(scenes)))
+    duration_frames = int(duration_frames)
+    if pos == 0:
+        start = 0
+    elif pos >= len(scenes):
+        start = (scenes[-1]["from"] + scenes[-1]["durationInFrames"]) if scenes else 0
+    else:
+        start = scenes[pos]["from"]
+    for s in scenes[pos:]:
+        s["from"] += duration_frames
+    scenes.insert(pos, {"template": "custom_code", "from": start,
+                         "durationInFrames": duration_frames, "props": {}})
+    config["scenes"] = scenes
+    set_scene_config(cid, config)
+    return f"Scene {pos} created."
+
+
+def _read_scene_code_for_cid(cid, scene_index):
+    """Read scene code. Used by sub-agent."""
+    r = _get_redis()
+    raw = r.get(_key(cid, "custom_code"))
+    if not raw:
+        return "No scene code exists yet."
+    code_map = json.loads(raw)
+    return code_map.get(str(int(scene_index)), f"No code for scene {scene_index}.")
+
+
+def _write_scene_code_for_cid(cid, scene_index, code):
+    """Write + validate scene code. Used by sub-agent."""
+    scene_index = int(scene_index)
+    config = get_scene_config(cid)
+    if not config or scene_index >= len(config.get("scenes", [])):
+        return f"Error: scene {scene_index} doesn't exist."
+    import requests as _req
+    remotion_url = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
+    try:
+        resp = _req.post(f"{remotion_url}/validate-code",
+                         json={"code": code, "scene_index": scene_index}, timeout=10)
+        result = resp.json()
+    except Exception as e:
+        return f"Error: Remotion server unreachable: {e}"
+    if not result.get("valid"):
+        return f"Code validation FAILED ({result.get('phase','?')}): {result.get('error','?')}"
+    r = _get_redis()
+    custom_key = _key(cid, "custom_code")
+    existing = r.get(custom_key)
+    custom_map = json.loads(existing) if existing else {}
+    custom_map[str(scene_index)] = code
+    r.set(custom_key, json.dumps(custom_map))
+    r.expire(custom_key, CONV_TTL)
+    config["scenes"][scene_index]["template"] = "custom_code"
+    set_scene_config(cid, config)
+    return f"Scene {scene_index} code saved."
+
+
 # ── Tool functions (plain functions, no SDK decorators) ──
 
 def _make_tools(cid):
@@ -653,23 +714,21 @@ def _run_scene_subagent(cid, brief, num_scenes=5, scene_indices=None, mode="crea
 
     api_key = get_key("openai")
     client = OpenAI(api_key=api_key)
-    tool_map = _make_tools(cid)
     results = []
 
     if mode == "create":
         scene_indices = list(range(num_scenes))
-        # Create scene slots first
         durations = [120, 150, 150, 150, 90]  # 4s, 5s, 5s, 5s, 3s
         for i in range(num_scenes):
             dur = durations[i] if i < len(durations) else 150
             push_tool_event(cid, "tool_call", "scene_code",
                             display=f"Creating scene {i}...", call_id=f"sc_{i}")
-            tool_map["create_scene"](duration_frames=dur, position=i)
+            # Call low-level create_scene directly
+            _create_scene_for_cid(cid, duration_frames=dur, position=i)
             push_tool_event(cid, "tool_result", "scene_code",
                             status="completed", label=f"Scene {i} slot ready",
                             call_id=f"sc_{i}")
 
-    # Load segment data for context
     state = get_conversation_state(cid)
     config = get_scene_config(cid)
     code_summary = _get_code_summary(cid)
@@ -682,7 +741,7 @@ def _run_scene_subagent(cid, brief, num_scenes=5, scene_indices=None, mode="crea
 
         existing_code = None
         if mode == "update":
-            existing_code = tool_map["read_scene_code"](scene_idx)
+            existing_code = _read_scene_code_for_cid(cid, scene_idx)
             if existing_code.startswith("No "):
                 existing_code = None
 
@@ -711,7 +770,7 @@ Return ONLY the function body code. No markdown fences."""
                 code = re.sub(r'^```\w*\n?', '', raw_code.strip())
                 code = re.sub(r'\n?```$', '', code.strip())
 
-                result = tool_map["write_scene_code"](scene_idx, code)
+                result = _write_scene_code_for_cid(cid, scene_idx, code)
                 if "FAILED" not in result:
                     results.append(f"Scene {scene_idx}: OK")
                     push_tool_event(cid, "tool_result", "scene_code",
