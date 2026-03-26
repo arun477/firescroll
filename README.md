@@ -89,6 +89,46 @@ Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings
 3. **Generate** — pick a voice, configure visuals, hit generate.
 4. **Scroll** — swipe through your feed.
 
+## How It Works
+
+```
+Topic
+  │
+  ▼
+┌─────────────────────────────────────────────┐
+│  Firecrawl Research                         │
+│  Search → Scrape → Extract → Synthesize     │
+│  Real sources, real citations               │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Script Generation (OpenAI)                 │
+│  Hook + narration + visual cues per segment │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  ElevenLabs Voice + Audio                   │
+│  TTS narration + AI music + mixing          │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Video Rendering (Remotion)                 │
+│  Backgrounds + captions + encode → MP4      │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+             Scrollable Feed
+```
+
+## Supported Languages
+
+English, Spanish, French, German, Portuguese, Italian, Dutch, Polish, Russian, Japanese, Korean, Chinese, Hindi, Arabic, Turkish, Swedish, Danish, Finnish, Indonesian, Thai, Vietnamese, Ukrainian, Czech, Romanian, Hungarian, Greek, Hebrew, Bengali, Tamil, Filipino — and more.
+
+Voice narration and automatic script translation handled end-to-end by ElevenLabs.
+
 ## Roadmap
 
 - [ ] **PostgreSQL migration** — replace SQLite with PostgreSQL for production-grade persistence and concurrent writes
@@ -108,6 +148,10 @@ Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenla
 - [ElevenLabs](https://elevenlabs.io) — The voice layer. 50+ voices across 30+ languages turn every script into broadcast-quality narration. Style presets and speed controls make each video sound intentional, not robotic.
 - [Remotion](https://remotion.dev) — Programmatic video rendering in React.
 - [OpenAI](https://openai.com) — Script generation, image backgrounds, and AI orchestration.
+
+## Contributing
+
+Contributions are welcome. Open an issue first to discuss what you'd like to change. Pull requests for bug fixes are always appreciated.
 
 ## License
 
