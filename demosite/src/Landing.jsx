@@ -83,7 +83,7 @@ export default function Landing() {
           <a href={GITHUB_URL} target="_blank" rel="noopener" className="ln-nav-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
           </a>
-          <button className="ln-nav-btn" onClick={openGithub}>Dashboard</button>
+          <button className="ln-nav-btn" onClick={openGithub}>Source Code</button>
           <button className="ln-nav-go" onClick={openGithub}>
             Get Started <ArrowRight size={13} />
           </button>
@@ -130,10 +130,10 @@ export default function Landing() {
         </p>
         <div className="ln-actions">
           <button className="ln-go" onClick={openGithub}>
-            Start Creating <ArrowRight size={15} />
+            View on GitHub <ArrowRight size={15} />
           </button>
-          <button className="ln-ghost" onClick={openGithub}>
-            Watch Examples
+          <button className="ln-ghost" onClick={() => document.querySelector('.ln-demos')?.scrollIntoView({ behavior: 'smooth' })}>
+            Watch Demo
           </button>
         </div>
         </div>
@@ -199,7 +199,7 @@ export default function Landing() {
           Make something<br /><span className="ln-fire">extraordinary</span>
         </h2>
         <button className="ln-go ln-go-lg" onClick={openGithub}>
-          Start Creating <ArrowRight size={16} />
+          View on GitHub <ArrowRight size={16} />
         </button>
         <p className="ln-fine">Bring your own API keys. Free and open source.</p>
         <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="ln-cta-github">
