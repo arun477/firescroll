@@ -165,7 +165,7 @@ export default function Landing() {
             <div className="ln-demo-info">
               <div>
                 <div className="ln-demo-title">Voice Agent</div>
-                <div className="ln-demo-sub">ElevenLabs Agent + Firecrawl Search</div>
+                <div className="ln-demo-sub">ElevenLabs + Firecrawl</div>
               </div>
               <a href="https://youtu.be/c6eidnyc-Uo" target="_blank" rel="noopener" className="ln-demo-yt">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1c.4-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.5 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
