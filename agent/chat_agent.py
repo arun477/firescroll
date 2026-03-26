@@ -599,14 +599,16 @@ async def run_chat_agent(conversation_id, message, topic_id,
     try:
         # Load segment data — HTTP call to main backend
         import httpx
-        backend_url = os.environ.get("BACKEND_URL", "http://backend:8500")
         async with httpx.AsyncClient() as http:
-            seg_resp = await http.get(f"{backend_url}/api/topics/{state['topic_id']}/segments",
+            seg_resp = await http.get(f"{BACKEND_URL}/api/topics/{state['topic_id']}/segments",
                                       timeout=10.0)
-            segments = seg_resp.json() if seg_resp.status_code == 200 else []
-            topic_resp = await http.get(f"{backend_url}/api/topics/{state['topic_id']}",
+            seg_data_raw = seg_resp.json() if seg_resp.status_code == 200 else {}
+            segments = seg_data_raw.get("segments", []) if isinstance(seg_data_raw, dict) else seg_data_raw
+
+            topic_resp = await http.get(f"{BACKEND_URL}/api/topics/{state['topic_id']}",
                                         timeout=10.0)
-            topic = topic_resp.json() if topic_resp.status_code == 200 else {}
+            topic_data_raw = topic_resp.json() if topic_resp.status_code == 200 else {}
+            topic = topic_data_raw.get("topic", topic_data_raw) if isinstance(topic_data_raw, dict) else {}
 
         segment = None
         if state.get("segment_id"):
