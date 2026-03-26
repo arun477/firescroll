@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, ArrowRight, ChevronLeft, ChevronRight,
-  FileText, Video, Globe, Loader2, BookOpen,
+  FileText, Video, Globe, Loader2, BookOpen, Mic,
 } from 'lucide-react'
+import VoiceAgent from '../components/VoiceAgent'
 
 const PAGE_SIZE = 12
 
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
@@ -43,6 +45,9 @@ export default function Dashboard() {
           <h1 className="dash-h1">Dashboard</h1>
           <span className="dash-sub">{totalCount} {totalCount === 1 ? 'project' : 'projects'}</span>
         </div>
+        <button className="dash-voice" onClick={() => setVoiceOpen(true)}>
+          <Mic size={15} /> Voice
+        </button>
         <button className="dash-new" onClick={() => navigate('/create')}>
           <Plus size={15} /> New Topic
         </button>
@@ -143,6 +148,12 @@ export default function Dashboard() {
             </div>
           )}
         </>
+      )}
+      {voiceOpen && (
+        <VoiceAgent
+          onClose={() => setVoiceOpen(false)}
+          onTopicCreated={() => { setVoiceOpen(false); load() }}
+        />
       )}
     </div>
   )

@@ -78,6 +78,29 @@ class GenerateAllRequest(BaseModel):
     language: Optional[str] = None
 
 
+# ── ElevenLabs Agent Webhook ──
+class ElevenLabsToolRequest(BaseModel):
+    topic: str
+    description: str = ""
+    num_segments: int = 6
+
+@app.post("/api/elevenlabs/webhook")
+def elevenlabs_webhook(req: ElevenLabsToolRequest):
+    topic_id = create_topic(req.topic, req.description)
+    update_topic(topic_id, research_status="pending")
+
+    def run():
+        from research import research_all_firecrawl
+        research_all_firecrawl(topic_id, req.topic, req.num_segments,
+                               description=req.description)
+    threading.Thread(target=run, daemon=True).start()
+
+    return {
+        "topic_id": topic_id,
+        "message": f"Created '{req.topic}' with {req.num_segments} segments. Research started — check your dashboard."
+    }
+
+
 @app.get("/api/topics")
 def list_topics(page: int = 1, page_size: int = 12):
     from db import get_topics_page
