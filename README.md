@@ -22,7 +22,7 @@
   <tr>
     <td align="center" width="50%">
       <a href="https://www.youtube.com/watch?v=485MsI5a450">
-        <img src="https://img.youtube.com/vi/485MsI5a450/maxresdefault.jpg" alt="FireScroll Overview" width="100%" />
+        <img src="assets/firescroll-thumbnail.png" alt="FireScroll Overview" width="100%" />
       </a>
       <br />
       <strong>Overview</strong> — What FireScroll can do
@@ -108,7 +108,7 @@ Six Docker services orchestrated via `docker-compose.yml`:
 
 ## Built With
 
-Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenlabs.io) Hackathon — build something unique with Firecrawl Search and ElevenLabs, then ship a viral-style demo video.
+Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenlabs.io) Hackathon.
 
 - [Firecrawl](https://firecrawl.dev) — Turns any website into clean, LLM-ready data. The Search API powers FireScroll's research engine, giving AI agents real-time knowledge from the web in a single call.
 - [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS. 50+ ultra-realistic voices across 30+ languages for narration and audio generation.
