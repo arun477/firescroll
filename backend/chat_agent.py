@@ -763,7 +763,7 @@ Return ONLY the function body code. No markdown fences."""
                         {"role": "system", "content": SCENE_CODE_SYSTEM_PROMPT},
                         {"role": "user", "content": scene_prompt},
                     ],
-                    max_tokens=2000,
+                    max_completion_tokens=2000,
                 )
                 raw_code = resp.choices[0].message.content or ""
                 # Strip markdown fences if present
