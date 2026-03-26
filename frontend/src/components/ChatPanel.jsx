@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Send, Loader2, Zap, Film } from 'lucide-react'
+import { Send, Loader2, Zap, Film, Mic, Globe, Palette } from 'lucide-react'
 import SceneConfigCard from './SceneConfigCard'
 import { VoicePicker, LanguagePicker, StylePicker, TemplateShowcase } from './ChatPickers'
 
@@ -167,8 +167,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
   // Stable ref for sendMessageDirect so handleToolResponse can call it without circular deps
   const sendMessageDirectRef = useRef(null)
+  const pendingSelectionsRef = useRef([])  // Queue selections made during streaming
 
-  // Generic tool response — direct config update via API, notify agent if idle
+  // Generic tool response — direct config update via API, notify agent when ready
   const handleToolResponse = useCallback(async (toolId, response) => {
     // Dismiss immediately in local state
     setActiveTools(prev => {
@@ -189,12 +190,17 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
       console.warn('[ChatPanel] Tool response failed:', err)
     }
 
-    // Notify agent if idle (not currently streaming)
+    const label = response.label || response.value
+    const selectionMsg = `[Selected ${response.picker}: ${label}]`
+
     if (statusRef.current === 'idle' && conversationId && sendMessageDirectRef.current) {
-      const label = response.label || response.value
+      // Agent is idle — notify immediately
       setMessages(prev => [...prev, { role: 'user', content: `Selected ${response.picker}: ${label}` }])
       setStatus('thinking')
-      sendMessageDirectRef.current(conversationId, `[Selected ${response.picker}: ${label}]`)
+      sendMessageDirectRef.current(conversationId, selectionMsg)
+    } else {
+      // Agent is thinking — queue the selection, will be sent when agent finishes
+      pendingSelectionsRef.current.push({ msg: selectionMsg, display: `Selected ${response.picker}: ${label}` })
     }
   }, [conversationId, onSettingsUpdate])
 
@@ -330,11 +336,25 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
             }
             streamRef.current = ''
             setStreamText('')
-            setStatus('idle')
             retryCountRef.current = 0
             lastEventIdRef.current = ''
             evtSource.close()
             evtSourceRef.current = null
+
+            // Flush any selections made while agent was streaming
+            if (pendingSelectionsRef.current.length > 0) {
+              const pending = pendingSelectionsRef.current.shift()
+              setMessages(prev => [...prev, { role: 'user', content: pending.display }])
+              setStatus('thinking')
+              // Use setTimeout to let React flush state before starting new request
+              setTimeout(() => {
+                if (mountedRef.current && sendMessageDirectRef.current) {
+                  sendMessageDirectRef.current(cid, pending.msg)
+                }
+              }, 50)
+            } else {
+              setStatus('idle')
+            }
             break
         }
       } catch (err) {
@@ -468,6 +488,19 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     }
   }
 
+  // User-initiated picker — shows picker directly without waiting for agent
+  const showPicker = useCallback((component) => {
+    const toolId = `user_${Date.now()}`
+    setActiveTools(prev => ({
+      ...prev,
+      [toolId]: { component, props: {}, status: 'awaiting_input' }
+    }))
+  }, [])
+
+  // Check if a picker type is already active
+  const hasActivePicker = (component) =>
+    Object.values(activeTools).some(t => t.component === component)
+
   // Render parts from messages — scene cards inline, picker markers stripped
   const renderPart = (part, i) => {
     switch (part.type) {
@@ -555,11 +588,29 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
       {/* Input area */}
       <div className="vc-input-area">
-        {sceneConfig?.scenes?.length > 0 && (
-          <button className="vc-render-btn" onClick={onGenerate}>
-            <Film size={13} /> Render Final Video
+        {/* Quick actions — user can trigger pickers anytime */}
+        <div className="vc-quick-actions">
+          <button className={`vc-quick-btn ${hasActivePicker('voice_picker') ? 'vc-quick-active' : ''}`}
+            onClick={() => !hasActivePicker('voice_picker') && showPicker('voice_picker')}
+            title="Change voice">
+            <Mic size={12} /> Voice
           </button>
-        )}
+          <button className={`vc-quick-btn ${hasActivePicker('language_picker') ? 'vc-quick-active' : ''}`}
+            onClick={() => !hasActivePicker('language_picker') && showPicker('language_picker')}
+            title="Change language">
+            <Globe size={12} /> Language
+          </button>
+          <button className={`vc-quick-btn ${hasActivePicker('style_picker') ? 'vc-quick-active' : ''}`}
+            onClick={() => !hasActivePicker('style_picker') && showPicker('style_picker')}
+            title="Change style">
+            <Palette size={12} /> Style
+          </button>
+          {sceneConfig?.scenes?.length > 0 && (
+            <button className="vc-quick-btn vc-quick-render" onClick={onGenerate}>
+              <Film size={12} /> Render
+            </button>
+          )}
+        </div>
         <div className="vc-input-row">
           <textarea ref={inputRef} className="vc-textarea" rows={1}
             value={input} onChange={e => setInput(e.target.value)}

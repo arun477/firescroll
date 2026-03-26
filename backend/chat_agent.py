@@ -473,6 +473,7 @@ def _make_tools(cid):
         scenes.insert(pos, new_scene)
         config["scenes"] = scenes
         set_scene_config(cid, config)
+        transition_phase(cid, "composing")
         return f"Scene {pos} created ({duration_frames}f = {duration_frames/30:.1f}s). Now write code with write_scene_code({pos}, code)."
 
     @function_tool
@@ -582,6 +583,7 @@ def _make_tools(cid):
         # Mark scene as custom_code
         config["scenes"][scene_index]["template"] = "custom_code"
         set_scene_config(cid, config)
+        transition_phase(cid, "composing")
 
         return f"Scene {scene_index} code saved. Preview updates automatically."
 

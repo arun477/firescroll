@@ -9841,3 +9841,43 @@ a { color: var(--blue); text-decoration: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Quick action bar — user can trigger pickers anytime */
+.vc-quick-actions {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 6px;
+}
+.vc-quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.vc-quick-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.12);
+}
+.vc-quick-active {
+  color: var(--accent, #f97316);
+  border-color: rgba(249,115,22,0.3);
+  background: rgba(249,115,22,0.06);
+}
+.vc-quick-render {
+  margin-left: auto;
+  color: var(--accent, #f97316);
+  border-color: rgba(249,115,22,0.2);
+}
+.vc-quick-render:hover {
+  background: rgba(249,115,22,0.1);
+  border-color: rgba(249,115,22,0.4);
+}
+
