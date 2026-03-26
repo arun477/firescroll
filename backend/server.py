@@ -983,6 +983,16 @@ def remove_api_key(key_name: str):
     return {"status": "deleted", "key_name": key_name}
 
 
+@app.get("/api/internal/key/{key_name}")
+def get_raw_api_key(key_name: str):
+    """Internal endpoint for agent service to fetch raw API keys. Not exposed to frontend."""
+    from keystore import get_key
+    val = get_key(key_name)
+    if not val:
+        return {"error": "Key not found"}
+    return {"key": val}
+
+
 # ══════════════════════════════════════════════════════
 # REMOTION AGENT PIPELINE (completely separate from existing pipeline)
 # ══════════════════════════════════════════════════════
