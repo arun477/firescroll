@@ -108,10 +108,12 @@ Six Docker services orchestrated via `docker-compose.yml`:
 
 ## Built With
 
-[Remotion](https://remotion.dev) — Programmatic video rendering in React
-| [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS
-| [Firecrawl](https://firecrawl.dev) — Web research and data extraction
-| [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) — Conversational AI agent framework
+Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenlabs.io) Hackathon — build something unique with Firecrawl Search and ElevenLabs, then ship a viral-style demo video.
+
+- [Firecrawl](https://firecrawl.dev) — Turns any website into clean, LLM-ready data. The Search API powers FireScroll's research engine, giving AI agents real-time knowledge from the web in a single call.
+- [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS. 50+ ultra-realistic voices across 30+ languages for narration and audio generation.
+- [Remotion](https://remotion.dev) — Programmatic video rendering in React.
+- [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) — Conversational AI agent framework powering the Motion Director.
 
 ## License
 
