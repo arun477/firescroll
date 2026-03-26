@@ -67,6 +67,18 @@ export default function Feed() {
     }
   }, [])
 
+  const handleDelete = useCallback(async (item) => {
+    if (!confirm(`Delete this video?`)) return
+    const endpoint = item.pipeline === 'motion'
+      ? `/api/remotion/jobs/${item.id}`
+      : `/api/jobs/${item.id}`
+    try {
+      await fetch(endpoint, { method: 'DELETE' })
+      setItems(prev => prev.filter(v => v.id !== item.id))
+      setTotal(prev => Math.max(0, prev - 1))
+    } catch {}
+  }, [])
+
   if (loading) {
     return (
       <div className="feed-loading">
@@ -97,6 +109,7 @@ export default function Feed() {
           isActive={idx === activeIdx}
           onActive={handleActiveChange}
           onNext={() => goTo(idx + 1)}
+          onDelete={handleDelete}
         />
       ))}
 
