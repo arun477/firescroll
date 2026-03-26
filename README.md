@@ -13,7 +13,7 @@
 <br />
 
 <p align="center">
-  <img src="assets/hero.png" alt="FireScroll" width="800" />
+  <img src="assets/hero.png" alt="FireScroll" width="600" />
 </p>
 
 ## Demo
