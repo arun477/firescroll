@@ -16,6 +16,33 @@ import redis.asyncio as aioredis
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 CONV_TTL = 86400
 REMOTION_API_URL = os.environ.get("REMOTION_API_URL", "http://remotion-studio:3600")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8500")
+
+_api_key_cache = {}
+
+
+async def _get_openai_key():
+    """Fetch OpenAI API key from backend's keystore."""
+    if _api_key_cache.get("openai"):
+        return _api_key_cache["openai"]
+    # Try env first
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        _api_key_cache["openai"] = env_key
+        return env_key
+    # Fetch from backend
+    import httpx
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BACKEND_URL}/api/keys", timeout=5.0)
+            keys = resp.json()
+            for k in keys:
+                if k.get("key_name") == "openai" and k.get("key_value"):
+                    _api_key_cache["openai"] = k["key_value"]
+                    return k["key_value"]
+    except Exception as e:
+        print(f"[Agent] Failed to fetch API key: {e}")
+    return None
 
 _redis_pool = None
 
@@ -470,7 +497,10 @@ async def _run_scene_for_index(cid, scene_idx, brief, mode, existing_code=None):
     )
 
     try:
-        os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "")
+        # Ensure API key is set for Agents SDK
+        key = await _get_openai_key()
+        if key:
+            os.environ["OPENAI_API_KEY"] = key
         result = await Runner.run(agent, input=prompt, max_turns=6)
         final = result.final_output or ""
         if "saved" in final.lower() or "FAILED" not in final:
@@ -539,7 +569,7 @@ async def run_chat_agent(conversation_id, message, topic_id,
     """Main creative director agent. Fully async."""
     from openai import AsyncOpenAI
 
-    api_key = os.environ.get("OPENAI_API_KEY", "")
+    api_key = await _get_openai_key()
     if not api_key:
         await set_status(conversation_id, "error")
         await push_chunk(conversation_id, "[Error: No OpenAI API key]")
