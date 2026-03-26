@@ -1,5 +1,5 @@
 <h1 align="center"><img src="assets/logo.svg" alt="" width="28" style="vertical-align: middle;" /> FireScroll</h1>
-<p align="center"><strong>Brain rot, but educational.</strong><br/>Short-form video creation platform.</p>
+<p align="center"><strong>Brain rot, but educational.</strong><br/>The scroll that actually teaches you something.</p>
 
 <p align="center">
   <a href="https://www.youtube.com/playlist?list=PLvKK6yXEDiBB6dh2CBuf2Rdr3LdVNj3Hm">
@@ -32,7 +32,7 @@
         <img src="https://img.youtube.com/vi/vs4SbNTQTww/maxresdefault.jpg" alt="FireScroll Live Demo" width="100%" />
       </a>
       <br />
-      <a href="https://www.youtube.com/watch?v=vs4SbNTQTww"><strong>Live Demo</strong> — Full walkthrough of the app</a>
+      <a href="https://www.youtube.com/watch?v=vs4SbNTQTww"><strong>Live Demo</strong> — Full walkthrough</a>
     </td>
   </tr>
 </table>
@@ -41,28 +41,30 @@
 
 ## What It Does
 
-Type any topic. FireScroll researches the web, writes scripts, generates voice narration, and renders vertical short-form videos you can scroll through — like a TikTok feed, but every video actually teaches you something. The entire pipeline from idea to scrollable feed, running locally with Docker.
+Type any topic. FireScroll scrapes the web for real sources, writes scripts backed by citations, narrates them in ultra-realistic AI voices, and renders vertical short-form videos — then serves them in a scrollable feed you can swipe through like TikTok. Except everything you watch actually teaches you something.
+
+The full pipeline from topic to scrollable feed. Runs locally with Docker.
 
 ## Features
 
-- **Topic-to-Feed Pipeline** — Enter a topic, get a series of scroll-ready short videos. Each topic is broken into segments with hooks, scripts, and visual cues — structured for maximum retention.
+**Topic → Research → Generate → Scroll.** That's it.
 
-- **Web Research** — Powered by [Firecrawl](https://firecrawl.dev) with six modes (search, scrape, crawl, extract, map, AI agent). Sources are synthesized into accurate, citation-backed scripts automatically.
+- **Firecrawl-Powered Research** — Six modes: search, scrape, crawl, extract, map, and AI agent. Enter a topic and Firecrawl finds real sources across the web. AI synthesizes them into accurate, citation-backed scripts — broken into segments with hooks, narration, and visual cues.
 
-- **Voice & Audio** — 50+ ultra-realistic voices via [ElevenLabs](https://elevenlabs.io) across 30+ languages with automatic translation. Five style presets (natural, dramatic, energetic, calm, storyteller) and a built-in library of AI-generated music tracks.
+- **ElevenLabs Voice & Audio** — 50+ ultra-realistic voices across 30+ languages. Five style presets — natural, dramatic, energetic, calm, storyteller. Automatic translation for non-English content. Built-in library of AI-generated music tracks mixed into every video.
 
-- **Scrollable Feed** — Generated videos appear in a vertical scroll feed. Swipe through topics like you would on TikTok or Reels — except everything is AI-researched and educational.
+- **Scrollable Feed** — Generated videos land in a vertical scroll feed. Swipe through topics the way you'd scroll TikTok or Reels — but every video is AI-researched and educational.
 
-- **Video Studio** — Configure voice, visuals, music, and captions per segment. Three visual modes (AI-generated backgrounds, video backgrounds, split-screen), two caption styles (overlay, karaoke sync). One-click batch generation. Output as 1080×1920 MP4 at 30fps.
+- **Video Studio** — Three visual modes (AI backgrounds, video backgrounds, split-screen), two caption styles (overlay, karaoke word-by-word sync), configurable voice and music per segment. One-click batch generation. 1080×1920 MP4 at 30fps.
 
-- **Media Library** — Upload your own background videos (MP4, MOV, AVI, WebM). Audio is stripped automatically. Shared across all projects.
+- **Media Library** — Upload your own background videos. Audio stripped automatically. Shared across all projects.
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- API keys for **all three** services below (all required):
+- **All three** API keys below are required:
 
 | Key | Purpose |
 |-----|---------|
@@ -78,27 +80,27 @@ cd firescroll
 docker compose up --build
 ```
 
-Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings** before doing anything else.
+Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings** first.
 
 ### Usage
 
-1. **Create a topic** — enter any subject from the dashboard.
-2. **Research** — Firecrawl searches and scrapes the web, AI synthesizes sources into scripts.
-3. **Generate** — configure voice, visuals, and music. Hit generate.
-4. **Scroll** — watch your videos in the feed. Swipe through like TikTok.
+1. **Create a topic** — enter any subject.
+2. **Research** — Firecrawl scrapes the web, AI writes the scripts.
+3. **Generate** — pick a voice, configure visuals, hit generate.
+4. **Scroll** — swipe through your feed.
 
 ## Roadmap
 
-- [ ] Replace SQLite with PostgreSQL for production use
-- [ ] Export to YouTube Shorts, TikTok, Reels
-- [ ] User authentication and multi-tenant support
+- **PostgreSQL migration** — replace SQLite for production-grade persistence
+- **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels
+- **Multi-tenant auth** — user accounts, teams, and shared workspaces
 
 ## Built With
 
 Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenlabs.io) Hackathon.
 
-- [Firecrawl](https://firecrawl.dev) — Turns any website into clean, LLM-ready data. The Search API powers FireScroll's research engine, giving AI agents real-time knowledge from the web in a single call.
-- [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS. 50+ ultra-realistic voices across 30+ languages for narration and audio generation.
+- [Firecrawl](https://firecrawl.dev) — The research backbone. Search API gives AI agents real-time knowledge from any website in a single call. Six modes power the entire content pipeline — from web search to structured extraction.
+- [ElevenLabs](https://elevenlabs.io) — The voice layer. 50+ voices across 30+ languages turn every script into broadcast-quality narration. Style presets and speed controls make each video sound intentional, not robotic.
 - [Remotion](https://remotion.dev) — Programmatic video rendering in React.
 - [OpenAI](https://openai.com) — Script generation, image backgrounds, and AI orchestration.
 
