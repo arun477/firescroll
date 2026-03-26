@@ -6,6 +6,8 @@ dbdata/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
+demosite/node_modules/
+demosite/dist/
 demo/*
 !demo/*.mp4
 data/

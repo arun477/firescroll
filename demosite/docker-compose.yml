@@ -1,0 +1,9 @@
+services:
+  demosite:
+    build: .
+    ports:
+      - "3900:80"
+    volumes:
+      - ../demo/firescroll_marketing_intro.mp4:/usr/share/nginx/html/videos/firescroll_marketing_intro.mp4:ro
+      - ../demo/firescroll_working_site_demo.mp4:/usr/share/nginx/html/videos/firescroll_working_site_demo.mp4:ro
+    restart: unless-stopped
