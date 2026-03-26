@@ -149,6 +149,62 @@ def elevenlabs_status(topic_id: str):
     }
 
 
+@app.get("/api/elevenlabs/status/{topic_id}")
+def elevenlabs_status(topic_id: str):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "Topic not found"}
+    segments = get_segments_for_topic(topic_id)
+    jobs = get_jobs_for_topic(topic_id)
+    from db import get_research_sources
+    sources = get_research_sources(topic_id)
+
+    ready = [s for s in segments if s["status"] == "ready"]
+    researching = [s for s in segments if s["status"] == "researching"]
+    videos_done = [j for j in jobs if j.get("status") == "done"]
+    videos_active = [j for j in jobs if j.get("status") not in ("done", "failed", None)]
+
+    # Build rich summary
+    segment_summaries = []
+    for s in ready[:6]:
+        segment_summaries.append({
+            "title": s["title"],
+            "hook": s.get("hook", "")[:100],
+            "status": s["status"],
+        })
+
+    source_summaries = []
+    for src in sources[:8]:
+        source_summaries.append({
+            "url": src.get("url", ""),
+            "title": src.get("title", ""),
+            "type": src.get("source_type", ""),
+        })
+
+    return {
+        "topic_id": topic_id,
+        "title": topic["title"],
+        "series_title": topic.get("series_title", ""),
+        "research_status": topic.get("research_status", "pending"),
+        "segments_ready": len(ready),
+        "segments_researching": len(researching),
+        "segments_total": len(segments),
+        "videos_done": len(videos_done),
+        "videos_generating": len(videos_active),
+        "sources_count": len(sources),
+        "segments": segment_summaries,
+        "sources": source_summaries,
+        "message": (
+            f"Topic: {topic['title']}. "
+            f"Research: {topic.get('research_status', 'pending')}. "
+            f"Segments: {len(ready)}/{len(segments)} ready. "
+            f"Sources found: {len(sources)}. "
+            f"Videos: {len(videos_done)} done" +
+            (f", {len(videos_active)} generating." if videos_active else ".")
+        )
+    }
+
+
 @app.get("/api/topics")
 def list_topics(page: int = 1, page_size: int = 12):
     from db import get_topics_page
