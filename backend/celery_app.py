@@ -17,9 +17,6 @@ celery.conf.update(
     worker_prefetch_multiplier=1,
     task_track_started=True,
     broker_connection_retry_on_startup=True,
-    task_routes={
-        "firescroll.chat_agent": {"queue": "chat"},
-    },
 )
 
 
@@ -41,11 +38,5 @@ def remotion_generate_task(self, segment, output_dir, job_id, **kwargs):
     return run_remotion_pipeline(segment, job_id, output_dir, **kwargs)
 
 
-@celery.task(name="firescroll.chat_agent", bind=True,
-             max_retries=0, reject_on_worker_lost=True,
-             soft_time_limit=300, time_limit=360)
-def chat_agent_task(self, conversation_id, user_message, topic_id,
-                    segment_id=None, **kwargs):
-    from chat_agent import run_chat_agent
-    return run_chat_agent(conversation_id, user_message, topic_id,
-                          segment_id, **kwargs)
+
+# chat_agent_task removed — chat agent now runs in its own async service (agent/)

@@ -22,8 +22,10 @@ services:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
       - REMOTION_API_URL=http://remotion-studio:3600
+      - AGENT_SERVICE_URL=http://agent:8100
     depends_on:
       - redis
+      - agent
     restart: unless-stopped
 
   worker:
@@ -47,20 +49,20 @@ services:
       - remotion-studio
     restart: unless-stopped
 
-  chat-worker:
+  agent:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    command: celery -A celery_app worker --loglevel=info --pool=solo -Q chat -c 1
+      dockerfile: agent/Dockerfile
     volumes:
-      - ./data:/app/data
       - ./.env:/app/.env
-      - dbdata:/app/dbdata
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
+      - REMOTION_API_URL=http://remotion-studio:3600
+      - BACKEND_URL=http://backend:8500
     depends_on:
       - redis
+      - remotion-studio
     restart: unless-stopped
 
   remotion-studio:

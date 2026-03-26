@@ -107,11 +107,13 @@ def clear_chunks(cid):
     r.delete(_key(cid, "ui_events"))
 
 
-def append_message(cid, role, content):
+def append_message(cid, role, content, tool_steps=None):
     r = _get_redis()
     msgs = get_conversation_history(cid)
-    msgs.append({"role": role, "content": content, "timestamp": _now()})
-    # Cap history at 40 messages
+    msg = {"role": role, "content": content, "timestamp": _now()}
+    if tool_steps:
+        msg["tool_steps"] = tool_steps
+    msgs.append(msg)
     if len(msgs) > 40:
         msgs = msgs[-40:]
     r.set(_key(cid, "messages"), json.dumps(msgs))
@@ -873,6 +875,7 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
 
         # ── Multi-turn loop ──
         full_response = ""
+        collected_tool_steps = []  # Persist with the final message
 
         for turn in range(MAX_TURNS):
             remaining = MAX_TURNS - turn
@@ -942,10 +945,12 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                 except json.JSONDecodeError:
                     args = {}
 
-                # Emit tool_call event to SSE
+                # Emit tool_call event to SSE + collect for persistence
                 display = _tool_display_label(tool_name, args)
                 push_tool_event(cid, "tool_call", tool_name,
                                 display=display, call_id=tool_call_id)
+                step = {"id": tool_call_id, "tool": tool_name,
+                        "displayMessage": display, "status": "running"}
 
                 # Execute (dispatcher pattern — safer than func(**args))
                 func = tool_map.get(tool_name)
@@ -963,10 +968,13 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                 else:
                     result = f"Unknown tool: {tool_name}"
 
-                # Emit tool_result event
+                # Emit tool_result event + finalize step
                 push_tool_event(cid, "tool_result", tool_name,
                                 status="completed", label=result[:100],
                                 call_id=tool_call_id)
+                step["status"] = "completed"
+                step["resultLabel"] = result[:100]
+                collected_tool_steps.append(step)
 
                 messages.append({
                     "role": "tool",
@@ -975,7 +983,8 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                 })
 
         # Save final response
-        append_message(cid, "assistant", full_response)
+        append_message(cid, "assistant", full_response,
+                       tool_steps=collected_tool_steps if collected_tool_steps else None)
         set_status(cid, "done")
 
     except Exception as exc:

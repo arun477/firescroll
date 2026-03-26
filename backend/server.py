@@ -1223,52 +1223,32 @@ class ChatSendRequest(BaseModel):
 
 
 @app.post("/api/chat/send")
-def chat_send(req: ChatSendRequest):
-    from celery_app import chat_agent_task
-    from chat_agent import (
-        get_conversation_state, set_status, init_conversation, clear_chunks,
-    )
+async def chat_send(req: ChatSendRequest):
+    """Forward chat message to the async agent service via HTTP."""
+    import httpx
 
-    # Check if already thinking — with stuck-state recovery
-    state = get_conversation_state(req.conversation_id)
-    if state and state.get("status") == "thinking":
-        # If stuck for > 3 minutes, force reset (worker probably crashed)
-        from chat_agent import _get_redis, _key
-        r = _get_redis()
-        thinking_since = r.get(_key(req.conversation_id, "thinking_since"))
-        if thinking_since and (time.time() - float(thinking_since)) > 180:
-            set_status(req.conversation_id, "idle")
-            state["status"] = "idle"
-        else:
-            return {"error": "Agent is still thinking. Wait for completion."}
+    agent_url = os.environ.get("AGENT_SERVICE_URL", "http://agent:8100")
 
-    # Initialize conversation in Redis if it doesn't exist yet
-    if not state:
-        init_conversation(
-            req.conversation_id, req.topic_id, req.segment_id or "",
-            style=req.style or "cinematic",
-            voice_id=req.voice_id or "",
-            language=req.language or "",
-        )
-
-    # Set status BEFORE dispatching — eliminates SSE race condition
-    set_status(req.conversation_id, "thinking")
-    clear_chunks(req.conversation_id)
-
-    # Track when thinking started for stuck-state recovery
-    from chat_agent import _get_redis, _key
-    r = _get_redis()
-    r.set(_key(req.conversation_id, "thinking_since"), str(time.time()))
-    r.expire(_key(req.conversation_id, "thinking_since"), 300)
-
-    chat_agent_task.delay(
-        req.conversation_id, req.message, req.topic_id,
-        segment_id=req.segment_id,
-        style=req.style,
-        voice_id=req.voice_id,
-        language=req.language,
-    )
-    return {"conversation_id": req.conversation_id, "status": "thinking"}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{agent_url}/chat/send",
+                json={
+                    "conversation_id": req.conversation_id,
+                    "message": req.message,
+                    "topic_id": req.topic_id,
+                    "segment_id": req.segment_id,
+                    "style": req.style,
+                    "voice_id": req.voice_id,
+                    "language": req.language,
+                },
+                timeout=10.0,
+            )
+            return resp.json()
+    except httpx.ConnectError:
+        return {"error": "Agent service unavailable. Please try again."}
+    except Exception as e:
+        return {"error": f"Agent service error: {str(e)[:100]}"}
 
 
 @app.get("/api/chat/{conversation_id}/stream")
