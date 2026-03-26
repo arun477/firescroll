@@ -139,6 +139,17 @@ docker compose up --build
 
 Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings** first.
 
+### Voice Agent Setup
+
+The voice agent uses [ElevenLabs Conversational AI](https://elevenlabs.io/docs/eleven-agents/overview). To connect it:
+
+1. Create an agent on the [ElevenLabs dashboard](https://elevenlabs.io) or via API
+2. Add a **server tool** (webhook) pointing to your backend's `/api/elevenlabs/create-topic` endpoint — this lets the agent create topics and trigger Firecrawl research by voice
+3. Optionally add a second tool pointing to `/api/elevenlabs/check-status` so the agent can report live research progress back to the user
+4. Set the agent ID in `frontend/src/components/VoiceAgent.jsx`
+
+The backend must be reachable from ElevenLabs servers for the webhook to work. In production, expose the backend behind a reverse proxy with HTTPS. The agent ID is safe to include in frontend code — it's a public identifier, not a secret.
+
 ### Usage
 
 1. **Speak or type a topic** — click the mic button on the dashboard and say it, or create one manually.
