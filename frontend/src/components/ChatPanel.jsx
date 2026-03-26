@@ -90,6 +90,28 @@ function ActivityCard({ steps }) {
   )
 }
 
+// ── History Activity Card (collapsed, for completed messages) ──
+
+function HistoryActivityCard({ steps }) {
+  const [expanded, setExpanded] = useState(false)
+  const completed = steps.filter(s => s.status === 'completed').length
+  return (
+    <div className="vc-activity-history">
+      <button className="vc-activity-history-btn" onClick={() => setExpanded(!expanded)}>
+        <Zap size={10} />
+        <span>{completed} step{completed !== 1 ? 's' : ''} completed</span>
+        <span style={{ marginLeft: 'auto', fontSize: 9, opacity: 0.5 }}>{expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && steps.map(step => (
+        <div key={step.id} className={`vc-activity-step ${step.status}`} style={{ paddingLeft: 8 }}>
+          {step.status === 'completed' ? <Check size={10} className="vc-activity-check" /> : <span className="vc-activity-x">✕</span>}
+          <span className="vc-activity-label">{step.displayMessage}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Picker registry ──
 
 const PICKER_COMPONENTS = {
@@ -109,6 +131,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const [status, setStatus] = useState('idle')
   const [displayedContent, setDisplayedContent] = useState('')
   const [activitySteps, setActivitySteps] = useState([])
+  const activityStepsRef = useRef([])
   const [activePicker, setActivePicker] = useState(null)  // 'voice' | 'language' | 'style' | null
 
   const messagesEndRef = useRef(null)
@@ -128,6 +151,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
   const MAX_RETRIES = 10
 
   useEffect(() => { statusRef.current = status }, [status])
+  useEffect(() => { activityStepsRef.current = activitySteps }, [activitySteps])
 
   // ── Typewriter ──
 
@@ -163,8 +187,13 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     if (extraSettings && onSettingsUpdate) onSettingsUpdate(extraSettings)
 
     const finalText = streamRef.current
-    if (finalText?.trim()) {
-      setMessages(prev => [...prev, { role: 'assistant', content: finalText }])
+    const steps = [...(activityStepsRef.current || [])]
+    if (finalText?.trim() || steps.length) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: finalText || '',
+        tool_steps: steps.length ? steps : undefined,  // Persist for history
+      }])
     }
     streamRef.current = ''
     displayedLenRef.current = 0
@@ -420,9 +449,15 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
       {/* Messages */}
       <div className="vc-messages">
-        {messages.filter(m => m.content?.trim()).map((msg, i) => (
+        {messages.filter(m => m.content?.trim() || m.tool_steps?.length).map((msg, i) => (
           <div key={i} className={`vc-msg ${msg.role === 'user' ? 'vc-msg-user' : 'vc-msg-assistant'}`}>
-            {msg.role === 'assistant' ? parseMessage(msg.content).map(renderPart) : <p className="vc-msg-text">{msg.content}</p>}
+            {msg.tool_steps?.length > 0 && (
+              <HistoryActivityCard steps={msg.tool_steps} />
+            )}
+            {msg.role === 'assistant' && msg.content?.trim()
+              ? parseMessage(msg.content).map(renderPart)
+              : msg.role === 'user' ? <p className="vc-msg-text">{msg.content}</p> : null
+            }
           </div>
         ))}
 

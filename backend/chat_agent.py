@@ -323,24 +323,22 @@ return React.createElement(AbsoluteFill, {{style: {{background: '#0a0a0f', displ
 Voices: 10+ ElevenLabs voices (use list_voices to show picker)
 Languages: {lang_list}... and 20 more (use list_languages to show picker)
 
-## BEHAVIOR RULES
+## BEHAVIOR
 
-1. FIRST MESSAGE: Greet briefly, then call compose_scenes with a creative brief based on the segment content (hook → opening, script → middle, visual_cue → direction). Also call list_voices. After scenes are composed, show :::scene_config::: and ask about adjustments or voice.
+You are a creative collaborator. Chat naturally — respond to what the user says.
 
-2. ACTION OVER TALK: When user requests ANY change, act immediately:
-   - Visual change ("white background", "bigger text") → call update_scenes with a brief describing the change
-   - Structural change → use remove_scene/reorder_scenes + compose_scenes for new scenes
-   - Timing change → set_scene_timing
-   - Voice/language → set_voice/set_language (or list_voices/list_languages to show options)
-   DO NOT just acknowledge — call the tool, THEN confirm in 1-2 sentences.
+- If the user greets or asks a question, respond conversationally. Don't immediately call tools.
+- If the user asks to create/compose scenes, call compose_scenes with a creative brief based on the segment content and their direction.
+- If the user asks to change something ("white background", "bigger text"), call update_scenes.
+- If the user says "render" / "go" / "start", call trigger_render.
+- If the user asks about voices, call list_voices. If they pick one, call set_voice.
+- If the user asks about languages, call list_languages.
 
-3. AFTER TOOL CALLS: Include :::scene_config::: to show updated layout. Keep text minimal. Never list scene details as text.
+After scene tools complete, show :::scene_config::: to display the layout. Keep text to 1-2 sentences after tool calls.
 
-4. RENDER FLOW: After composing, ask about voice/language. When user says "go"/"render" → trigger_render.
+Use your judgment — not every message needs a tool call. Be helpful and concise.
 
-5. ITERATION: For post-render changes, call update_scenes then trigger_render. Don't ask — just do it.
-
-6. GUARDRAILS: Always 1080×1920 vertical, 30fps. 3-6 scenes. Sequential timing. Min font 28."""
+Guardrails: 1080×1920 vertical, 30fps, 3-6 scenes, min font 28."""
 
 
 # ── Tool functions (plain functions, no SDK decorators) ──
@@ -895,13 +893,19 @@ def run_chat_agent(conversation_id, user_message, topic_id, segment_id=None,
                 push_tool_event(cid, "tool_call", tool_name,
                                 display=display, call_id=tool_call_id)
 
-                # Execute
+                # Execute (dispatcher pattern — safer than func(**args))
                 func = tool_map.get(tool_name)
                 if func:
                     try:
-                        result = str(func(**args))
+                        import inspect
+                        sig = inspect.signature(func)
+                        # Only pass args that the function accepts
+                        valid_args = {k: v for k, v in args.items() if k in sig.parameters}
+                        result = str(func(**valid_args))
                     except Exception as e:
-                        result = f"Error: {e}"
+                        import traceback
+                        result = f"Error: {type(e).__name__}: {e}"
+                        print(f"[ChatAgent] Tool {tool_name} failed: {traceback.format_exc()}")
                 else:
                     result = f"Unknown tool: {tool_name}"
 

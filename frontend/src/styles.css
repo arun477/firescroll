@@ -9852,3 +9852,8 @@ a { color: var(--blue); text-decoration: none; }
 .vc-quick-render:hover { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.4); }
 .vc-picker-zone { padding: 4px 0; }
 
+/* History activity card (collapsed) */
+.vc-activity-history { margin-bottom: 6px; }
+.vc-activity-history-btn { display: flex; align-items: center; gap: 5px; width: 100%; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 5px 10px; font-size: 10px; color: var(--text-muted); cursor: pointer; }
+.vc-activity-history-btn:hover { background: rgba(255,255,255,0.04); }
+
