@@ -692,101 +692,96 @@ def _tool_display_label(name, args):
     return fn(args) if fn else f"Running {name}"
 
 
-# ── Remotion sub-agent (own LLM calls for scene code generation) ──
+# ── Remotion sub-agent (OpenAI Agents SDK — handles generate→validate→retry natively) ──
 
-SCENE_CODE_SYSTEM_PROMPT = """You generate React/Remotion animation code. Return ONLY the JavaScript function body — no markdown, no explanation.
+SCENE_CODE_INSTRUCTIONS = """You are a Remotion scene code writer. You write React/Remotion animation code and validate it.
 
-Format: 1080×1920 vertical, 30fps. React.createElement() only — NO JSX. Must return a React element.
+WORKFLOW: Write the code, then call submit_scene_code to validate and save it. If validation fails, fix the errors and call submit_scene_code again.
 
-Available: React, AbsoluteFill, spring, interpolate, useCurrentFrame, useVideoConfig, frame, fps (30), width (1080), height (1920).
-
-spring({ frame, fps, config: { damping: 15 } }) → 0..1
-interpolate(value, [inMin, inMax], [outMin, outMax]) → number
-
-Keep text readable (min font size 28). Use dark backgrounds (#0a0a0f). Use width/height variables for responsive positioning."""
+CODE RULES:
+- Format: 1080x1920 vertical, 30fps
+- Syntax: React.createElement() only — NO JSX
+- Must return a React element
+- Available: React, AbsoluteFill, spring, interpolate, frame, fps (30), width (1080), height (1920)
+- spring({ frame, fps, config: { damping: 15 } }) returns 0..1
+- interpolate(value, [inMin, inMax], [outMin, outMax]) returns mapped number
+- Min font size 28. Dark backgrounds (#0a0a0f).
+- Do NOT wrap in markdown fences. Just the raw function body."""
 
 
 def _run_scene_subagent(cid, brief, num_scenes=5, scene_indices=None, mode="create"):
-    """Sub-agent: creates/updates scenes with own LLM calls + Remotion validation.
-    Emits SSE progress events. Returns summary for main agent."""
+    """Uses OpenAI Agents SDK for iterative code generation + Remotion validation."""
+    import asyncio
     from keystore import get_key
-    from openai import OpenAI
+    from agents import Agent, Runner, function_tool
 
-    api_key = get_key("openai")
-    client = OpenAI(api_key=api_key)
+    os.environ["OPENAI_API_KEY"] = get_key("openai") or ""
+
     results = []
 
+    # Create scene slots first (fast, no LLM needed)
     if mode == "create":
         scene_indices = list(range(num_scenes))
-        durations = [120, 150, 150, 150, 90]  # 4s, 5s, 5s, 5s, 3s
+        durations = [120, 150, 150, 150, 90]
         for i in range(num_scenes):
             dur = durations[i] if i < len(durations) else 150
             push_tool_event(cid, "tool_call", "scene_code",
                             display=f"Creating scene {i}...", call_id=f"sc_{i}")
-            # Call low-level create_scene directly
             _create_scene_for_cid(cid, duration_frames=dur, position=i)
             push_tool_event(cid, "tool_result", "scene_code",
                             status="completed", label=f"Scene {i} slot ready",
                             call_id=f"sc_{i}")
 
-    state = get_conversation_state(cid)
-    config = get_scene_config(cid)
-    code_summary = _get_code_summary(cid)
-
-    for i, scene_idx in enumerate(scene_indices):
+    # For each scene, run an SDK agent that writes + validates code
+    for scene_idx in (scene_indices or []):
         call_id = f"code_{scene_idx}_{uuid.uuid4().hex[:6]}"
+        action = "Writing" if mode == "create" else "Updating"
         push_tool_event(cid, "tool_call", "scene_code",
-                        display=f"{'Writing' if mode == 'create' else 'Updating'} scene {scene_idx} code...",
-                        call_id=call_id)
+                        display=f"{action} scene {scene_idx} code...", call_id=call_id)
 
+        # Create a submit tool bound to this scene
+        @function_tool
+        def submit_scene_code(code: str) -> str:
+            """Validate and save scene code to the Remotion renderer. Call this with your generated code."""
+            clean = re.sub(r'^```\w*\n?', '', code.strip())
+            clean = re.sub(r'\n?```$', '', clean.strip())
+            return _write_scene_code_for_cid(cid, scene_idx, clean)
+
+        # Build context
         existing_code = None
         if mode == "update":
             existing_code = _read_scene_code_for_cid(cid, scene_idx)
             if existing_code.startswith("No "):
                 existing_code = None
 
-        existing_block = ("Existing code to modify:\n" + existing_code) if existing_code else "Write new scene code from scratch."
-        scene_prompt = f"""Creative brief: {brief}
-Scene index: {scene_idx} of {len(scene_indices)} total
-Mode: {mode}
-{existing_block}
-Segment context: {state.get('title', '')} — {state.get('hook', '')}
+        existing_block = f"Existing code to modify:\n{existing_code}" if existing_code else ""
+        prompt = f"Creative brief: {brief}\nScene {scene_idx}. {existing_block}\nWrite the code and call submit_scene_code."
 
-Return ONLY the function body code. No markdown fences."""
+        agent = Agent(
+            name="SceneCodeWriter",
+            instructions=SCENE_CODE_INSTRUCTIONS,
+            tools=[submit_scene_code],
+            model="gpt-5.4",
+        )
 
-        success = False
-        for attempt in range(3):
-            try:
-                resp = client.chat.completions.create(
-                    model="gpt-5.4",
-                    messages=[
-                        {"role": "system", "content": SCENE_CODE_SYSTEM_PROMPT},
-                        {"role": "user", "content": scene_prompt},
-                    ],
-                    max_completion_tokens=2000,
-                )
-                raw_code = resp.choices[0].message.content or ""
-                # Strip markdown fences if present
-                code = re.sub(r'^```\w*\n?', '', raw_code.strip())
-                code = re.sub(r'\n?```$', '', code.strip())
-
-                result = _write_scene_code_for_cid(cid, scene_idx, code)
-                if "FAILED" not in result:
-                    results.append(f"Scene {scene_idx}: OK")
-                    push_tool_event(cid, "tool_result", "scene_code",
-                                    status="completed", label=f"Scene {scene_idx} saved",
-                                    call_id=call_id)
-                    success = True
-                    break
-                else:
-                    scene_prompt += f"\n\nValidation error on attempt {attempt+1}: {result}\nFix and try again."
-            except Exception as e:
-                scene_prompt += f"\n\nError: {e}\nTry again."
-
-        if not success:
-            results.append(f"Scene {scene_idx}: failed")
+        try:
+            run_result = asyncio.run(Runner.run(agent, input=prompt, max_turns=6))
+            final = run_result.final_output or ""
+            if "saved" in final.lower() or "FAILED" not in final:
+                results.append(f"Scene {scene_idx}: OK")
+                push_tool_event(cid, "tool_result", "scene_code",
+                                status="completed", label=f"Scene {scene_idx} saved",
+                                call_id=call_id)
+            else:
+                results.append(f"Scene {scene_idx}: failed")
+                push_tool_event(cid, "tool_result", "scene_code",
+                                status="failed", label=f"Scene {scene_idx} failed",
+                                call_id=call_id)
+        except Exception as e:
+            print(f"[SubAgent] Scene {scene_idx} error: {e}")
+            results.append(f"Scene {scene_idx}: error")
             push_tool_event(cid, "tool_result", "scene_code",
-                            status="failed", label=f"Scene {scene_idx} failed",
+                            status="failed", label=f"Scene {scene_idx}: {str(e)[:50]}",
                             call_id=call_id)
 
     total_frames = 0
