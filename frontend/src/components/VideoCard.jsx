@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Play, Pause, Volume2, VolumeX,
-  SkipForward, RotateCcw, Maximize2,
+  SkipForward, RotateCcw, Maximize2, Trash2,
 } from 'lucide-react'
 
-export default function VideoCard({ item, idx, totalCount, isActive, onActive, onNext }) {
+export default function VideoCard({ item, idx, totalCount, isActive, onActive, onNext, onDelete }) {
   const videoRef = useRef(null)
   const cardRef = useRef(null)
   const [progress, setProgress] = useState(0)
@@ -232,6 +232,11 @@ export default function VideoCard({ item, idx, totalCount, isActive, onActive, o
             <button className="vc-btn" onClick={toggleFullscreen} title="Fullscreen">
               <Maximize2 size={15} />
             </button>
+            {onDelete && (
+              <button className="vc-btn vc-btn-delete" onClick={(e) => { e.stopPropagation(); onDelete(item) }} title="Delete video">
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
         </div>
       </div>

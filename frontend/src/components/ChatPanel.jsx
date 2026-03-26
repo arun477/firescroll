@@ -124,7 +124,7 @@ const PICKER_COMPONENTS = {
 
 export default function ChatPanel({ topicId, segment, voices, languages, styles, templates,
                                      sceneConfig, settings, onSceneConfigUpdate, onCustomCodeUpdate,
-                                     onSettingsUpdate, onGenerate }) {
+                                     onSettingsUpdate, onGenerate, generating }) {
   const [conversationId, setConversationId] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -522,7 +522,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           <button className={`vc-quick-btn ${activePicker === 'style' ? 'vc-quick-active' : ''}`}
             onClick={() => setActivePicker(activePicker === 'style' ? null : 'style')}><Palette size={12} /> Style</button>
           {sceneConfig?.scenes?.length > 0 && (
-            <button className="vc-quick-btn vc-quick-render" onClick={onGenerate}><Film size={12} /> Render</button>
+            <button className="vc-quick-btn vc-quick-render" onClick={onGenerate} disabled={generating}>
+              {generating ? <><Loader2 size={12} className="spin" /> Rendering...</> : <><Film size={12} /> Render</>}
+            </button>
           )}
         </div>
         <div className="vc-input-row">

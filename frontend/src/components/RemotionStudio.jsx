@@ -196,6 +196,7 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             onCustomCodeUpdate={handleCustomCodeUpdate}
             onSettingsUpdate={handleSettingsUpdate}
             onGenerate={handleGenerate}
+            generating={generating}
           />
         </div>
       )}
