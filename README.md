@@ -20,14 +20,21 @@
 
 <table>
   <tr>
-    <td align="center" width="50%">
+    <td align="center" width="33%">
       <a href="https://www.youtube.com/watch?v=485MsI5a450">
         <img src="assets/firescroll-thumbnail.png" alt="FireScroll Overview" width="100%" />
       </a>
       <br />
       <a href="https://www.youtube.com/watch?v=485MsI5a450"><strong>Overview</strong> — What FireScroll can do</a>
     </td>
-    <td align="center" width="50%">
+    <td align="center" width="33%">
+      <a href="https://youtu.be/c6eidnyc-Uo">
+        <img src="assets/agent-demo-thumbnail.png" alt="Voice Agent Demo" width="100%" />
+      </a>
+      <br />
+      <a href="https://youtu.be/c6eidnyc-Uo"><strong>Voice Agent</strong> — ElevenLabs + Firecrawl Search</a>
+    </td>
+    <td align="center" width="33%">
       <a href="https://www.youtube.com/watch?v=vs4SbNTQTww">
         <img src="https://img.youtube.com/vi/vs4SbNTQTww/maxresdefault.jpg" alt="FireScroll Live Demo" width="100%" />
       </a>

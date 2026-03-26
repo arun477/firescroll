@@ -142,7 +142,7 @@ export default function Landing() {
       {/* Demo Videos */}
       <section className="ln-demos">
         <h2>See it in action</h2>
-        <div className="ln-demos-grid">
+        <div className="ln-demos-grid ln-demos-grid-3">
           <div className="ln-demo-card">
             <video controls preload="metadata" poster="https://img.youtube.com/vi/485MsI5a450/maxresdefault.jpg">
               <source src="/videos/firescroll_marketing_intro.mp4" type="video/mp4" />
@@ -153,6 +153,21 @@ export default function Landing() {
                 <div className="ln-demo-sub">What FireScroll can do</div>
               </div>
               <a href="https://www.youtube.com/watch?v=485MsI5a450" target="_blank" rel="noopener" className="ln-demo-yt">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1c.4-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.5 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
+                YouTube
+              </a>
+            </div>
+          </div>
+          <div className="ln-demo-card ln-demo-card-featured">
+            <video controls preload="metadata" poster="https://img.youtube.com/vi/c6eidnyc-Uo/maxresdefault.jpg">
+              <source src="/videos/firescroll_agent_demo.mp4" type="video/mp4" />
+            </video>
+            <div className="ln-demo-info">
+              <div>
+                <div className="ln-demo-title">Voice Agent</div>
+                <div className="ln-demo-sub">ElevenLabs Agent + Firecrawl Search</div>
+              </div>
+              <a href="https://youtu.be/c6eidnyc-Uo" target="_blank" rel="noopener" className="ln-demo-yt">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1c.4-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.5 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
                 YouTube
               </a>

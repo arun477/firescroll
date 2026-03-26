@@ -3280,6 +3280,13 @@ html, body, #root { height: 100%; }
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
+.ln-demos-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.ln-demo-card-featured {
+  border-color: rgba(249,115,22,0.2);
+  box-shadow: 0 0 24px rgba(249,115,22,0.06);
+}
 
 .ln-demo-card {
   border-radius: 16px;
