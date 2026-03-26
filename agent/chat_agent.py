@@ -34,7 +34,7 @@ async def _get_openai_key():
     import httpx
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/api/keys", timeout=5.0)
+            resp = await client.get(f"{BACKEND_URL}/api/settings/keys", timeout=5.0)
             keys = resp.json()
             # keys is a dict: {"openai": "sk-...", "elevenlabs": "..."}
             if isinstance(keys, dict) and keys.get("openai"):
