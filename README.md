@@ -45,19 +45,96 @@ Type any topic. FireScroll scrapes the web for real sources, writes scripts back
 
 The full pipeline from topic to scrollable feed. Runs locally with Docker.
 
+## How It Works
+
+```
+Topic (e.g. "Quantum Computing")
+  │
+  ▼
+┌─────────────────────────────────────────────────────┐
+│  1. Research (Firecrawl)                            │
+│     Search the web → Scrape sources → Extract facts │
+│     Up to 5 sources per segment, 8000 char context  │
+└──────────────────────┬──────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  2. Script Generation (OpenAI GPT-4o)               │
+│     Series outline → Hook + Script + Visual cues    │
+│     Citation-backed, 6 segments per topic           │
+└──────────────────────┬──────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  3. Voice & Audio (ElevenLabs)                      │
+│     TTS narration → AI music → Mix at 15% volume    │
+│     Auto-translate for non-English languages        │
+└──────────────────────┬──────────────────────────────┘
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  4. Video Rendering (Remotion)                      │
+│     4 AI backgrounds per segment (DALL-E 3)         │
+│     Ken Burns zoom + crossfade transitions          │
+│     Word-level timestamps for karaoke captions      │
+└──────────────────────┬──────────────────────────────┘
+                       ▼
+               Scrollable Feed
+        1080×1920 MP4 · 30fps · Vertical
+```
+
 ## Features
 
 **Topic → Research → Generate → Scroll.** That's it.
 
-- **Firecrawl-Powered Research** — Six modes: search, scrape, crawl, extract, map, and AI agent. Enter a topic and Firecrawl finds real sources across the web. AI synthesizes them into accurate, citation-backed scripts — broken into segments with hooks, narration, and visual cues.
+### Firecrawl-Powered Research
 
-- **ElevenLabs Voice & Audio** — 50+ ultra-realistic voices across 30+ languages. Five style presets — natural, dramatic, energetic, calm, storyteller. Automatic translation for non-English content. Built-in library of AI-generated music tracks mixed into every video.
+Four research strategies depending on how deep you want to go:
 
-- **Scrollable Feed** — Generated videos land in a vertical scroll feed. Swipe through topics the way you'd scroll TikTok or Reels — but every video is AI-researched and educational.
+| Mode | What it does |
+|------|-------------|
+| **Simple** | Search 5 web results, extract markdown, synthesize into script |
+| **Deep** | Search → GPT-4o picks top URLs → Scrape → Structured extraction → Synthesize |
+| **Agent** | Firecrawl's AI agent autonomously researches the topic end-to-end |
+| **Manual** | Write or paste your own script directly |
 
-- **Video Studio** — Three visual modes (AI backgrounds, video backgrounds, split-screen), two caption styles (overlay, karaoke word-by-word sync), configurable voice and music per segment. One-click batch generation. 1080×1920 MP4 at 30fps.
+Every source is stored with URL, title, and content. Citations are linked back to segments so you can trace where every fact came from.
 
-- **Media Library** — Upload your own background videos. Audio stripped automatically. Shared across all projects.
+### ElevenLabs Voice & Audio
+
+50+ ultra-realistic voices across 31 languages with five tunable presets:
+
+| Preset | Stability | Speed | Style |
+|--------|-----------|-------|-------|
+| Natural | 0.5 | 1.0x | Neutral |
+| Dramatic | 0.3 | 0.9x | High |
+| Energetic | 0.4 | 1.15x | Medium |
+| Calm | 0.8 | 0.9x | Subtle |
+| Storyteller | 0.6 | 0.95x | Warm |
+
+Each setting (stability, similarity, style, speed) is individually adjustable per segment. Non-English scripts are automatically translated before narration.
+
+Background music is either AI-generated via ElevenLabs or selected from a built-in track library. Music is normalized to 15% volume with 1.5s fade-in and 2s fade-out so it never competes with the voice.
+
+### Video Rendering
+
+Three visual modes and two caption styles — mix and match per segment:
+
+**Visual Modes:**
+- **Full** — 4 AI-generated backgrounds (DALL-E 3, 1024×1536) with Ken Burns zoom and 1-second crossfade transitions
+- **Video** — fullscreen uploaded video background with text overlay
+- **Split** — video top half, AI background bottom half
+
+**Caption Styles:**
+- **Default** — static text overlay with fade-in animation
+- **Karaoke** — word-by-word highlighting synced to audio using Whisper word-level timestamps. Active words glow gold, spoken words fade to gray.
+
+### Scrollable Feed
+
+Generated videos land in a vertical scroll feed. Auto-play triggers when a video enters the viewport. Progress bar, mute toggle, replay, and fullscreen controls on every card. Videos auto-advance on completion. Infinite scroll loads the next batch as you approach the bottom.
+
+This is the core experience — scroll through AI-generated educational content the same way you'd scroll TikTok.
+
+### Media Library
+
+Upload your own MP4, MOV, AVI, or WebM files as background videos. Audio is stripped automatically on upload. Files are shared across all projects and available as backgrounds in Video and Split rendering modes.
 
 ## Getting Started
 
@@ -68,8 +145,8 @@ The full pipeline from topic to scrollable feed. Runs locally with Docker.
 
 | Key | Purpose |
 |-----|---------|
-| [OpenAI](https://platform.openai.com/api-keys) | Script generation, image backgrounds |
-| [ElevenLabs](https://elevenlabs.io) | Voice narration, multilingual TTS |
+| [OpenAI](https://platform.openai.com/api-keys) | Script generation, image backgrounds, transcription |
+| [ElevenLabs](https://elevenlabs.io) | Voice narration, multilingual TTS, music generation |
 | [Firecrawl](https://firecrawl.dev) | Web research and source extraction |
 
 ### Run
@@ -84,55 +161,22 @@ Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings
 
 ### Usage
 
-1. **Create a topic** — enter any subject.
-2. **Research** — Firecrawl scrapes the web, AI writes the scripts.
-3. **Generate** — pick a voice, configure visuals, hit generate.
-4. **Scroll** — swipe through your feed.
-
-## How It Works
-
-```
-Topic
-  │
-  ▼
-┌─────────────────────────────────────────────┐
-│  Firecrawl Research                         │
-│  Search → Scrape → Extract → Synthesize     │
-│  Real sources, real citations               │
-└──────────────────┬──────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────┐
-│  Script Generation (OpenAI)                 │
-│  Hook + narration + visual cues per segment │
-└──────────────────┬──────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────┐
-│  ElevenLabs Voice + Audio                   │
-│  TTS narration + AI music + mixing          │
-└──────────────────┬──────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────┐
-│  Video Rendering (Remotion)                 │
-│  Backgrounds + captions + encode → MP4      │
-└──────────────────┬──────────────────────────┘
-                   │
-                   ▼
-             Scrollable Feed
-```
+1. **Create a topic** — enter any subject from the dashboard.
+2. **Research** — pick a research mode. Firecrawl scrapes the web, AI synthesizes sources into scripts.
+3. **Configure** — choose voice, visual mode, caption style, and music per segment.
+4. **Generate** — one-click batch generation. Progress tracked across 7 phases.
+5. **Scroll** — swipe through your feed.
 
 ## Supported Languages
 
-English, Spanish, French, German, Portuguese, Italian, Dutch, Polish, Russian, Japanese, Korean, Chinese, Hindi, Arabic, Turkish, Swedish, Danish, Finnish, Indonesian, Thai, Vietnamese, Ukrainian, Czech, Romanian, Hungarian, Greek, Hebrew, Bengali, Tamil, Filipino — and more.
+English, Spanish, French, German, Portuguese, Italian, Dutch, Polish, Russian, Japanese, Korean, Chinese, Hindi, Arabic, Turkish, Swedish, Danish, Finnish, Indonesian, Thai, Vietnamese, Ukrainian, Czech, Romanian, Hungarian, Greek, Hebrew, Bengali, Tamil, Filipino.
 
 Voice narration and automatic script translation handled end-to-end by ElevenLabs.
 
 ## Roadmap
 
 - [ ] **PostgreSQL migration** — replace SQLite with PostgreSQL for production-grade persistence and concurrent writes
-- [ ] **Packaging** — streamline setup beyond Docker Compose, pre-built images on Docker Hub, reduce cold-start build time
+- [ ] **Packaging** — pre-built Docker images on Docker Hub, streamlined setup, reduced cold-start build time
 - [ ] **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels with platform-specific formatting
 - [ ] **Shareable feed links** — public URLs for generated feeds so viewers can scroll without running the app
 - [ ] **Multi-tenant auth** — user accounts, teams, and shared workspaces
@@ -147,7 +191,7 @@ Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenla
 - [Firecrawl](https://firecrawl.dev) — The research backbone. Search API gives AI agents real-time knowledge from any website in a single call. Six modes power the entire content pipeline — from web search to structured extraction.
 - [ElevenLabs](https://elevenlabs.io) — The voice layer. 50+ voices across 30+ languages turn every script into broadcast-quality narration. Style presets and speed controls make each video sound intentional, not robotic.
 - [Remotion](https://remotion.dev) — Programmatic video rendering in React.
-- [OpenAI](https://openai.com) — Script generation, image backgrounds, and AI orchestration.
+- [OpenAI](https://openai.com) — Script generation, image backgrounds, transcription, and AI orchestration.
 
 ## Contributing
 
