@@ -91,9 +91,14 @@ Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings
 
 ## Roadmap
 
-- **PostgreSQL migration** — replace SQLite for production-grade persistence
-- **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels
-- **Multi-tenant auth** — user accounts, teams, and shared workspaces
+- [ ] **PostgreSQL migration** — replace SQLite with PostgreSQL for production-grade persistence and concurrent writes
+- [ ] **Packaging** — streamline setup beyond Docker Compose, pre-built images on Docker Hub, reduce cold-start build time
+- [ ] **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels with platform-specific formatting
+- [ ] **Shareable feed links** — public URLs for generated feeds so viewers can scroll without running the app
+- [ ] **Multi-tenant auth** — user accounts, teams, and shared workspaces
+- [ ] **Scheduled generation** — set a topic and cadence, FireScroll researches and generates new videos on autopilot
+- [ ] **Analytics** — track watch time, completion rate, and engagement per video
+- [ ] **Mobile-first PWA** — installable app experience for the scroll feed on phones
 
 ## Built With
 
