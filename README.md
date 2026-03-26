@@ -46,36 +46,18 @@ Enter a topic. FireScroll researches the web using Firecrawl, generates scripts 
 ## How It Works
 
 ```
-Topic (e.g. "Quantum Computing")
+Topic
+  │
+  ├──  Research         Firecrawl searches, scrapes, and extracts from the web
+  │
+  ├──  Script           GPT-4o synthesizes sources into segmented scripts with citations
+  │
+  ├──  Voice & Audio    ElevenLabs narrates in any language, AI music mixed in
+  │
+  ├──  Render           Remotion composes video with backgrounds, captions, transitions
   │
   ▼
-┌─────────────────────────────────────────────────────┐
-│  1. Research (Firecrawl)                            │
-│     Search the web → Scrape sources → Extract facts │
-│     Up to 5 sources per segment, 8000 char context  │
-└──────────────────────┬──────────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  2. Script Generation (OpenAI GPT-4o)               │
-│     Series outline → Hook + Script + Visual cues    │
-│     Citation-backed, 6 segments per topic           │
-└──────────────────────┬──────────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  3. Voice & Audio (ElevenLabs)                      │
-│     TTS narration → AI music → Mix at 15% volume    │
-│     Auto-translate for non-English languages        │
-└──────────────────────┬──────────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  4. Video Rendering (Remotion)                      │
-│     4 AI backgrounds per segment (DALL-E 3)         │
-│     Ken Burns zoom + crossfade transitions          │
-│     Word-level timestamps for karaoke captions      │
-└──────────────────────┬──────────────────────────────┘
-                       ▼
-               Scrollable Feed
-        1080×1920 MP4 · 30fps · Vertical
+Scrollable Feed
 ```
 
 ## Features
