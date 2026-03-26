@@ -30,16 +30,16 @@ async def _get_openai_key():
     if env_key:
         _api_key_cache["openai"] = env_key
         return env_key
-    # Fetch from backend
+    # Fetch from backend keystore API
     import httpx
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{BACKEND_URL}/api/keys", timeout=5.0)
             keys = resp.json()
-            for k in keys:
-                if k.get("key_name") == "openai" and k.get("key_value"):
-                    _api_key_cache["openai"] = k["key_value"]
-                    return k["key_value"]
+            # keys is a dict: {"openai": "sk-...", "elevenlabs": "..."}
+            if isinstance(keys, dict) and keys.get("openai"):
+                _api_key_cache["openai"] = keys["openai"]
+                return keys["openai"]
     except Exception as e:
         print(f"[Agent] Failed to fetch API key: {e}")
     return None
