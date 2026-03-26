@@ -7,6 +7,29 @@ import ChatPanel from './ChatPanel'
 
 function isActive(s) { return !['done', 'failed'].includes(s) }
 
+function ErrorBanner({ error, onDismiss }) {
+  const [expanded, setExpanded] = useState(false)
+  const msg = error || 'Generation failed'
+  const isLong = msg.length > 150
+  return (
+    <div style={{ margin: '0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', fontSize: 11 }}>
+      <div style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
+        <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span style={{ flex: 1, wordBreak: 'break-word' }}>
+          {expanded ? msg : msg.slice(0, 150)}{!expanded && isLong ? '...' : ''}
+        </span>
+        <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, lineHeight: 1, opacity: 0.6 }}>✕</button>
+      </div>
+      {isLong && (
+        <button onClick={() => setExpanded(!expanded)}
+          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 10, opacity: 0.7, marginTop: 4, padding: 0 }}>
+          {expanded ? 'Show less' : 'View full error'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 const STATUS_META = {
   pending: 'Queued', audio: 'Generating Audio', composing: 'AI Composing Scenes',
   rendering: 'Rendering Video', encoding: 'Merging Audio', done: 'Complete', failed: 'Failed',
@@ -252,16 +275,10 @@ export default function RemotionStudio({ topicId, topic, segments, onRefresh, se
             </div>
 
             {failedJob && (
-              <div style={{ margin: '0 16px', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444', fontSize: 11, display: 'flex', alignItems: 'start', gap: 8 }}>
-                <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span style={{ flex: 1 }}>{failedJob.error?.slice(0, 150) || 'Generation failed'}</span>
-                <button onClick={async () => {
-                  await fetch(`/api/remotion/jobs/${failedJob.id}`, { method: 'DELETE' })
-                  onRefresh()
-                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, lineHeight: 1, opacity: 0.6 }}>
-                  ✕
-                </button>
-              </div>
+              <ErrorBanner error={failedJob.error} onDismiss={async () => {
+                await fetch(`/api/remotion/jobs/${failedJob.id}`, { method: 'DELETE' })
+                onRefresh()
+              }} />
             )}
 
             <div className="ve-c-script">
