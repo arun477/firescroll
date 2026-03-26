@@ -91,13 +91,33 @@ def elevenlabs_webhook(req: ElevenLabsToolRequest):
 
     def run():
         from research import research_all_firecrawl
+        from celery_app import generate_single_task
+        from db import create_job, has_active_job
+
+        # Phase 1: Research
         research_all_firecrawl(topic_id, req.topic, req.num_segments,
                                description=req.description)
+
+        # Phase 2: Generate videos for all ready segments
+        topic = get_topic(topic_id)
+        if not topic:
+            return
+        segments = get_segments_for_topic(topic_id)
+        gen_data = _segments_to_gen_data(topic, segments)
+        for seg in gen_data:
+            if has_active_job(topic_id, seg["id"]):
+                continue
+            job_id = create_job(topic_id, seg["id"], "full", "default")
+            if job_id:
+                generate_single_task.delay(
+                    seg, "full", "default", OUTPUT_DIR, job_id
+                )
+
     threading.Thread(target=run, daemon=True).start()
 
     return {
         "topic_id": topic_id,
-        "message": f"Created '{req.topic}' with {req.num_segments} segments. Research started — check your dashboard."
+        "message": f"Created '{req.topic}' with {req.num_segments} segments. Researching and generating videos — they'll appear in your feed when ready."
     }
 
 
