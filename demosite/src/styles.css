@@ -3343,5 +3343,5 @@ html, body, #root { height: 100%; }
 @media (max-width: 768px) {
   .ln-demos { padding: 32px 20px 40px; }
   .ln-demos h2 { font-size: 26px; margin-bottom: 20px; }
-  .ln-demos-grid { grid-template-columns: 1fr; gap: 16px; }
+  .ln-demos-grid, .ln-demos-grid-3 { grid-template-columns: 1fr; gap: 16px; }
 }
