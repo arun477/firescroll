@@ -8,6 +8,7 @@ PORTS=(
     "8500:localhost:8500"  # FastAPI backend
     "3500:localhost:3500"  # React frontend (docker)
     "3000:localhost:3000"  # React frontend (dev)
+    "3900:localhost:3900"  # Demo landing site
 )
 
 PID_FILE="/tmp/firescroll-tunnel.pid"
@@ -42,6 +43,7 @@ start_tunnel() {
         echo "  Backend:  http://localhost:8500"
         echo "  Frontend: http://localhost:3500 (docker)"
         echo "  Frontend: http://localhost:3000 (dev)"
+        echo "  Demosite: http://localhost:3900"
     else
         echo "Failed to start tunnel"
         return 1
