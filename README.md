@@ -1,5 +1,14 @@
 <h1 align="center"><img src="assets/logo.svg" alt="" width="28" style="vertical-align: middle;" /> FireScroll</h1>
-<p align="center">Brain rot, but educational.<br/>AI-powered short video creation platform.</p>
+<p align="center"><strong>Brain rot, but educational.</strong><br/>AI-powered short video creation platform.</p>
+
+<p align="center">
+  <a href="https://www.youtube.com/playlist?list=PLvKK6yXEDiBB6dh2CBuf2Rdr3LdVNj3Hm">
+    <img src="https://img.shields.io/badge/YouTube-Playlist-red?logo=youtube" alt="YouTube Playlist" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" />
+  </a>
+</p>
 
 <br />
 
@@ -7,11 +16,59 @@
   <img src="assets/hero.png" alt="FireScroll" width="800" />
 </p>
 
-<br />
+## Demo
 
-Type any topic. FireScroll researches the web, writes scripts, composes animated scenes through a conversational AI director, and renders publish-ready vertical videos with voice narration in 30+ languages. The full pipeline from idea to final cut, running locally with Docker.
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=485MsI5a450">
+        <img src="https://img.youtube.com/vi/485MsI5a450/maxresdefault.jpg" alt="FireScroll Overview" width="100%" />
+      </a>
+      <br />
+      <strong>Overview</strong> — What FireScroll can do
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=vs4SbNTQTww">
+        <img src="https://img.youtube.com/vi/vs4SbNTQTww/maxresdefault.jpg" alt="FireScroll Live Demo" width="100%" />
+      </a>
+      <br />
+      <strong>Live Demo</strong> — Full walkthrough of the app
+    </td>
+  </tr>
+</table>
 
-## Quick Start
+> Raw demo videos are also available in the [`demo/`](demo/) directory.
+
+## What It Does
+
+Type any topic. FireScroll researches the web, writes scripts, composes animated scenes through a conversational AI director, and renders publish-ready vertical videos with voice narration in 30+ languages — the full pipeline from idea to final cut, running locally with Docker.
+
+## Features
+
+- **Research Engine** — Powered by [Firecrawl](https://firecrawl.dev) with six modes (search, scrape, crawl, extract, map, AI agent). Sources are synthesized into citation-backed scripts broken into segments with hooks, scripts, and visual cues.
+
+- **Motion Director** — A chat-based AI agent that composes video scenes conversationally. It writes React/Remotion animation code in real-time with live preview. Five visual styles (cinematic, minimal, bold, editorial, playful), six scene templates, or fully custom programmatic control. *This is under active development — expect rough edges and breaking changes.*
+
+- **Voice & Audio** — 50+ ultra-realistic voices via [ElevenLabs](https://elevenlabs.io) with adjustable stability, similarity, style, and speed. Multilingual TTS across 30+ languages with automatic translation. Built-in library of 20 AI-generated music tracks.
+
+- **Video Rendering** — 1080×1920 vertical format at 30fps via [Remotion](https://remotion.dev). Three visual modes (AI backgrounds, fullscreen video, split-screen) and two caption styles (standard overlay, karaoke word-by-word sync). Output as MP4.
+
+- **Media Library** — Upload your own background videos (MP4, MOV, AVI, WebM). Audio is stripped automatically.
+
+## Getting Started
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- API keys for **all three** services below (all required):
+
+| Key | Purpose |
+|-----|---------|
+| [OpenAI](https://platform.openai.com/api-keys) | Script generation, image backgrounds, Motion Director agent |
+| [ElevenLabs](https://elevenlabs.io) | Voice narration, multilingual TTS |
+| [Firecrawl](https://firecrawl.dev) | Web research and source extraction |
+
+### Run
 
 ```bash
 git clone https://github.com/arun477/firescroll.git
@@ -19,64 +76,43 @@ cd firescroll
 docker compose up --build
 ```
 
-Open [localhost:3500](http://localhost:3500) and configure your API keys in **Settings**.
+Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings** before doing anything else.
 
-| Key | Purpose | Required |
-|-----|---------|----------|
-| OpenAI | Script generation, Motion Director agent | Yes |
-| ElevenLabs | Voice narration, multilingual TTS | Yes |
-| Firecrawl | Web research and source crawling | Optional |
+### Usage
 
-## Features
-
-### Research Engine
-Powered by [Firecrawl](https://firecrawl.dev) with six research modes -- search, scrape, crawl, extract, map, and AI agent. Sources are synthesized into accurate, citation-backed scripts. Each topic gets broken into segments with hooks, scripts, visual cues, and series structure.
-
-### Motion Director
-An AI agent you chat with to compose video scenes. It writes React/Remotion animation code in real-time -- title reveals, stat counters, word-by-word text, bullet points, CTAs. The preview updates live as you iterate. Five visual styles to choose from: cinematic, minimal, bold, editorial, and playful. Six scene templates as starting points, or go fully custom with programmatic control.
-
-### Voice and Audio
-50+ ultra-realistic voices via [ElevenLabs](https://elevenlabs.io) with adjustable stability, similarity, style, and speed. Multilingual TTS across 30+ languages. Built-in library of 20 AI-generated music tracks spanning ambient, cinematic, and lo-fi genres.
-
-### Video Output
-1080x1920 vertical format at 30fps, rendered through [Remotion](https://remotion.dev). Three visual modes -- full AI-generated backgrounds, fullscreen video backgrounds, or split-screen. Two caption styles: standard overlay or karaoke-style word-by-word sync. Output as MP4.
-
-### Media Library
-Upload your own background videos (MP4, MOV, AVI, WebM). Audio is stripped automatically. Shared across all projects.
-
-## Usage
-
-1. **Create a topic** from the dashboard -- enter any subject.
-2. **Research** -- run Firecrawl jobs to gather source material, or write directly.
-3. **Studio** -- review generated segments. Configure voice, visuals, music, and captions per segment. One-click batch generation.
-4. **Motion Director** -- open the chat panel for any segment. Describe your vision or say "compose scenes." The AI agent creates animated scenes, you iterate conversationally, then render.
+1. **Create a topic** — enter any subject from the dashboard.
+2. **Research** — run Firecrawl jobs to gather source material, or write scripts directly.
+3. **Studio** — review generated segments. Configure voice, visuals, music, and captions. One-click batch generation.
+4. **Motion Director** — open the chat panel for any segment. Describe your creative vision, iterate conversationally, then render.
 
 ## Architecture
 
-Six Docker services:
+Six Docker services orchestrated via `docker-compose.yml`:
 
-| Service | Stack | Role |
+| Service | Stack | Port |
 |---------|-------|------|
-| **frontend** | React, Vite, nginx | SPA on port 3500 |
-| **backend** | FastAPI, SQLite | API, SSE streaming, job management on port 8500 |
-| **worker** | Celery | Video generation and rendering pipeline |
-| **chat-worker** | Celery | Dedicated queue for the Motion Director agent |
-| **remotion-studio** | Remotion, TypeScript | Scene rendering engine and live preview server |
-| **redis** | Redis 7 | Message broker, task queue, conversation state |
+| **frontend** | React 19, Vite, nginx | 3500 |
+| **backend** | FastAPI, SQLite | 8500 |
+| **worker** | Celery | — |
+| **chat-worker** | Celery (Motion Director queue) | — |
+| **remotion-studio** | Remotion, TypeScript, Express | 3600 |
+| **redis** | Redis 7 | 6379 |
 
-```
-User -> Frontend -> Backend API -> Celery Workers -> Remotion Studio
-                                -> Redis (state + queue)
-                                -> SQLite (persistence)
-```
+## Roadmap
+
+- [ ] Replace SQLite with PostgreSQL for production use
+- [ ] Expand Motion Director with more scene templates and animation primitives
+- [ ] Add export to social platforms (YouTube Shorts, TikTok, Reels)
+- [ ] WebSocket-based real-time progress updates
+- [ ] User authentication and multi-tenant support
 
 ## Built With
 
-[Remotion](https://remotion.dev) -- Programmatic video rendering in React
-| [ElevenLabs](https://elevenlabs.io) -- Voice synthesis and multilingual TTS
-| [Firecrawl](https://firecrawl.dev) -- Web research and data extraction
-| [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) -- Conversational AI agent framework
+[Remotion](https://remotion.dev) — Programmatic video rendering in React
+| [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS
+| [Firecrawl](https://firecrawl.dev) — Web research and data extraction
+| [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) — Conversational AI agent framework
 
 ## License
 
-All rights reserved.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
