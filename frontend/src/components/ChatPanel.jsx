@@ -222,7 +222,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     recoveringRef.current = true
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (!mountedRef.current) { recoveringRef.current = false; return }
-      if (data.messages?.length) setMessages(data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started')))
+      if (data.messages?.length) setMessages(data.messages.filter(m => (m.content?.trim() || m.tool_steps?.length) && !m.content?.startsWith('[Started')))
       if (data.scene_config) onSceneConfigUpdate(data.scene_config)
       if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
       if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
@@ -337,7 +337,7 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
 
     fetch(`/api/chat/${cid}/history`).then(r => r.json()).then(data => {
       if (data.messages?.length > 0) {
-        setMessages(data.messages.filter(m => m.content?.trim() && !m.content.startsWith('[Started')))
+        setMessages(data.messages.filter(m => (m.content?.trim() || m.tool_steps?.length) && !m.content?.startsWith('[Started')))
         if (data.scene_config) onSceneConfigUpdate(data.scene_config)
         if (data.custom_code && onCustomCodeUpdate) onCustomCodeUpdate(data.custom_code)
         if (data.settings && onSettingsUpdate) onSettingsUpdate(data.settings)
