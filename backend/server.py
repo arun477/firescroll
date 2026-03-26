@@ -121,6 +121,34 @@ def elevenlabs_create_topic(req: ElevenLabsCreateRequest):
     }
 
 
+@app.get("/api/elevenlabs/status/{topic_id}")
+def elevenlabs_status(topic_id: str):
+    topic = get_topic(topic_id)
+    if not topic:
+        return {"error": "Topic not found"}
+    segments = get_segments_for_topic(topic_id)
+    jobs = get_jobs_for_topic(topic_id)
+    ready = sum(1 for s in segments if s["status"] == "ready")
+    total = len(segments)
+    videos_done = sum(1 for j in jobs if j.get("status") == "done")
+    videos_active = sum(1 for j in jobs if j.get("status") not in ("done", "failed", None))
+    return {
+        "topic_id": topic_id,
+        "title": topic["title"],
+        "research_status": topic.get("research_status", "pending"),
+        "segments_ready": ready,
+        "segments_total": total,
+        "videos_done": videos_done,
+        "videos_generating": videos_active,
+        "message": (
+            f"Research: {topic.get('research_status', 'pending')}. "
+            f"Segments: {ready}/{total} ready. "
+            f"Videos: {videos_done} done" +
+            (f", {videos_active} generating." if videos_active else ".")
+        )
+    }
+
+
 @app.get("/api/topics")
 def list_topics(page: int = 1, page_size: int = 12):
     from db import get_topics_page
