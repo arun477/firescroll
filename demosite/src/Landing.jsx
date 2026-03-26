@@ -215,8 +215,8 @@ export default function Landing() {
 const FEATURES = [
   {
     num: '01',
-    title: 'ElevenLabs Audio Suite',
-    desc: '50+ ultra-realistic voices with five style presets. AI-generated music and cinematic sound effects. Every audio element powered by ElevenLabs.',
+    title: 'ElevenLabs Voice & Agent',
+    desc: 'Voice agent that takes a topic and runs the full pipeline by voice. 50+ voices across 31 languages with tunable style presets. AI-generated music and sound effects mixed into every video.',
     key: 'voices',
   },
   {

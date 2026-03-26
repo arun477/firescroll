@@ -41,20 +41,22 @@
 
 ## What It Does
 
-Enter a topic. FireScroll researches the web using Firecrawl, generates scripts from real sources with citations, narrates them using ElevenLabs voices, renders vertical videos, and serves them in a scrollable feed. Full pipeline from topic to feed, runs locally with Docker.
+Say a topic — or type one. An ElevenLabs voice agent picks it up, triggers Firecrawl to research the web in real-time, generates citation-backed scripts, narrates them across 31 languages, and renders vertical short-form videos into a scrollable feed. One voice command in, scrollable feed out. Runs locally with Docker.
 
 ## How It Works
 
 ```
-Topic
+Voice Command or Text Input
   │
-  ├──  Research         Firecrawl searches, scrapes, and extracts from the web
+  ├──  Voice Agent       ElevenLabs Conversational AI receives the topic
   │
-  ├──  Script           GPT-4o synthesizes sources into segmented scripts with citations
+  ├──  Research          Firecrawl searches, scrapes, and extracts from the web
   │
-  ├──  Voice & Audio    ElevenLabs narrates in any language, AI music mixed in
+  ├──  Script            GPT-4o synthesizes sources into segmented scripts with citations
   │
-  ├──  Render           AI backgrounds, captions, transitions — composed into vertical video
+  ├──  Voice & Audio     ElevenLabs narrates in any language, AI music mixed in
+  │
+  ├──  Render            AI backgrounds, captions, transitions — composed into vertical video
   │
   ▼
 Scrollable Feed
@@ -62,11 +64,11 @@ Scrollable Feed
 
 ## Features
 
-**Topic → Research → Generate → Scroll.**
+**Voice → Research → Generate → Scroll.**
 
-### Voice Agent
+### Voice Agent (ElevenLabs Conversational AI)
 
-Talk to FireScroll. Click the mic button on the dashboard, say any topic, and the ElevenLabs voice agent handles the rest — it calls Firecrawl to research the web, creates the topic, generates scripts, and kicks off video rendering. The entire pipeline triggered by a single voice command. Powered by ElevenLabs Conversational AI with Firecrawl Search as a real-time tool.
+The entry point. Click the mic on the dashboard and speak a topic. The ElevenLabs voice agent listens, confirms your intent, then calls Firecrawl Search as a real-time tool to research the web. Once research completes, it automatically generates scripts, narrates them, and kicks off video rendering — all from a single voice command. The agent speaks back to you throughout, confirming what it found and what it's building. No forms, no clicks, no configuration needed.
 
 ### Research
 
@@ -124,7 +126,7 @@ Upload MP4, MOV, AVI, or WebM as backgrounds. Audio stripped on upload. Availabl
 | Key | Purpose |
 |-----|---------|
 | [OpenAI](https://platform.openai.com/api-keys) | Script generation, image backgrounds, transcription |
-| [ElevenLabs](https://elevenlabs.io) | Voice narration, multilingual TTS, music generation |
+| [ElevenLabs](https://elevenlabs.io) | Voice agent, narration, multilingual TTS, music generation |
 | [Firecrawl](https://firecrawl.dev) | Web research and source extraction |
 
 ### Run
@@ -139,10 +141,10 @@ Open [localhost:3500](http://localhost:3500) and add your API keys in **Settings
 
 ### Usage
 
-1. **Create a topic** — enter any subject.
-2. **Research** — pick a mode. Firecrawl scrapes the web, AI writes the scripts.
-3. **Configure** — voice, visual mode, captions, music — all per segment.
-4. **Generate** — batch generation with progress tracking across 7 phases.
+1. **Speak or type a topic** — click the mic button on the dashboard and say it, or create one manually.
+2. **Research runs automatically** — the voice agent triggers Firecrawl to scrape the web. Or pick a research mode manually (simple, deep, agent).
+3. **Configure** — voice, visual mode, captions, music — all per segment. Or let defaults handle it.
+4. **Generate** — batch generation with progress tracking across 7 phases. Voice-triggered topics auto-generate.
 5. **Scroll** — swipe through your feed.
 
 ## Supported Languages
@@ -177,7 +179,7 @@ Narration and script translation handled by ElevenLabs.
 Built for the [Firecrawl](https://firecrawl.dev) x [ElevenLabs](https://elevenlabs.io) Hackathon.
 
 - [Firecrawl](https://firecrawl.dev) — Web research and data extraction. Search API provides real-time web knowledge in a single call. Six modes from search to structured extraction.
-- [ElevenLabs](https://elevenlabs.io) — Voice synthesis and multilingual TTS. 50+ voices across 30+ languages with tunable style presets.
+- [ElevenLabs](https://elevenlabs.io) — Conversational AI voice agent as the primary input interface. Also powers all narration — 50+ voices across 31 languages with tunable presets, plus AI music generation.
 - [Remotion](https://remotion.dev) — Programmatic video rendering in React.
 - [OpenAI](https://openai.com) — Script generation, image backgrounds, transcription.
 
