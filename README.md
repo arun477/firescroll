@@ -82,7 +82,7 @@ Topic (e.g. "Quantum Computing")
 
 ## Features
 
-**Topic → Research → Generate → Scroll.** That's it.
+**Topic → Research → Generate → Scroll.**
 
 ### Firecrawl-Powered Research
 
@@ -175,14 +175,24 @@ Voice narration and automatic script translation handled end-to-end by ElevenLab
 
 ## Roadmap
 
-- [ ] **PostgreSQL migration** — replace SQLite with PostgreSQL for production-grade persistence and concurrent writes
-- [ ] **Packaging** — pre-built Docker images on Docker Hub, streamlined setup, reduced cold-start build time
-- [ ] **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels with platform-specific formatting
-- [ ] **Shareable feed links** — public URLs for generated feeds so viewers can scroll without running the app
-- [ ] **Multi-tenant auth** — user accounts, teams, and shared workspaces
-- [ ] **Scheduled generation** — set a topic and cadence, FireScroll researches and generates new videos on autopilot
-- [ ] **Analytics** — track watch time, completion rate, and engagement per video
-- [ ] **Mobile-first PWA** — installable app experience for the scroll feed on phones
+### Infrastructure
+- [ ] **PostgreSQL migration** — replace SQLite for concurrent writes, connection pooling, and production-grade durability. SQLite works for single-user local but breaks under multi-tenant load.
+- [ ] **Pre-built Docker images** — publish to Docker Hub so users skip the 5+ minute cold build. One `docker compose pull && docker compose up` to run.
+- [ ] **GPU-accelerated rendering** — Remotion rendering is CPU-bound today. NVIDIA GPU support would cut render times from minutes to seconds per segment.
+- [ ] **Job queue dashboard** — real-time visibility into Celery workers. See queued, active, and failed jobs with retry controls instead of polling the database.
+
+### Product
+- [ ] **Social export** — one-click publish to YouTube Shorts, TikTok, and Reels. Auto-crop, platform-specific aspect ratios, metadata injection, and scheduling.
+- [ ] **Shareable feed links** — public URLs for generated feeds. Viewers scroll your content without running the app. Embeddable player for blogs and docs.
+- [ ] **Scheduled generation** — set a topic and cadence (daily, weekly). FireScroll autonomously researches trending angles, generates new segments, and drops them into your feed.
+- [ ] **Multi-source voice cloning** — clone a consistent narrator voice from a 30-second sample via ElevenLabs. Every video in a series sounds like the same person.
+- [ ] **Interactive transcripts** — click any word in the transcript to jump to that frame. Full-text search across all generated content.
+
+### Scale
+- [ ] **Multi-tenant auth** — user accounts, API key isolation, team workspaces, and role-based access. Required before any hosted deployment.
+- [ ] **Mobile-first PWA** — installable app with offline feed caching, push notifications for completed generations, and native swipe gestures.
+- [ ] **Analytics engine** — per-video watch time, completion rate, drop-off points, and segment-level engagement heatmaps. Data-driven iteration on what hooks work.
+- [ ] **Content graph** — link related topics into learning paths. "Finished Quantum Computing? Here's Particle Physics." Auto-suggested by embeddings across your generated library.
 
 ## Built With
 
