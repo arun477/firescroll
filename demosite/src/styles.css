@@ -3278,10 +3278,18 @@ html, body, #root { height: 100%; }
 .ln-demos-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 16px;
 }
 .ln-demos-grid-3 {
   grid-template-columns: 1fr 1fr 1fr;
+}
+
+.ln-demo-card video {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #0a0a0c;
+  display: block;
+  object-fit: cover;
 }
 .ln-demo-card-featured {
   border-color: rgba(249,115,22,0.2);
