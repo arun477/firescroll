@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Send, Loader2, Zap, Film, Mic, Globe, Palette, Check } from 'lucide-react'
+import { Send, Loader2, Zap, Film, Mic, Globe, Palette, Check, RotateCcw } from 'lucide-react'
 import SceneConfigCard from './SceneConfigCard'
 import { VoicePicker, LanguagePicker, StylePicker, TemplateShowcase } from './ChatPickers'
 
@@ -426,6 +426,26 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendMessage(input.trim()) }
   }
 
+  const resetConversation = useCallback(async () => {
+    if (!conversationId) return
+    closeSSE()
+    stopTypewriter()
+    try { await fetch(`/api/chat/${conversationId}`, { method: 'DELETE' }) } catch {}
+    streamRef.current = ''
+    displayedLenRef.current = 0
+    setDisplayedContent('')
+    setActivitySteps([])
+    setActivePicker(null)
+    settledRef.current = false
+    setStatus('idle')
+    setMessages([{
+      role: 'assistant',
+      content: `Let's start fresh for **"${segment?.title}"**.\n\nDescribe your vision, pick a voice, or say "compose" to get started.`
+    }])
+    if (onSceneConfigUpdate) onSceneConfigUpdate(null)
+    if (onCustomCodeUpdate) onCustomCodeUpdate(null)
+  }, [conversationId, segment, closeSSE, stopTypewriter, onSceneConfigUpdate, onCustomCodeUpdate])
+
   const renderPart = (part, i) => {
     if (part.type === 'scene_config') return <SceneConfigCard key={`sc_${i}`} config={sceneConfig} />
     return part.content?.trim() ? <div key={i} className="vc-msg-text">{renderMarkdown(part.content.trim())}</div> : null
@@ -445,6 +465,9 @@ export default function ChatPanel({ topicId, segment, voices, languages, styles,
           Motion Director
         </span>
         {settings?.style && <span className="vc-badge">{settings.style}</span>}
+        <button className="vc-reset-btn" onClick={resetConversation} title="Reset conversation">
+          <RotateCcw size={12} />
+        </button>
       </div>
 
       {/* Messages */}

@@ -653,7 +653,7 @@ def _run_scene_subagent(cid, brief, num_scenes=5, scene_indices=None, mode="crea
 
     api_key = get_key("openai")
     client = OpenAI(api_key=api_key)
-    tool_map, _ = _make_tools(cid)
+    tool_map = _make_tools(cid)
     results = []
 
     if mode == "create":
