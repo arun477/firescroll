@@ -45,9 +45,6 @@ export default function Dashboard() {
           <h1 className="dash-h1">Dashboard</h1>
           <span className="dash-sub">{totalCount} {totalCount === 1 ? 'project' : 'projects'}</span>
         </div>
-        <button className="dash-voice" onClick={() => setVoiceOpen(true)}>
-          <Mic size={15} /> Voice
-        </button>
         <button className="dash-new" onClick={() => navigate('/create')}>
           <Plus size={15} /> New Topic
         </button>
@@ -148,6 +145,15 @@ export default function Dashboard() {
             </div>
           )}
         </>
+      )}
+      {!voiceOpen && (
+        <button className="dash-fab" onClick={() => setVoiceOpen(true)}>
+          <div className="dash-fab-inner">
+            <Mic size={20} />
+            <span className="dash-fab-pulse" />
+          </div>
+          <span className="dash-fab-label">Voice Agent</span>
+        </button>
       )}
       {voiceOpen && (
         <VoiceAgent

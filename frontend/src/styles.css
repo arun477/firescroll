@@ -1428,22 +1428,62 @@ a { color: var(--blue); text-decoration: none; }
   font-weight: 500;
 }
 
-.dash-voice {
+/* Floating voice agent button */
+.dash-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 9px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #a1a1aa;
-  font-size: 13px;
-  font-weight: 600;
+  gap: 10px;
+  padding: 12px 20px 12px 14px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  border: none;
+  color: white;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 32px rgba(239,68,68,0.25), 0 2px 8px rgba(0,0,0,0.3);
+  animation: fabIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.dash-voice:hover { background: rgba(255,255,255,0.08); color: #fafafa; border-color: rgba(255,255,255,0.15); }
+@keyframes fabIn {
+  from { transform: scale(0.8) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.dash-fab:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 40px rgba(239,68,68,0.3), 0 4px 12px rgba(0,0,0,0.4);
+}
+.dash-fab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.dash-fab-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-fab-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  animation: fabPulse 2s ease-in-out infinite;
+}
+@keyframes fabPulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
+
+.dash-fab-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
 
 .dash-new {
   display: flex;
@@ -9527,6 +9567,8 @@ a { color: var(--blue); text-decoration: none; }
   .dash-grid { grid-template-columns: 1fr; }
   .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .dash-new { align-self: flex-start; }
+  .dash-fab { bottom: 20px; right: 20px; padding: 10px 16px 10px 12px; }
+  .dash-fab-label { font-size: 12px; }
 }
 
 /* ══════════════════════════════════════════════════════

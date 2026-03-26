@@ -78,14 +78,14 @@ class GenerateAllRequest(BaseModel):
     language: Optional[str] = None
 
 
-# ── ElevenLabs Agent Webhook ──
-class ElevenLabsToolRequest(BaseModel):
+# ── ElevenLabs Agent Endpoints ──
+class ElevenLabsCreateRequest(BaseModel):
     topic: str
     description: str = ""
     num_segments: int = 6
 
-@app.post("/api/elevenlabs/webhook")
-def elevenlabs_webhook(req: ElevenLabsToolRequest):
+@app.post("/api/elevenlabs/create-topic")
+def elevenlabs_create_topic(req: ElevenLabsCreateRequest):
     topic_id = create_topic(req.topic, req.description)
     update_topic(topic_id, research_status="pending")
 
@@ -94,30 +94,30 @@ def elevenlabs_webhook(req: ElevenLabsToolRequest):
         from celery_app import generate_single_task
         from db import create_job, has_active_job
 
-        # Phase 1: Research
+        # Phase 1: Firecrawl search research
         research_all_firecrawl(topic_id, req.topic, req.num_segments,
                                description=req.description)
 
-        # Phase 2: Generate videos for all ready segments
+        # Phase 2: Auto-generate first segment with defaults
         topic = get_topic(topic_id)
         if not topic:
             return
         segments = get_segments_for_topic(topic_id)
         gen_data = _segments_to_gen_data(topic, segments)
-        for seg in gen_data:
-            if has_active_job(topic_id, seg["id"]):
-                continue
-            job_id = create_job(topic_id, seg["id"], "full", "default")
-            if job_id:
-                generate_single_task.delay(
-                    seg, "full", "default", OUTPUT_DIR, job_id
-                )
+        if gen_data:
+            seg = gen_data[0]
+            if not has_active_job(topic_id, seg["id"]):
+                job_id = create_job(topic_id, seg["id"], "full", "default")
+                if job_id:
+                    generate_single_task.delay(
+                        seg, "full", "default", OUTPUT_DIR, job_id
+                    )
 
     threading.Thread(target=run, daemon=True).start()
 
     return {
         "topic_id": topic_id,
-        "message": f"Created '{req.topic}' with {req.num_segments} segments. Researching and generating videos — they'll appear in your feed when ready."
+        "message": f"Created '{req.topic}'. Researching with Firecrawl now — once done, the first video will generate automatically. You can customize voice, visuals, and music for the rest from the dashboard."
     }
 
 
