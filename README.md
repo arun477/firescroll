@@ -64,6 +64,10 @@ Scrollable Feed
 
 **Topic → Research → Generate → Scroll.**
 
+### Voice Agent
+
+Talk to FireScroll. Click the mic button on the dashboard, say any topic, and the ElevenLabs voice agent handles the rest — it calls Firecrawl to research the web, creates the topic, generates scripts, and kicks off video rendering. The entire pipeline triggered by a single voice command. Powered by ElevenLabs Conversational AI with Firecrawl Search as a real-time tool.
+
 ### Research
 
 Four research strategies:

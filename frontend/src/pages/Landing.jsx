@@ -116,9 +116,9 @@ export default function Landing() {
         </h1>
         <p className="ln-tagline">Short video creation platform</p>
         <p className="ln-p">
-          Type any topic. AI researches, writes, and renders addictive
-          short-form videos with ultra-realistic voices and custom music.
-          The scroll that actually teaches you something.
+          Type or speak any topic. An AI voice agent researches the web,
+          writes scripts, narrates in 31 languages, and renders short-form
+          videos you can scroll through. The feed that teaches you something.
         </p>
         <div className="ln-actions">
           <button className="ln-go" onClick={() => navigate('/create')}>
@@ -170,8 +170,8 @@ export default function Landing() {
 const FEATURES = [
   {
     num: '01',
-    title: 'ElevenLabs Audio Suite',
-    desc: '50+ ultra-realistic voices with five style presets. AI-generated music and cinematic sound effects. Every audio element powered by ElevenLabs.',
+    title: 'ElevenLabs Voice & Agent',
+    desc: 'Voice agent that takes a topic and runs the full pipeline by voice. 50+ voices across 31 languages with tunable style presets. AI-generated music and sound effects mixed into every video.',
     key: 'voices',
   },
   {

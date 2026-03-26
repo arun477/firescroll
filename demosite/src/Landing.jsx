@@ -124,9 +124,9 @@ export default function Landing() {
         </h1>
         <p className="ln-tagline">Short video creation platform</p>
         <p className="ln-p">
-          Type any topic. AI researches, writes, and renders addictive
-          short-form videos with ultra-realistic voices and custom music.
-          The scroll that actually teaches you something.
+          Type or speak any topic. An AI voice agent researches the web,
+          writes scripts, narrates in 31 languages, and renders short-form
+          videos you can scroll through. The feed that teaches you something.
         </p>
         <div className="ln-actions">
           <button className="ln-go" onClick={openGithub}>
